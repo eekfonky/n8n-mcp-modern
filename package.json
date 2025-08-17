@@ -1,0 +1,71 @@
+{
+  "name": "@lexinet/n8n-mcp-modern",
+  "version": "4.0.0",
+  "description": "Modern n8n MCP server built with official TypeScript SDK - zero legacy, maximum performance",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "n8n-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc && chmod +x dist/index.js",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "typecheck": "tsc --noEmit",
+    "rebuild-db": "tsx src/scripts/rebuild-database.ts",
+    "validate": "tsx src/scripts/validate-data.ts"
+  },
+  "keywords": [
+    "n8n",
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "workflow",
+    "automation",
+    "typescript",
+    "modern"
+  ],
+  "author": "Enhanced by eekfonky - Modern TypeScript rebuild",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eekfonky/n8n-mcp-modern.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eekfonky/n8n-mcp-modern/issues"
+  },
+  "homepage": "https://github.com/eekfonky/n8n-mcp-modern#readme",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.3",
+    "better-sqlite3": "^12.2.0",
+    "dotenv": "^16.6.1",
+    "undici": "^7.0.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.17.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "eslint": "^9.17.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.8"
+  },
+  "files": [
+    "dist/**/*",
+    "data/**/*",
+    "agents/**/*",
+    "README.md",
+    "LICENSE"
+  ]
+}
