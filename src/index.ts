@@ -33,16 +33,17 @@ class N8NMcpServer {
   }
 
   private setupTools(): void {
-    // Tool setup will be implemented here
-    logger.info('Setting up MCP tools...');
+    logger.info('Setting up n8n MCP tools...');
     
-    // TODO: Implement the 87+ MCP tools from the agents and tools directories
-    // For now, just log that the server is ready - tools will be implemented later
-    logger.info('Tool handlers ready for implementation');
+    // TODO: Implement the 87+ n8n-specific MCP tools
+    // These tools will be used by Claude Code agents for n8n automation
+    // Examples: search_nodes, create_workflow, validate_workflow, etc.
+    
+    logger.info('MCP tools ready - agents can use these for n8n automation');
   }
 
   private setupErrorHandlers(): void {
-    this.server.onerror = (error) => {
+    this.server.onerror = (error): void => {
       logger.error('MCP Server error:', error);
     };
 

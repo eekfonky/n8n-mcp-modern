@@ -1,6 +1,7 @@
 import { config as dotenvConfig } from 'dotenv';
 import { z } from 'zod';
-import { Config, ConfigSchema } from '../types/index.js';
+import type { Config } from '../types/index.js';
+import { ConfigSchema } from '../types/index.js';
 
 // Load environment variables
 dotenvConfig();
@@ -72,7 +73,7 @@ function normalizeN8NUrl(url: string | undefined): string | undefined {
     
     // Always append /api/v1
     return `${baseUrl}${cleanPath}/api/v1`;
-  } catch (error) {
+  } catch {
     throw new Error(`Invalid N8N_API_URL format: ${url}`);
   }
 }

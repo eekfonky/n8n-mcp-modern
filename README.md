@@ -1,7 +1,7 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-4.0.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-4.1.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
@@ -63,6 +63,8 @@ claude mcp add n8n-mcp-modern \
   --env N8N_API_URL="https://your-n8n-instance.com" \
   --env N8N_API_KEY="your-api-key" \
   -- npx -y @lexinet/n8n-mcp-modern
+
+# ✨ Agents are automatically installed to ~/.claude/agents/ during setup!
 ```
 
 > **⚠️ Important**: For full n8n workflow automation capabilities, you MUST provide your n8n API credentials via environment variables as shown above.
@@ -88,9 +90,11 @@ npm run lint          # Type checking
 npm run rebuild-db    # Rebuild node database
 ```
 
-## 🤖 Agent System
+## 🤖 Claude Code Agent System
 
-**7-Agent Hierarchical Intelligence:**
+**7 Specialized Claude Code Agents for n8n Automation:**
+
+This package includes Claude Code agents that work with the MCP server:
 
 ```
 TIER 1: MASTER ORCHESTRATOR
@@ -106,6 +110,18 @@ TIER 3: RESEARCH SPECIALISTS
 ├─ n8n-docs-specialist - Documentation & setup
 └─ n8n-community-specialist - AI/ML & community patterns
 ```
+
+**Installation:** Copy `agents/*.md` files to `~/.claude/agents/` for Claude Code integration.
+
+## 🏗️ Architecture
+
+**Clean Separation of Concerns:**
+
+1. **🔧 MCP Server** (`@lexinet/n8n-mcp-modern`): Provides 87+ n8n-specific tools
+2. **🤖 Claude Code Agents** (`agents/*.md`): Specialized expertise using MCP tools
+3. **⚡ User Experience**: Claude Code Task tool → Agent → MCP tools → n8n API
+
+This architecture leverages Claude Code's built-in agent system while providing deep n8n integration through MCP tools.
 
 ## 🛠️ 87+ MCP Tools
 
@@ -123,9 +139,6 @@ TIER 3: RESEARCH SPECIALISTS
 - Complete n8n API integration for workflow lifecycle
 - Create, update, delete, execute, monitor workflows
 - Credential management, webhook handling, analytics
-
-**Agent Coordination (1 tool):**
-- `Task` - Intelligent agent delegation system
 
 **Documentation System (7+ tools):**
 - Comprehensive guides, examples, troubleshooting

@@ -112,23 +112,12 @@ export interface ValidationWarning {
   suggestion?: string;
 }
 
-// Agent Types
-export const AgentTypeSchema = z.enum([
-  'n8n-workflow-architect',
-  'n8n-validator', 
-  'n8n-integration-specialist',
-  'n8n-node-specialist',
-  'n8n-assistant',
-  'n8n-docs-specialist',
-  'n8n-community-specialist'
-]);
-
-export type AgentType = z.infer<typeof AgentTypeSchema>;
-
-export interface AgentTask {
-  description: string;
-  prompt: string;
-  subagentType: AgentType;
+// MCP Tool Types (removed internal agent logic)
+export interface ToolResult {
+  success: boolean;
+  data?: unknown;
+  message?: string;
+  error?: string;
 }
 
 // Database Types
@@ -210,6 +199,10 @@ export class N8NMcpError extends Error {
   ) {
     super(message);
     this.name = 'N8NMcpError';
+    // Properties are automatically assigned via public parameters
+    void code;
+    void statusCode;
+    void details;
   }
 }
 

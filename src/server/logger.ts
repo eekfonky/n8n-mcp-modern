@@ -45,7 +45,7 @@ class Logger {
       level,
       message,
       data,
-      context
+      ...(context && { context })
     };
 
     const formatted = this.formatEntry(entry);
@@ -112,7 +112,11 @@ class ContextLogger {
   constructor(
     private readonly logger: Logger,
     private readonly contextName: string
-  ) {}
+  ) {
+    // Parameters are used in methods below
+    void logger;
+    void contextName;
+  }
 
   debug(message: string, data?: unknown): void {
     this.logger.debug(message, data, this.contextName);

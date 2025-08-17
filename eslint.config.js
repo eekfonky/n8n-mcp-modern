@@ -12,6 +12,14 @@ export default [
         ecmaVersion: 2022,
         sourceType: 'module',
         project: './tsconfig.json'
+      },
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        URL: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly'
       }
     },
     plugins: {
@@ -39,6 +47,12 @@ export default [
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-explicit-any': 'off'
+    }
+  },
+  {
+    files: ['src/server/logger.ts'],
+    rules: {
+      'no-console': 'off'
     }
   }
 ];
