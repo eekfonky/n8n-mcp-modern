@@ -53,17 +53,19 @@ src/
 
 ### Installation
 
-**Method 1: NPX (Recommended)**
+**Method 1: Claude MCP Integration (Recommended)**
 ```bash
-# Basic usage (stdio mode)
+# Basic usage (offline mode - limited functionality)
 claude mcp add n8n-mcp-modern -- npx -y @lexinet/n8n-mcp-modern
 
-# With n8n API credentials
+# Full functionality with your n8n instance (RECOMMENDED)
 claude mcp add n8n-mcp-modern \
   --env N8N_API_URL="https://your-n8n-instance.com" \
   --env N8N_API_KEY="your-api-key" \
   -- npx -y @lexinet/n8n-mcp-modern
 ```
+
+> **⚠️ Important**: For full n8n workflow automation capabilities, you MUST provide your n8n API credentials via environment variables as shown above.
 
 **Method 2: Global Install**
 ```bash
@@ -146,6 +148,28 @@ ENABLE_CACHE=true
 CACHE_TTL=3600
 MAX_CONCURRENT_REQUESTS=10
 ```
+
+### Getting n8n API Credentials
+
+To use the full functionality, you need to obtain API credentials from your n8n instance:
+
+1. **n8n Cloud Users**: 
+   - Go to your n8n dashboard → Settings → API
+   - Generate a new API key
+   - Use your cloud URL: `https://your-workspace.app.n8n.cloud`
+
+2. **Self-hosted n8n**:
+   - Enable API in your n8n settings
+   - Generate an API key in Settings → API  
+   - Use your instance URL: `https://your-domain.com`
+
+3. **Add to Claude MCP**:
+   ```bash
+   claude mcp add n8n-mcp-modern \
+     --env N8N_API_URL="https://your-n8n-instance.com" \
+     --env N8N_API_KEY="your-api-key" \
+     -- npx -y @lexinet/n8n-mcp-modern
+   ```
 
 ### URL Auto-Normalization
 The package automatically handles URL formatting:
