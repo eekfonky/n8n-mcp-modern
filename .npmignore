@@ -1,0 +1,58 @@
+# Source files (only include dist/ in npm package)
+src/
+*.ts
+!*.d.ts
+
+# Development files
+.gitignore
+.eslintrc*
+eslint.config.*
+vitest.config.*
+tsconfig.*
+*.tsbuildinfo
+
+# Testing
+test/
+tests/
+**/*.test.*
+**/*.spec.*
+coverage/
+.vitest/
+
+# Development dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Environment and config
+.env*
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Cache
+.cache/
+.npm/
+
+# Documentation that's not needed in package
+NODE_UPGRADE_PATH.md
+
+# Development tools
+.claude-flow/
+.swarm/
+
+# BMAD package directories
+.bmad-*/
+
+# Build artifacts (keep only dist/)
+build/
+tmp/
+temp/
