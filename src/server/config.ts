@@ -8,7 +8,7 @@ dotenvConfig();
 
 // Environment variable parsing with validation
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production']).default('production'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
   N8N_API_URL: z.string().url().optional(),
   N8N_API_KEY: z.string().optional(),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),

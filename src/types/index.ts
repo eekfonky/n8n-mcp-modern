@@ -21,7 +21,7 @@ export const ConfigSchema = z.object({
   enableCache: z.boolean().default(true),
   cacheTtl: z.number().default(3600),
   maxConcurrentRequests: z.number().default(10),
-  nodeEnv: z.enum(['development', 'production']).default('production'),
+  nodeEnv: z.enum(['development', 'production', 'test']).default('production'),
   debug: z.boolean().default(false)
 });
 
@@ -155,6 +155,53 @@ export interface SearchOptions {
   developmentStyle?: string;
 }
 
+// N8N Workflow Connection Schema
+export const N8NConnectionSchema = z.object({
+  node: z.string(),
+  type: z.string(),
+  index: z.number()
+});
+
+export const N8NConnectionsSchema = z.record(
+  z.string(),
+  z.record(z.string(), z.array(z.array(N8NConnectionSchema)))
+);
+
+// N8N Workflow Node Schema
+export const N8NWorkflowNodeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  typeVersion: z.number(),
+  position: z.tuple([z.number(), z.number()]),
+  parameters: z.record(z.unknown()),
+  credentials: z.record(z.string()).optional(),
+  disabled: z.boolean().optional(),
+  notes: z.string().optional(),
+  notesInFlow: z.boolean().optional(),
+  color: z.string().optional(),
+  continueOnFail: z.boolean().optional(),
+  alwaysOutputData: z.boolean().optional(),
+  executeOnce: z.boolean().optional(),
+  retryOnFail: z.boolean().optional(),
+  maxTries: z.number().optional(),
+  waitBetweenTries: z.number().optional(),
+  onError: z.string().optional()
+});
+
+// N8N Workflow Schema
+export const N8NWorkflowSchema = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  nodes: z.array(N8NWorkflowNodeSchema),
+  connections: N8NConnectionsSchema,
+  active: z.boolean().optional(),
+  settings: z.record(z.unknown()).optional(),
+  staticData: z.record(z.unknown()).optional(),
+  tags: z.array(z.string()).optional(),
+  versionId: z.string().optional()
+});
+
 // N8N API Types (Minimal)
 export interface N8NWorkflow {
   id?: string;
@@ -199,10 +246,6 @@ export class N8NMcpError extends Error {
   ) {
     super(message);
     this.name = 'N8NMcpError';
-    // Properties are automatically assigned via public parameters
-    void code;
-    void statusCode;
-    void details;
   }
 }
 
@@ -220,3 +263,65 @@ export type RequiredKeys<T> = {
 export type OptionalKeys<T> = {
   [K in keyof T]-?: {} extends Pick<T, K> ? K : never;
 }[keyof T];
+
+// MCP Tool Argument Schemas
+export const SearchNodesArgsSchema = z.object({
+  query: z.string(),
+  category: z.string().optional()
+});
+
+export const GetWorkflowsArgsSchema = z.object({
+  limit: z.number().optional().default(10)
+});
+
+export const GetWorkflowArgsSchema = z.object({
+  id: z.string()
+});
+
+export const CreateWorkflowArgsSchema = z.object({
+  name: z.string(),
+  nodes: z.array(N8NWorkflowNodeSchema),
+  connections: N8NConnectionsSchema,
+  active: z.boolean().optional().default(false)
+});
+
+export const ExecuteWorkflowArgsSchema = z.object({
+  id: z.string(),
+  data: z.record(z.unknown()).optional()
+});
+
+export const GetExecutionsArgsSchema = z.object({
+  workflowId: z.string().optional(),
+  limit: z.number().optional().default(20)
+});
+
+export const RouteToAgentArgsSchema = z.object({
+  query: z.string()
+});
+
+// Type inference from schemas
+export type SearchNodesArgs = z.infer<typeof SearchNodesArgsSchema>;
+export type GetWorkflowsArgs = z.infer<typeof GetWorkflowsArgsSchema>;
+export type GetWorkflowArgs = z.infer<typeof GetWorkflowArgsSchema>;
+export type CreateWorkflowArgs = z.infer<typeof CreateWorkflowArgsSchema>;
+export type ExecuteWorkflowArgs = z.infer<typeof ExecuteWorkflowArgsSchema>;
+export type GetExecutionsArgs = z.infer<typeof GetExecutionsArgsSchema>;
+export type RouteToAgentArgs = z.infer<typeof RouteToAgentArgsSchema>;
+
+// Tool response types for better type safety
+export interface ToolExecutionResult {
+  content: Array<{
+    type: 'text';
+    text: string;
+  }>;
+  isError?: boolean;
+}
+
+// Context building types
+export interface AgentContext {
+  complexity: 'low' | 'medium' | 'high';
+  requiresValidation: boolean;
+  requiresAuthentication: boolean;
+  nodeExpertise: boolean;
+  quickHelp: boolean;
+}

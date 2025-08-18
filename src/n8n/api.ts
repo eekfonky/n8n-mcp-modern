@@ -16,7 +16,7 @@ export interface N8NWorkflow {
   name: string;
   active: boolean;
   nodes: N8NWorkflowNode[];
-  connections: Record<string, any>;
+  connections: Record<string, Record<string, Array<Array<{ node: string; type: string; index: number }>>>>;
   createdAt?: string;
   updatedAt?: string;
   tags?: string[];
@@ -31,7 +31,7 @@ export interface N8NWorkflowNode {
   type: string;
   typeVersion: number;
   position: [number, number];
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   credentials?: Record<string, string>;
 }
 
@@ -47,7 +47,7 @@ export interface N8NExecution {
   startedAt: string;
   stoppedAt?: string;
   workflowId: string;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 /**
@@ -57,7 +57,7 @@ export interface N8NCredential {
   id: string;
   name: string;
   type: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
   ownedBy?: string;
@@ -87,7 +87,7 @@ export interface N8NNodeType {
   displayName: string;
   description: string;
   version: number;
-  defaults?: Record<string, any>;
+  defaults?: Record<string, unknown>;
   inputs: string[];
   outputs: string[];
   properties: N8NNodeProperty[];
@@ -104,9 +104,9 @@ export interface N8NNodeProperty {
   name: string;
   type: string;
   required?: boolean;
-  default?: any;
+  default?: unknown;
   description?: string;
-  options?: Array<{ name: string; value: any }>;
+  options?: Array<{ name: string; value: unknown }>;
 }
 
 /**
@@ -115,7 +115,7 @@ export interface N8NNodeProperty {
 export interface N8NNodeCredential {
   name: string;
   required?: boolean;
-  displayOptions?: Record<string, any>;
+  displayOptions?: Record<string, unknown>;
 }
 
 /**
@@ -143,7 +143,7 @@ export interface N8NHealthStatus {
 /**
  * n8n API Response
  */
-interface N8NApiResponse<T = any> {
+interface N8NApiResponse<T = unknown> {
   data: T;
   nextCursor?: string;
 }
@@ -167,24 +167,30 @@ export class N8NApiClient {
   /**
    * Make authenticated request to n8n API
    */
-  private async request<T = any>(
+  private async request<T = unknown>(
     endpoint: string,
-    options: RequestInit = {}
+    options: globalThis.RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     
-    const requestOptions: RequestInit = {
-      ...options,
+    // Create a clean request options object to avoid type conflicts
+    const requestOptions: Record<string, unknown> = {
+      method: options.method ?? 'GET',
       headers: {
         'Content-Type': 'application/json',
         'X-N8N-API-KEY': this.apiKey,
-        ...options.headers,
+        ...(options.headers as Record<string, string>),
       },
     };
 
+    // Add body if present
+    if (options.body) {
+      requestOptions.body = options.body;
+    }
+
     return await n8nApiCircuitBreaker.execute(async () => {
       return await retryHandler.execute(async () => {
-        logger.debug(`Making request to n8n API: ${options.method || 'GET'} ${url}`);
+        logger.debug(`Making request to n8n API: ${requestOptions.method ?? 'GET'} ${url}`);
         
         const response = await fetch(url, requestOptions as any);
         
@@ -194,7 +200,7 @@ export class N8NApiClient {
         }
         
         return await response.json() as T;
-      }, `n8n API ${options.method || 'GET'} ${endpoint}`);
+      }, `n8n API ${options.method ?? 'GET'} ${endpoint}`);
     });
   }
 
@@ -292,7 +298,7 @@ export class N8NApiClient {
   /**
    * Execute workflow
    */
-  async executeWorkflow(id: string, data?: any): Promise<N8NExecution> {
+  async executeWorkflow(id: string, data?: Record<string, unknown>): Promise<N8NExecution> {
     const response = await this.request<N8NExecution>(`/workflows/${id}/execute`, {
       method: 'POST',
       body: JSON.stringify({ data }),
@@ -338,8 +344,8 @@ export class N8NApiClient {
   /**
    * Get workflow execution data
    */
-  async getExecutionData(id: string): Promise<any> {
-    const response = await this.request(`/executions/${id}`);
+  async getExecutionData(id: string): Promise<Record<string, unknown>> {
+    const response = await this.request<{ data: Record<string, unknown> }>(`/executions/${id}`);
     return response.data;
   }
 
@@ -600,7 +606,7 @@ export class N8NApiClient {
     try {
       const response = await this.request<N8NHealthStatus>('/health');
       return response;
-    } catch (error) {
+    } catch (_error) {
       return {
         status: 'error',
         database: { status: 'error' }
@@ -615,7 +621,7 @@ export class N8NApiClient {
     try {
       const response = await this.request<{ version: string; build?: string }>('/version');
       return response;
-    } catch (error) {
+    } catch (_error) {
       // Fallback for instances without version endpoint
       return { version: 'unknown' };
     }
@@ -630,7 +636,7 @@ export class N8NApiClient {
     try {
       const response = await this.request<N8NApiResponse<{ name: string }[]>>('/tags');
       return response.data.map(tag => tag.name);
-    } catch (error) {
+    } catch (_error) {
       // Not all n8n versions support tags
       return [];
     }
@@ -652,11 +658,11 @@ export class N8NApiClient {
   /**
    * Get workflow templates (if available)
    */
-  async getTemplates(): Promise<any[]> {
+  async getTemplates(): Promise<Record<string, unknown>[]> {
     try {
-      const response = await this.request<N8NApiResponse<any[]>>('/workflows/templates');
+      const response = await this.request<N8NApiResponse<Record<string, unknown>[]>>('/workflows/templates');
       return response.data;
-    } catch (error) {
+    } catch (_error) {
       // Templates might not be available in all n8n versions
       return [];
     }
@@ -665,7 +671,7 @@ export class N8NApiClient {
   /**
    * Import workflow from data
    */
-  async importWorkflow(workflowData: any): Promise<N8NWorkflow> {
+  async importWorkflow(workflowData: Record<string, unknown>): Promise<N8NWorkflow> {
     const response = await this.request<N8NWorkflow>('/workflows/import', {
       method: 'POST',
       body: JSON.stringify(workflowData),
@@ -678,7 +684,7 @@ export class N8NApiClient {
   /**
    * Export workflow data
    */
-  async exportWorkflow(id: string, format: 'json' | 'yaml' = 'json'): Promise<any> {
+  async exportWorkflow(id: string, format: 'json' | 'yaml' = 'json'): Promise<N8NWorkflow> {
     const workflow = await this.getWorkflow(id);
     
     if (format === 'json') {
@@ -693,11 +699,11 @@ export class N8NApiClient {
   /**
    * Get execution logs with details
    */
-  async getExecutionLogs(id: string): Promise<any> {
+  async getExecutionLogs(id: string): Promise<Record<string, unknown>> {
     try {
-      const response = await this.request(`/executions/${id}/logs`);
+      const response = await this.request<Record<string, unknown>>(`/executions/${id}/logs`);
       return response;
-    } catch (error) {
+    } catch (_error) {
       // Fallback to execution data
       return await this.getExecutionData(id);
     }

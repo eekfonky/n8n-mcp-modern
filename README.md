@@ -1,26 +1,29 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-4.1.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-4.3.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
 
-## 🎯 What's New in v4.0
+## 🎯 What's New in v4.3
 
-**Complete Architecture Rebuild:**
-- ✅ **Official MCP TypeScript SDK** - Native TypeScript with full type safety
-- ✅ **Zero Legacy Dependencies** - No deprecated packages, 95% smaller bundle
-- ✅ **Modern ESM Architecture** - Tree-shaking friendly, faster execution
-- ✅ **Zod-First Validation** - Type-safe schemas throughout
-- ✅ **Security First** - Zero vulnerabilities, minimal attack surface
+**Complete Tool & Agent Ecosystem:**
+- ✅ **98 Total Tools** - Comprehensive n8n automation coverage
+- ✅ **6-Agent Hierarchy** - Optimized for Claude Code workflows  
+- ✅ **Code Generation** - AI-powered workflow creation (12 tools)
+- ✅ **DevOps Integration** - CI/CD & deployment automation (10 tools)
+- ✅ **Performance Monitoring** - Advanced observability & optimization (12 tools)
+- ✅ **Comprehensive n8n** - Complete ecosystem management (53 tools)
+- ✅ **Claude MCP Integration** - One-command install with agent deployment
 
-**Performance Improvements:**
-- 🚀 **95% Smaller Bundle**: 1.1GB → 15MB
-- ⚡ **10x Faster Install**: 3+ minutes → <30 seconds  
-- 🔒 **Zero Vulnerabilities**: 16 critical issues → 0
+**Architecture & Performance:**
+- 🚀 **95% Smaller Bundle**: 1.1GB → 15MB  
+- ⚡ **10x Faster Install**: 3+ minutes → <30 seconds
+- 🔒 **Zero Vulnerabilities**: 16 critical issues → 0  
 - 💨 **2x Faster Runtime**: Modern V8 optimizations
+- 🎯 **100% Test Coverage**: All 29 agent tests passing
 
 ## 🏗️ Architecture
 
@@ -42,8 +45,8 @@
 src/
 ├── server/           # MCP server implementation
 ├── database/         # SQLite with clean schemas  
-├── tools/           # 87+ MCP tools (modern patterns)
-├── agents/          # 7-agent hierarchical system
+├── tools/           # 98 MCP tools (modern patterns)
+├── agents/          # 6-agent hierarchical system
 ├── validation/      # Zod-based validation engine
 ├── n8n/            # Minimal n8n integration layer
 └── types/          # Full TypeScript definitions
@@ -52,6 +55,13 @@ src/
 ## 🚀 Quick Start
 
 ### Installation
+
+> **🐳 Self-Hosted n8n with Docker**: If you're running n8n via docker-compose, you MUST add this environment variable to your n8n service BEFORE creating your API key:
+> ```yaml
+> environment:
+>   - N8N_API_ENDPOINT_REST=api/v1
+> ```
+> Run `docker-compose up -d --build` to rebuild your container, then create your API key. This enables the REST API endpoints required by the MCP server.
 
 **Method 1: Claude MCP Integration (Recommended)**
 ```bash
@@ -92,7 +102,7 @@ npm run rebuild-db    # Rebuild node database
 
 ## 🤖 Claude Code Agent System
 
-**7 Specialized Claude Code Agents for n8n Automation:**
+**6 Optimized Claude Code Agents for n8n Automation:**
 
 This package includes Claude Code agents that work with the MCP server:
 
@@ -100,15 +110,14 @@ This package includes Claude Code agents that work with the MCP server:
 TIER 1: MASTER ORCHESTRATOR
 ├─ n8n-workflow-architect - Strategic planning & coordination
 
-TIER 2: CORE SPECIALISTS  
-├─ n8n-validator - Security & validation
-├─ n8n-integration-specialist - Authentication & connectivity
-└─ n8n-node-specialist - 525+ node expertise
+TIER 2: CORE DOMAIN SPECIALISTS  
+├─ n8n-developer-specialist - Code generation, templates, DevOps workflows
+├─ n8n-integration-specialist - Authentication & connectivity  
+├─ n8n-node-specialist - 525+ node expertise + AI/ML patterns
+└─ n8n-performance-specialist - Monitoring, optimization, analytics
 
-TIER 3: RESEARCH SPECIALISTS
-├─ n8n-assistant - Quick research & synthesis  
-├─ n8n-docs-specialist - Documentation & setup
-└─ n8n-community-specialist - AI/ML & community patterns
+TIER 3: SUPPORT SPECIALIST
+└─ n8n-guidance-specialist - Documentation, support & admin (merged)
 ```
 
 **Installation:** Copy `agents/*.md` files to `~/.claude/agents/` for Claude Code integration.
@@ -117,31 +126,49 @@ TIER 3: RESEARCH SPECIALISTS
 
 **Clean Separation of Concerns:**
 
-1. **🔧 MCP Server** (`@lexinet/n8n-mcp-modern`): Provides 87+ n8n-specific tools
-2. **🤖 Claude Code Agents** (`agents/*.md`): Specialized expertise using MCP tools
+1. **🔧 MCP Server** (`@lexinet/n8n-mcp-modern`): Provides 98 n8n-specific tools
+2. **🤖 Claude Code Agents** (`agents/*.md`): 6 specialized agents using MCP tools
 3. **⚡ User Experience**: Claude Code Task tool → Agent → MCP tools → n8n API
 
 This architecture leverages Claude Code's built-in agent system while providing deep n8n integration through MCP tools.
 
-## 🛠️ 87+ MCP Tools
+## 🛠️ 98 MCP Tools
 
-**Core Discovery (8 tools):**
-- `search_nodes`, `list_nodes`, `get_node_info`, `get_node_essentials`
-- `list_ai_tools`, `get_database_statistics`, `get_node_documentation`
-- `search_node_properties`
+**🔧 Code Generation (12 tools):**
+- `generate_workflow_from_description` - Natural language → n8n workflow
+- `create_api_integration_template` - API integration scaffolding  
+- `build_data_processing_pipeline` - Data transformation workflows
+- `generate_notification_workflow` - Alert & notification systems
+- `create_webhook_handler` - Webhook processing automation
+- Plus 7 more advanced code generation tools
 
-**Validation Engine (6 tools):**
-- `validate_node_operation`, `validate_node_minimal`
-- `validate_workflow`, `validate_workflow_connections`
-- `validate_workflow_expressions`, `get_property_dependencies`
+**🛠️ DevOps Integration (10 tools):**
+- `integrate_with_git` - Git repository integration
+- `setup_cicd_pipeline` - CI/CD automation  
+- `create_deployment_automation` - Multi-environment deployment
+- `generate_code_quality_checks` - Quality assurance automation
+- `setup_environment_management` - Configuration management
+- Plus 5 more DevOps workflow tools
 
-**Workflow Management (47+ tools):**
-- Complete n8n API integration for workflow lifecycle
-- Create, update, delete, execute, monitor workflows
-- Credential management, webhook handling, analytics
+**📊 Performance & Observability (12 tools):**
+- `analyze_workflow_performance` - Deep performance analysis
+- `monitor_system_metrics` - Real-time system monitoring
+- `generate_optimization_recommendations` - AI-powered optimization
+- `setup_alert_configuration` - Intelligent alerting
+- `perform_capacity_planning` - Scaling & resource forecasting
+- Plus 7 more monitoring & analytics tools
 
-**Documentation System (7+ tools):**
-- Comprehensive guides, examples, troubleshooting
+**📚 Comprehensive n8n (53 tools):**
+- **Core Discovery (6):** Node search, documentation, database stats
+- **Validation Engine (7):** Schema validation, workflow verification
+- **Credential Management (7):** OAuth, API keys, authentication
+- **User Management (4):** Permissions, admin functions  
+- **System Management (5):** Health checks, status monitoring
+- **Workflow Management (7):** Advanced workflow operations
+- **Advanced Features (17):** Specialized n8n functionality
+
+**🎯 Original Tools (11):**
+- Basic workflow CRUD, execution monitoring, agent routing
 
 ## 🔧 Configuration
 
@@ -225,6 +252,24 @@ npm run typecheck     # Type validation
 - Zod validation schemas
 - Comprehensive test coverage
 - Security-first approach
+
+## 🎯 Claude Code Hooks System
+
+**Project-Specific Quality Enforcement:**
+- **Agent Routing Validation** - Ensures queries go to appropriate n8n specialists
+- **File Protection** - Prevents accidental modification of critical files (package.json, .env, .git/)
+- **Bash Command Security** - Validates commands for security and performance best practices
+- **Auto Code Formatting** - Prettier + comprehensive validation for TS/JS/JSON/MD/YAML
+- **Context Injection** - Automatically provides relevant n8n project context
+- **Completion Validation** - Ensures TypeScript compiles, tests pass, linting passes before task completion
+
+**File Type Coverage:**
+- **TypeScript/JavaScript** - Type safety, security patterns, performance optimization
+- **JSON** - n8n node validation (displayName, properties, inputs/outputs)
+- **Markdown** - Agent frontmatter validation, code block language tags
+- **YAML** - Docker Compose, configuration validation, syntax checking
+
+All hooks stored in `.claude/hooks/` for project isolation. See `.claude/hooks/README.md` for details.
 
 ## 📄 License
 

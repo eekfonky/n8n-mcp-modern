@@ -1,6 +1,6 @@
 /**
  * Agent System Integration Tests
- * Tests the 7-agent hierarchical system and inter-agent communication
+ * Tests the optimized 6-agent hierarchical system and inter-agent communication
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -12,9 +12,9 @@ describe('Agent System Tests', () => {
   });
 
   describe('Agent Registry', () => {
-    it('should have all 7 agents registered', () => {
+    it('should have all 6 agents registered', () => {
       const agents = agentRouter.getAllAgents();
-      expect(agents.length).toBe(7);
+      expect(agents.length).toBe(6);
     });
 
     it('should have proper agent hierarchy', () => {
@@ -25,21 +25,20 @@ describe('Agent System Tests', () => {
       expect(tier1Agents.length).toBe(1);
       expect(tier1Agents[0].name).toBe('n8n-workflow-architect');
       
-      // Check Tier 2 - Core Specialists
+      // Check Tier 2 - Core Domain Specialists
       const tier2Agents = agents.filter(a => a.tier === 2);
-      expect(tier2Agents.length).toBe(3);
+      expect(tier2Agents.length).toBe(4);
       const tier2Names = tier2Agents.map(a => a.name);
-      expect(tier2Names).toContain('n8n-validator');
+      expect(tier2Names).toContain('n8n-developer-specialist');
       expect(tier2Names).toContain('n8n-integration-specialist');
       expect(tier2Names).toContain('n8n-node-specialist');
+      expect(tier2Names).toContain('n8n-performance-specialist');
       
-      // Check Tier 3 - Research Specialists
+      // Check Tier 3 - Support Specialist
       const tier3Agents = agents.filter(a => a.tier === 3);
-      expect(tier3Agents.length).toBe(3);
+      expect(tier3Agents.length).toBe(1);
       const tier3Names = tier3Agents.map(a => a.name);
-      expect(tier3Names).toContain('n8n-assistant');
-      expect(tier3Names).toContain('n8n-docs-specialist');
-      expect(tier3Names).toContain('n8n-community-specialist');
+      expect(tier3Names).toContain('n8n-guidance-specialist');
     });
 
     it('should have unique agent names', () => {
@@ -67,8 +66,16 @@ describe('Agent System Tests', () => {
   });
 
   describe('Agent Routing', () => {
-    it('should route workflow creation to architect', async () => {
-      const query = 'Create a complex workflow with multiple integrations';
+    it('should route workflow creation to developer specialist', async () => {
+      const query = 'Create a workflow with API integrations';
+      const agent = await agentRouter.routeToAgent(query);
+      
+      expect(agent).toBeDefined();
+      expect(agent?.name).toBe('n8n-developer-specialist');
+    });
+
+    it('should route complex orchestration to architect', async () => {
+      const query = 'Design a complex enterprise workflow architecture';
       const agent = await agentRouter.routeToAgent(query);
       
       expect(agent).toBeDefined();
@@ -83,44 +90,44 @@ describe('Agent System Tests', () => {
       expect(agent?.name).toBe('n8n-integration-specialist');
     });
 
-    it('should route node configuration to node specialist', async () => {
-      const query = 'Configure PostgreSQL node with complex query';
+    it('should route node discovery to node specialist', async () => {
+      const query = 'What nodes are available for database operations?';
       const agent = await agentRouter.routeToAgent(query);
       
       expect(agent).toBeDefined();
       expect(agent?.name).toBe('n8n-node-specialist');
     });
 
-    it('should route validation requests to validator', async () => {
-      const query = 'Validate workflow security and compliance';
+    it('should route performance optimization requests to performance specialist', async () => {
+      const query = 'Optimize workflow performance and monitor execution';
       const agent = await agentRouter.routeToAgent(query);
       
       expect(agent).toBeDefined();
-      expect(agent?.name).toBe('n8n-validator');
+      expect(agent?.name).toBe('n8n-performance-specialist');
     });
 
-    it('should route documentation queries to docs specialist', async () => {
+    it('should route documentation queries to guidance specialist', async () => {
       const query = 'How to set up n8n with Docker?';
       const agent = await agentRouter.routeToAgent(query);
       
       expect(agent).toBeDefined();
-      expect(['n8n-docs-specialist', 'n8n-assistant']).toContain(agent?.name);
+      expect(agent?.name).toBe('n8n-guidance-specialist');
     });
 
-    it('should route AI/ML queries to community specialist', async () => {
+    it('should route AI/ML queries to node specialist', async () => {
       const query = 'Integrate OpenAI GPT-4 with n8n workflow';
       const agent = await agentRouter.routeToAgent(query);
       
       expect(agent).toBeDefined();
-      expect(agent?.name).toBe('n8n-community-specialist');
+      expect(agent?.name).toBe('n8n-node-specialist');
     });
 
-    it('should route general queries to assistant', async () => {
+    it('should route general node queries to node specialist', async () => {
       const query = 'What nodes are available in n8n?';
       const agent = await agentRouter.routeToAgent(query);
       
       expect(agent).toBeDefined();
-      expect(['n8n-assistant', 'n8n-node-specialist']).toContain(agent?.name);
+      expect(agent?.name).toBe('n8n-node-specialist');
     });
   });
 
@@ -153,12 +160,14 @@ describe('Agent System Tests', () => {
       const context = AgentContext.create()
         .documentation(true)
         .community(true)
-        .securityCheck(true)
+        .codeGeneration(true)
+        .performance(true)
         .build();
 
       expect(context.documentation).toBe(true);
       expect(context.community).toBe(true);
-      expect(context.securityCheck).toBe(true);
+      expect(context.codeGeneration).toBe(true);
+      expect(context.performance).toBe(true);
     });
   });
 
@@ -170,23 +179,32 @@ describe('Agent System Tests', () => {
       const capabilities = architect!.capabilities;
       expect(capabilities.length).toBeGreaterThan(0);
       expect(architect!.tier).toBe(1); // Master tier
-      expect(architect!.description).toContain('Master coordinator');
+      expect(architect!.description).toContain('Master orchestrator');
     });
 
-    it('should match validator capabilities', () => {
-      const validator = agentRouter.getAgentById('n8n-validator');
-      expect(validator).toBeDefined();
+    it('should match developer specialist capabilities', () => {
+      const developer = agentRouter.getAgentById('n8n-developer-specialist');
+      expect(developer).toBeDefined();
       
-      expect(validator!.tier).toBe(2); // Core tier
-      expect(validator!.description).toContain('Security analysis');
-      expect(validator!.description).toContain('validation');
+      expect(developer!.tier).toBe(2); // Specialist tier
+      expect(developer!.description).toContain('Code generation');
+      expect(developer!.description).toContain('templates');
+    });
+
+    it('should match performance specialist capabilities', () => {
+      const performance = agentRouter.getAgentById('n8n-performance-specialist');
+      expect(performance).toBeDefined();
+      
+      expect(performance!.tier).toBe(2); // Specialist tier
+      expect(performance!.description).toContain('Performance monitoring');
+      expect(performance!.description).toContain('optimization');
     });
 
     it('should match integration specialist capabilities', () => {
       const specialist = agentRouter.getAgentById('n8n-integration-specialist');
       expect(specialist).toBeDefined();
       
-      expect(specialist!.tier).toBe(2); // Core tier
+      expect(specialist!.tier).toBe(2); // Specialist tier
       expect(specialist!.description).toContain('Authentication');
       expect(specialist!.description).toContain('connectivity');
     });
@@ -195,7 +213,7 @@ describe('Agent System Tests', () => {
       const specialist = agentRouter.getAgentById('n8n-node-specialist');
       expect(specialist).toBeDefined();
       
-      expect(specialist!.tier).toBe(2); // Core tier
+      expect(specialist!.tier).toBe(2); // Specialist tier
       expect(specialist!.description).toContain('525+');
       expect(specialist!.description).toContain('node');
     });
@@ -206,18 +224,18 @@ describe('Agent System Tests', () => {
       // Simulate a complex query requiring multiple agents
       const complexQuery = 'Create a secure workflow with OAuth2 authentication for Google Sheets, validate security, and optimize performance';
       
-      // This should involve multiple agents:
-      // 1. Architect for overall design
+      // Complex queries should route to developer specialist for creation
+      // Then coordinate with other specialists as needed:
+      // 1. Developer specialist for workflow creation
       // 2. Integration specialist for OAuth2
-      // 3. Validator for security
-      // 4. Node specialist for optimization
+      // 3. Performance specialist for optimization
       
       const primaryAgent = await agentRouter.routeToAgent(complexQuery);
       expect(primaryAgent).toBeDefined();
-      expect(primaryAgent?.name).toBe('n8n-workflow-architect');
+      expect(primaryAgent?.name).toBe('n8n-developer-specialist');
       
-      // Architect should be able to coordinate with other agents
-      expect(primaryAgent?.tier).toBe(1); // Master orchestrator
+      // Developer specialist should handle workflow creation
+      expect(primaryAgent?.tier).toBe(2); // Specialist tier
     });
 
     it('should respect agent hierarchy in routing', async () => {
@@ -231,10 +249,10 @@ describe('Agent System Tests', () => {
       const technicalAgent = await agentRouter.routeToAgent(technicalQuery);
       expect(technicalAgent?.tier).toBe(2);
       
-      // Research queries go to tier 3  
-      const researchQuery = 'Find community nodes for PDF processing';
-      const researchAgent = await agentRouter.routeToAgent(researchQuery);
-      expect(researchAgent?.tier).toBe(3);
+      // Node queries go to tier 2 (node specialist)
+      const nodeQuery = 'Find nodes for PDF processing';
+      const nodeAgent = await agentRouter.routeToAgent(nodeQuery);
+      expect(nodeAgent?.tier).toBe(2);
     });
 
     it('should handle agent unavailability gracefully', async () => {
@@ -248,9 +266,9 @@ describe('Agent System Tests', () => {
       const query = 'Create complex workflow';
       const agent = await agentRouter.routeToAgent(query);
       
-      // Should fallback to assistant since architect is unavailable
+      // Should fallback to guidance specialist since architect is unavailable
       expect(agent).toBeDefined();
-      expect(agent?.name).toBe('n8n-assistant');
+      expect(agent?.name).toBe('n8n-guidance-specialist');
       
       // Restore original function
       agentRouter.getAgent = originalGetAgent;
@@ -316,7 +334,7 @@ describe('Agent System Tests', () => {
       for (const query of invalidQueries) {
         const agent = await agentRouter.routeToAgent(query as any);
         // Should either return a default agent or undefined
-        expect([undefined, 'n8n-assistant'].includes(agent?.name || '')).toBe(true);
+        expect([undefined, 'n8n-guidance-specialist'].includes(agent?.name || '')).toBe(true);
       }
     });
 

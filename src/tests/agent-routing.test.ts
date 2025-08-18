@@ -8,29 +8,28 @@ import { agentRouter, AgentContext, AgentTier } from '../agents/index.js';
 
 describe('Agent Routing System Tests', () => {
   describe('Agent Hierarchy', () => {
-    it('should have all 7 agents available', () => {
+    it('should have all 6 agents available', () => {
       const agents = agentRouter.getAllAgents();
-      expect(agents.length).toBe(7);
+      expect(agents.length).toBe(6);
       
-      // Check agent names
+      // Check agent names for optimized 6-agent structure
       const agentNames = agents.map(agent => agent.name);
       expect(agentNames).toContain('n8n-workflow-architect');
-      expect(agentNames).toContain('n8n-validator');
+      expect(agentNames).toContain('n8n-developer-specialist');
       expect(agentNames).toContain('n8n-integration-specialist');
       expect(agentNames).toContain('n8n-node-specialist');
-      expect(agentNames).toContain('n8n-assistant');
-      expect(agentNames).toContain('n8n-docs-specialist');
-      expect(agentNames).toContain('n8n-community-specialist');
+      expect(agentNames).toContain('n8n-performance-specialist');
+      expect(agentNames).toContain('n8n-guidance-specialist');
     });
 
     it('should have proper tier distribution', () => {
       const masterAgents = agentRouter.getAgentsByTier(AgentTier.MASTER);
-      const coreAgents = agentRouter.getAgentsByTier(AgentTier.CORE);
-      const researchAgents = agentRouter.getAgentsByTier(AgentTier.RESEARCH);
+      const specialistAgents = agentRouter.getAgentsByTier(AgentTier.SPECIALIST);
+      const supportAgents = agentRouter.getAgentsByTier(AgentTier.SUPPORT);
 
       expect(masterAgents.length).toBe(1); // Workflow Architect
-      expect(coreAgents.length).toBeGreaterThan(1); // Core specialists
-      expect(researchAgents.length).toBeGreaterThan(1); // Research specialists
+      expect(specialistAgents.length).toBe(4); // Core domain specialists
+      expect(supportAgents.length).toBe(1); // Support specialist
       
       expect(masterAgents[0]?.name).toBe('n8n-workflow-architect');
     });
@@ -47,16 +46,16 @@ describe('Agent Routing System Tests', () => {
       expect(selectedAgent.tier).toBe(AgentTier.MASTER);
     });
 
-    it('should route validation tasks to validator', () => {
+    it('should route performance analysis tasks to performance specialist', () => {
       const context = AgentContext.create()
-        .requiresValidation()
-        .securityCheck(true)
+        .performance(true)
+        .monitoring(true)
         .build();
 
-      // Use get_n8n_executions which is validator-specific and has security priority
-      const selectedAgent = agentRouter.routeTool('get_n8n_executions', context);
-      expect(selectedAgent.name).toBe('n8n-validator');
-      expect(selectedAgent.tier).toBe(AgentTier.CORE);
+      // Use get_workflow_stats which is now handled by performance specialist
+      const selectedAgent = agentRouter.routeTool('get_workflow_stats', context);
+      expect(selectedAgent.name).toBe('n8n-performance-specialist');
+      expect(selectedAgent.tier).toBe(AgentTier.SPECIALIST);
     });
 
     it('should route authentication tasks to integration specialist', () => {
@@ -77,13 +76,23 @@ describe('Agent Routing System Tests', () => {
       expect(selectedAgent.name).toBe('n8n-node-specialist');
     });
 
-    it('should route quick help to assistant', () => {
+    it('should route general help to guidance specialist', () => {
       const context = AgentContext.create()
-        .quickHelp()
+        .guidance(true)
         .build();
 
       const selectedAgent = agentRouter.routeTool('get_tool_usage_stats', context);
-      expect(selectedAgent.name).toBe('n8n-assistant');
+      expect(selectedAgent.name).toBe('n8n-guidance-specialist');
+    });
+
+    it('should route code generation to developer specialist', () => {
+      const context = AgentContext.create()
+        .codeGeneration(true)
+        .build();
+
+      const selectedAgent = agentRouter.routeTool('generate_workflow_from_description', context);
+      expect(selectedAgent.name).toBe('n8n-developer-specialist');
+      expect(selectedAgent.tier).toBe(AgentTier.SPECIALIST);
     });
   });
 
@@ -157,12 +166,14 @@ describe('Agent Routing System Tests', () => {
       const agents = agentRouter.getAllAgents();
       
       const architect = agents.find(a => a.name === 'n8n-workflow-architect');
-      const validator = agents.find(a => a.name === 'n8n-validator');
+      const developer = agents.find(a => a.name === 'n8n-developer-specialist');
       const nodeSpecialist = agents.find(a => a.name === 'n8n-node-specialist');
+      const performance = agents.find(a => a.name === 'n8n-performance-specialist');
 
       expect(architect?.capabilities).toContain('workflow_design');
-      expect(validator?.capabilities).toContain('validation');
+      expect(developer?.capabilities).toContain('code_generation');
       expect(nodeSpecialist?.capabilities).toContain('node_expertise');
+      expect(performance?.capabilities).toContain('performance_optimization');
     });
 
     it('should validate agent can handle specific tools', () => {
@@ -171,8 +182,11 @@ describe('Agent Routing System Tests', () => {
       const architect = agents.find(a => a.name === 'n8n-workflow-architect');
       expect(architect?.canHandle('create_n8n_workflow')).toBe(true);
       
-      const validator = agents.find(a => a.name === 'n8n-validator');
-      expect(validator?.canHandle('get_workflow_stats')).toBe(true);
+      const performance = agents.find(a => a.name === 'n8n-performance-specialist');
+      expect(performance?.canHandle('get_workflow_stats')).toBe(true);
+      
+      const developer = agents.find(a => a.name === 'n8n-developer-specialist');
+      expect(developer?.canHandle('generate_workflow_from_description')).toBe(true);
     });
   });
 

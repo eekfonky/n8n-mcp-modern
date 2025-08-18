@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "n8n-mcp-modern": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": "/home/chris/Code/n8n-mcp-modern",
+      "env": {
+        "NODE_ENV": "production",
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}

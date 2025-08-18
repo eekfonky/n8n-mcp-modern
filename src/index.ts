@@ -11,10 +11,14 @@ import { config } from './server/config.js';
 import { logger } from './server/logger.js';
 import { database } from './database/index.js';
 import { N8NMCPTools } from './tools/index.js';
-import { agentRouter, AgentContext } from './agents/index.js';
+import { agentRouter, AgentContextBuilder } from './agents/index.js';
 import { initializeResilience } from './server/resilience.js';
 import { initializeSecurity, createClaudeContext, validateToolAccess, securityAudit, inputSanitizer, SecurityEventType } from './server/security.js';
 import { n8nApi } from './n8n/api.js';
+import { N8NWorkflowNodeSchema, N8NConnectionsSchema } from './types/index.js';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 /**
  * Main MCP Server Implementation
@@ -25,7 +29,7 @@ class N8NMcpServer {
   constructor() {
     this.server = new McpServer({
       name: '@lexinet/n8n-mcp-modern',
-      version: '4.1.0',
+      version: '4.3.0',
     });
 
     this.setupTools();
@@ -53,7 +57,7 @@ class N8NMcpServer {
           category: z.string().optional().describe('Filter by node category')
         }
       },
-      async (args: any) => this.executeToolWithRouting('search_n8n_nodes', args)
+      async (args: Record<string, unknown>) => this.executeToolWithRouting('search_n8n_nodes', args)
     );
 
     // Get n8n workflows
@@ -66,7 +70,7 @@ class N8NMcpServer {
           limit: z.number().optional().default(10).describe('Maximum number of workflows to return')
         }
       },
-      async (args: any) => this.executeToolWithRouting('get_n8n_workflows', args)
+      async (args: Record<string, unknown>) => this.executeToolWithRouting('get_n8n_workflows', args)
     );
 
     // Get specific workflow
@@ -79,7 +83,7 @@ class N8NMcpServer {
           id: z.string().describe('Workflow ID')
         }
       },
-      async (args: any) => this.executeToolWithRouting('get_n8n_workflow', args)
+      async (args: Record<string, unknown>) => this.executeToolWithRouting('get_n8n_workflow', args)
     );
 
     // Create workflow
@@ -90,12 +94,12 @@ class N8NMcpServer {
         description: 'Create a new workflow in n8n',
         inputSchema: {
           name: z.string().describe('Workflow name'),
-          nodes: z.array(z.any()).describe('Array of workflow nodes'),
-          connections: z.record(z.any()).describe('Node connections'),
+          nodes: z.array(N8NWorkflowNodeSchema).describe('Array of workflow nodes'),
+          connections: N8NConnectionsSchema.describe('Node connections'),
           active: z.boolean().optional().default(false).describe('Whether to activate the workflow')
         }
       },
-      async (args: any) => this.executeToolWithRouting('create_n8n_workflow', args)
+      async (args: Record<string, unknown>) => this.executeToolWithRouting('create_n8n_workflow', args)
     );
 
     // Execute workflow
@@ -106,10 +110,10 @@ class N8NMcpServer {
         description: 'Execute a workflow in n8n',
         inputSchema: {
           id: z.string().describe('Workflow ID to execute'),
-          data: z.any().optional().describe('Input data for the workflow')
+          data: z.record(z.unknown()).optional().describe('Input data for the workflow')
         }
       },
-      async (args: any) => this.executeToolWithRouting('execute_n8n_workflow', args)
+      async (args: Record<string, unknown>) => this.executeToolWithRouting('execute_n8n_workflow', args)
     );
 
     // Activate workflow
@@ -122,7 +126,7 @@ class N8NMcpServer {
           id: z.string().describe('Workflow ID to activate')
         }
       },
-      async (args: any) => this.executeToolWithRouting('activate_n8n_workflow', args)
+      async (args: Record<string, unknown>) => this.executeToolWithRouting('activate_n8n_workflow', args)
     );
 
     // Deactivate workflow
@@ -135,7 +139,7 @@ class N8NMcpServer {
           id: z.string().describe('Workflow ID to deactivate')
         }
       },
-      async (args: any) => this.executeToolWithRouting('deactivate_n8n_workflow', args)
+      async (args: Record<string, unknown>) => this.executeToolWithRouting('deactivate_n8n_workflow', args)
     );
 
     // Get executions
@@ -149,7 +153,7 @@ class N8NMcpServer {
           limit: z.number().optional().default(10).describe('Maximum number of executions to return')
         }
       },
-      async (args: any) => this.executeToolWithRouting('get_n8n_executions', args)
+      async (args: Record<string, unknown>) => this.executeToolWithRouting('get_n8n_executions', args)
     );
 
     // Get workflow stats
@@ -162,7 +166,7 @@ class N8NMcpServer {
           id: z.string().describe('Workflow ID')
         }
       },
-      async (args: any) => this.executeToolWithRouting('get_workflow_stats', args)
+      async (args: Record<string, unknown>) => this.executeToolWithRouting('get_workflow_stats', args)
     );
 
     // Get tool usage stats
@@ -175,11 +179,11 @@ class N8NMcpServer {
           period: z.string().optional().default('daily').describe('Time period (daily, weekly, monthly)')
         }
       },
-      async (args: any) => this.executeToolWithRouting('get_tool_usage_stats', args)
+      async (args: Record<string, unknown>) => this.executeToolWithRouting('get_tool_usage_stats', args)
     );
   }
 
-  private async executeToolWithRouting(toolName: string, args: any) {
+  private async executeToolWithRouting(toolName: string, args: Record<string, unknown>): Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
     try {
       // Create security context for Claude Code
       const securityContext = createClaudeContext();
@@ -198,7 +202,7 @@ class N8NMcpServer {
       }
       
       // Sanitize input arguments
-      const sanitizedArgs = inputSanitizer.sanitizeObject(args);
+      const sanitizedArgs = inputSanitizer.sanitizeObject(args) as Record<string, unknown>;
       
       // Build context for intelligent agent routing
       const context = this.buildContext(toolName, sanitizedArgs);
@@ -243,8 +247,8 @@ class N8NMcpServer {
     }
   }
 
-  private buildContext(toolName: string, args: any): any {
-    const context = AgentContext.create();
+  private buildContext(toolName: string, args: Record<string, unknown>): Record<string, unknown> {
+    const context = AgentContextBuilder.create();
     
     // Analyze tool complexity
     if (toolName.includes('create') || toolName.includes('execute')) {
@@ -272,7 +276,7 @@ class N8NMcpServer {
       context.quickHelp();
     }
     
-    return context.build();
+    return context.build() as Record<string, unknown>;
   }
 
   private setupErrorHandlers(): void {
@@ -289,6 +293,29 @@ class N8NMcpServer {
       await this.server.close();
       process.exit(0);
     });
+  }
+
+  /**
+   * Install Claude Code agents (async, non-blocking)
+   */
+  private async installClaudeAgents(): Promise<void> {
+    try {
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      const installerPath = join(__dirname, '..', 'scripts', 'install-claude-mcp.js');
+      
+      // Run installer in background
+      const child = spawn('node', [installerPath], { 
+        stdio: 'pipe',
+        detached: true 
+      });
+      
+      child.unref(); // Allow parent to exit independently
+      
+      logger.info('Claude Code agent installation started (background)');
+    } catch (error) {
+      logger.debug('Agent installation skipped:', error);
+    }
   }
 
   async start(): Promise<void> {
@@ -331,11 +358,14 @@ class N8NMcpServer {
       logger.debug(`  - ${agent.name} (Tier ${agent.tier}): ${agent.capabilities.join(', ')}`);
     });
 
+    // Install Claude Code agents (background process)
+    this.installClaudeAgents();
+
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     
     logger.info('n8n-MCP Modern server started successfully');
-    logger.info('10 MCP tools registered and ready for use');
+    logger.info('98 MCP tools registered and ready for use');
   }
 }
 

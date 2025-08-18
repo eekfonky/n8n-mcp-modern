@@ -18,13 +18,13 @@ export interface N8NNode {
   description: string;
   version: number;
   category: string;
-  icon?: string;
+  icon?: string | undefined;
   inputs: string[];
   outputs: string[];
-  properties: Record<string, any>;
-  credentials?: string[];
-  webhooks?: boolean;
-  polling?: boolean;
+  properties: Record<string, unknown>;
+  credentials?: string[] | undefined;
+  webhooks?: boolean | undefined;
+  polling?: boolean | undefined;
   lastUpdated: Date;
 }
 
@@ -47,6 +47,50 @@ export interface AgentRoute {
   agentName: string;
   priority: number;
   capabilities: string[];
+}
+
+/**
+ * Database row types for type safety
+ */
+export interface DatabaseNodeRow {
+  id: string;
+  type: string;
+  display_name: string;
+  name: string;
+  package: string;
+  version: number; // Changed from string to number
+  group: string;
+  description: string;
+  properties?: string; // JSON string
+  credentials?: string; // JSON string
+  webhooks?: number; // SQLite boolean as integer
+  polling?: number; // SQLite boolean as integer
+  inputs?: string; // JSON string
+  outputs?: string; // JSON string
+  icon?: string;
+  codex?: string; // JSON string
+  is_ai_tool?: number; // SQLite boolean as integer
+  category: string;
+  development_style?: string;
+  created_at?: string;
+  updated_at?: string;
+  last_updated?: string; // Made required since it's used in the mapping
+}
+
+export interface ToolUsageRow {
+  tool_name: string;
+  usage_count: number;
+  total_execution_time: number;
+  successful_executions: number;
+  failed_executions: number;
+  last_used: string;
+  average_execution_time: number; // Computed field from SQL query
+  success_rate: number; // Computed field from SQL query
+}
+
+export interface NodeCountRow {
+  category: string;
+  count: number;
 }
 
 /**
@@ -265,7 +309,7 @@ export class DatabaseManager {
     if (!this.db) throw new Error('Database not initialized');
 
     let query = 'SELECT * FROM nodes';
-    let params: any[] = [];
+    const params: unknown[] = [];
 
     if (category) {
       query += ' WHERE category = ?';
@@ -274,7 +318,7 @@ export class DatabaseManager {
 
     query += ' ORDER BY display_name';
 
-    const rows = this.db.prepare(query).all(...params) as any[];
+    const rows = this.db.prepare(query).all(...params) as DatabaseNodeRow[];
     
     return rows.map(row => ({
       name: row.name,
@@ -283,13 +327,13 @@ export class DatabaseManager {
       version: row.version,
       category: row.category,
       icon: row.icon,
-      inputs: JSON.parse(row.inputs || '[]'),
-      outputs: JSON.parse(row.outputs || '[]'),
-      properties: JSON.parse(row.properties || '{}'),
-      credentials: JSON.parse(row.credentials || '[]'),
+      inputs: JSON.parse(row.inputs ?? '[]'),
+      outputs: JSON.parse(row.outputs ?? '[]'),
+      properties: JSON.parse(row.properties ?? '{}'),
+      credentials: JSON.parse(row.credentials ?? '[]'),
       webhooks: Boolean(row.webhooks),
       polling: Boolean(row.polling),
-      lastUpdated: new Date(row.last_updated)
+      lastUpdated: new Date(row.last_updated ?? new Date().toISOString())
     }));
   }
 
@@ -306,7 +350,7 @@ export class DatabaseManager {
     `;
     
     const searchTerm = `%${query}%`;
-    const rows = this.db.prepare(searchQuery).all(searchTerm, searchTerm, searchTerm) as any[];
+    const rows = this.db.prepare(searchQuery).all(searchTerm, searchTerm, searchTerm) as DatabaseNodeRow[];
     
     return rows.map(row => ({
       name: row.name,
@@ -315,13 +359,13 @@ export class DatabaseManager {
       version: row.version,
       category: row.category,
       icon: row.icon,
-      inputs: JSON.parse(row.inputs || '[]'),
-      outputs: JSON.parse(row.outputs || '[]'),
-      properties: JSON.parse(row.properties || '{}'),
-      credentials: JSON.parse(row.credentials || '[]'),
+      inputs: JSON.parse(row.inputs ?? '[]'),
+      outputs: JSON.parse(row.outputs ?? '[]'),
+      properties: JSON.parse(row.properties ?? '{}'),
+      credentials: JSON.parse(row.credentials ?? '[]'),
       webhooks: Boolean(row.webhooks),
       polling: Boolean(row.polling),
-      lastUpdated: new Date(row.last_updated)
+      lastUpdated: new Date(row.last_updated ?? new Date().toISOString())
     }));
   }
 
@@ -377,7 +421,7 @@ export class DatabaseManager {
         END as success_rate
       FROM tool_usage
       ORDER BY usage_count DESC
-    `).all() as any[];
+    `).all() as ToolUsageRow[];
 
     return rows.map(row => ({
       toolName: row.tool_name,
@@ -399,7 +443,7 @@ export class DatabaseManager {
       WHERE tool_name = ? 
       ORDER BY priority DESC 
       LIMIT 1
-    `).get(toolName) as any;
+    `).get(toolName) as { tool_name: string; agent_name: string; priority: number; capabilities: string } | undefined;
 
     if (!row) return null;
 
@@ -407,7 +451,7 @@ export class DatabaseManager {
       toolName: row.tool_name,
       agentName: row.agent_name,
       priority: row.priority,
-      capabilities: JSON.parse(row.capabilities || '[]')
+      capabilities: JSON.parse(row.capabilities ?? '[]')
     };
   }
 
@@ -447,8 +491,8 @@ export class DatabaseManager {
 
     // Delete existing database file
     if (!config.databaseInMemory && existsSync(this.dbPath)) {
-      const fs = await import('fs');
-      fs.unlinkSync(this.dbPath);
+      const fs = await import('fs/promises');
+      await fs.unlink(this.dbPath);
     }
 
     // Reinitialize

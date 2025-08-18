@@ -5,7 +5,7 @@
 
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import { n8nApi } from '../n8n/api.js';
+import { n8nApi, type N8NCredential } from '../n8n/api.js';
 import { database } from '../database/index.js';
 import { logger } from '../server/logger.js';
 import { inputSanitizer } from '../server/security.js';
@@ -668,8 +668,8 @@ export class ComprehensiveMCPTools {
   /**
    * Execute a tool with proper validation and error handling
    */
-  static async executeTool(name: string, args: any): Promise<any> {
-    const sanitizedArgs = inputSanitizer.sanitizeObject(args);
+  static async executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+    const sanitizedArgs = inputSanitizer.sanitizeObject(args) as Record<string, unknown>;
     
     try {
       logger.debug(`Executing comprehensive tool: ${name}`, { args: sanitizedArgs });
@@ -726,11 +726,11 @@ export class ComprehensiveMCPTools {
 
   // ============== CORE DISCOVERY IMPLEMENTATIONS ==============
 
-  private static async searchNodesAdvanced(args: any) {
+  private static async searchNodesAdvanced(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
     
-    const nodes = await n8nApi.searchNodeTypes(args.query, args.category);
-    const results = nodes.slice(0, args.limit || 20);
+    const nodes = await n8nApi.searchNodeTypes(args.query as string, args.category as string);
+    const results = nodes.slice(0, (args.limit as number) || 20);
     
     if (args.includeCredentials) {
       return results.map(node => ({
@@ -745,7 +745,7 @@ export class ComprehensiveMCPTools {
     return results;
   }
 
-  private static async listNodeCategories(args: any) {
+  private static async listNodeCategories(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const nodes = await n8nApi.getNodeTypes();
@@ -765,10 +765,10 @@ export class ComprehensiveMCPTools {
     return result.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  private static async getNodeDocumentation(args: any) {
+  private static async getNodeDocumentation(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
     
-    const node = await n8nApi.getNodeType(args.nodeType);
+    const node = await n8nApi.getNodeType(args.nodeType as string);
     
     const documentation = {
       name: node.name,
@@ -790,7 +790,7 @@ export class ComprehensiveMCPTools {
     };
     
     if (args.includeExamples !== false) {
-      (documentation as any).examples = [
+      (documentation as Record<string, unknown>).examples = [
         {
           name: 'Basic Usage',
           description: `Basic example of using ${node.displayName}`,
@@ -802,10 +802,10 @@ export class ComprehensiveMCPTools {
     return documentation;
   }
 
-  private static async getNodeEssentials(args: any) {
+  private static async getNodeEssentials(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
     
-    const node = await n8nApi.getNodeType(args.nodeType);
+    const node = await n8nApi.getNodeType(args.nodeType as string);
     
     return {
       name: node.name,
@@ -819,7 +819,7 @@ export class ComprehensiveMCPTools {
     };
   }
 
-  private static async listAiTools(args: any) {
+  private static async listAiTools(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const nodes = await n8nApi.getNodeTypes();
@@ -833,9 +833,10 @@ export class ComprehensiveMCPTools {
     });
     
     if (args.provider) {
+      const provider = args.provider as string;
       return aiNodes.filter(node => 
-        node.name.toLowerCase().includes(args.provider.toLowerCase()) ||
-        node.displayName.toLowerCase().includes(args.provider.toLowerCase())
+        node.name.toLowerCase().includes(provider.toLowerCase()) ||
+        node.displayName.toLowerCase().includes(provider.toLowerCase())
       );
     }
     
@@ -847,7 +848,7 @@ export class ComprehensiveMCPTools {
     }));
   }
 
-  private static async getDatabaseStatistics(args: any) {
+  private static async getDatabaseStatistics(args: Record<string, unknown>) {
     const stats = {
       database: {
         totalNodes: 0,
@@ -858,32 +859,32 @@ export class ComprehensiveMCPTools {
     
     if (args.includeHealth !== false && n8nApi) {
       const health = await n8nApi.getHealthStatus();
-      (stats as any).systemHealth = health;
+      (stats as Record<string, unknown>).systemHealth = health;
     }
     
     return stats;
   }
 
-  private static async searchNodeProperties(args: any) {
+  private static async searchNodeProperties(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
     
-    let nodes: any[] = [];
+    let nodes: Array<Record<string, unknown>> = [];
     
     if (args.nodeType) {
-      const node = await n8nApi.getNodeType(args.nodeType);
-      nodes = [node];
+      const node = await n8nApi.getNodeType(args.nodeType as string);
+      nodes = [node as unknown as Record<string, unknown>];
     } else {
-      nodes = await n8nApi.getNodeTypes();
+      nodes = (await n8nApi.getNodeTypes()) as unknown as Array<Record<string, unknown>>;
     }
     
-    const searchTerm = args.query.toLowerCase();
-    const results: any[] = [];
+    const searchTerm = (args.query as string).toLowerCase();
+    const results: Array<Record<string, unknown>> = [];
     
     nodes.forEach(node => {
-      const matchingProperties = node.properties.filter((prop: any) =>
-        prop.name.toLowerCase().includes(searchTerm) ||
-        prop.displayName.toLowerCase().includes(searchTerm) ||
-        (prop.description && prop.description.toLowerCase().includes(searchTerm))
+      const matchingProperties = (node.properties as Array<Record<string, unknown>>).filter((prop: Record<string, unknown>) =>
+        (prop.name as string).toLowerCase().includes(searchTerm) ||
+        (prop.displayName as string).toLowerCase().includes(searchTerm) ||
+        ((prop.description as string)?.toLowerCase().includes(searchTerm))
       );
       
       if (matchingProperties.length > 0) {
@@ -898,13 +899,13 @@ export class ComprehensiveMCPTools {
     return results;
   }
 
-  private static async validateNodeAvailability(args: any) {
+  private static async validateNodeAvailability(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const availableNodes = await n8nApi.getNodeTypes();
     const availableNodeNames = availableNodes.map(node => node.name);
     
-    return args.nodeTypes.map((nodeType: string) => ({
+    return (args.nodeTypes as string[]).map((nodeType: string) => ({
       nodeType,
       available: availableNodeNames.includes(nodeType),
       alternativeName: availableNodeNames.find(name => 
@@ -916,19 +917,19 @@ export class ComprehensiveMCPTools {
 
   // ============== CREDENTIAL MANAGEMENT IMPLEMENTATIONS ==============
 
-  private static async createCredential(args: any) {
+  private static async createCredential(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
-    return await n8nApi.createCredential(args);
+    return await n8nApi.createCredential(args as Omit<N8NCredential, 'id' | 'createdAt' | 'updatedAt'>);
   }
 
-  private static async listCredentials(args: any) {
+  private static async listCredentials(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const credentials = await n8nApi.getCredentials();
     
     let filtered = credentials;
     if (args.type) {
-      filtered = credentials.filter(cred => cred.type === args.type);
+      filtered = credentials.filter(cred => cred.type === (args.type as string));
     }
     
     if (args.includeUsage) {
@@ -947,12 +948,12 @@ export class ComprehensiveMCPTools {
     return filtered;
   }
 
-  private static async testCredentialConnection(args: any) {
+  private static async testCredentialConnection(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
-    return await n8nApi.testCredential(args.credentialId);
+    return await n8nApi.testCredential(args.credentialId as string);
   }
 
-  private static async getCredentialTypes(args: any) {
+  private static async getCredentialTypes(args: Record<string, unknown>) {
     // This would require the node types to extract credential type information
     if (!n8nApi) throw new Error('n8n API not available');
     
@@ -972,7 +973,7 @@ export class ComprehensiveMCPTools {
 
   // ============== SYSTEM MANAGEMENT IMPLEMENTATIONS ==============
 
-  private static async getSystemHealth(args: any) {
+  private static async getSystemHealth(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const health = await n8nApi.getHealthStatus();
@@ -992,7 +993,7 @@ export class ComprehensiveMCPTools {
     return health;
   }
 
-  private static async getVersionInfo(args: any) {
+  private static async getVersionInfo(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const version = await n8nApi.getVersionInfo();
@@ -1012,16 +1013,16 @@ export class ComprehensiveMCPTools {
 
   // ============== WORKFLOW MANAGEMENT IMPLEMENTATIONS ==============
 
-  private static async cloneWorkflow(args: any) {
+  private static async cloneWorkflow(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
     
-    const sourceWorkflow = await n8nApi.getWorkflow(args.workflowId);
+    const sourceWorkflow = await n8nApi.getWorkflow(args.workflowId as string);
     
     const { id, createdAt, updatedAt, ...workflowData } = sourceWorkflow;
     const clonedWorkflow = {
       ...workflowData,
-      name: args.name,
-      active: args.activate || false
+      name: args.name as string,
+      active: (args.activate as boolean) || false
     };
     
     const result = await n8nApi.createWorkflow(clonedWorkflow);
@@ -1033,17 +1034,17 @@ export class ComprehensiveMCPTools {
     return result;
   }
 
-  private static async exportWorkflowToFormat(args: any) {
+  private static async exportWorkflowToFormat(args: Record<string, unknown>) {
     if (!n8nApi) throw new Error('n8n API not available');
     
-    return await n8nApi.exportWorkflow(args.workflowId, args.format);
+    return await n8nApi.exportWorkflow(args.workflowId as string, args.format as 'json' | 'yaml');
   }
 }
 
 /**
  * Get all comprehensive tools
  */
-export function getAllComprehensiveTools() {
+export function getAllComprehensiveTools(): Tool[] {
   return [
     ...coreDiscoveryTools,
     ...validationEngineTools,

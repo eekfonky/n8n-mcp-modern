@@ -1,6 +1,6 @@
 {
   "name": "@lexinet/n8n-mcp-modern",
-  "version": "4.1.0",
+  "version": "4.3.0",
   "description": "Modern n8n MCP server built with official TypeScript SDK - zero legacy, maximum performance",
   "type": "module",
   "main": "dist/index.js",
@@ -27,7 +27,8 @@
     "typecheck": "tsc --noEmit",
     "rebuild-db": "tsx src/scripts/rebuild-database.ts",
     "validate": "tsx src/scripts/validate-data.ts",
-    "postinstall": "node scripts/postinstall.cjs",
+    "install-agents": "node scripts/install-claude-mcp.js",
+    "postinstall": "node scripts/install-claude-mcp.js",
     "ci": "npm run lint && npm run typecheck && npm run test:all",
     "precommit": "npm run lint && npm run typecheck && npm run test:quick"
   },

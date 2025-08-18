@@ -1,0 +1,71 @@
+# Git
+.git
+.gitignore
+.github
+
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs (will be rebuilt in container)
+dist/
+build/
+*.tsbuildinfo
+
+# Development files
+.env
+.env.local
+.env.*.local
+*.log
+logs/
+
+# Testing
+coverage/
+.vitest/
+test-results/
+*.test.ts
+*.spec.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Documentation (unless needed in container)
+docs/
+*.md
+!README.md
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Database files (will be created fresh)
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Development tools
+.eslintrc*
+.prettierrc*
+.editorconfig
+tsconfig.json
+vitest.config.ts
+jest.config.*
+
+# Claude specific
+.claude/
+.claude-flow/
+.swarm/
+.bmad-*/

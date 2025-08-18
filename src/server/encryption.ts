@@ -282,10 +282,14 @@ export class DataMasking {
   /**
    * Remove sensitive data from objects
    */
-  static sanitizeObject(obj: any, sensitiveKeys: string[] = ['password', 'apiKey', 'secret', 'token']): any {
+  static sanitizeObject(obj: unknown, sensitiveKeys: string[] = ['password', 'apiKey', 'secret', 'token']): unknown {
     if (typeof obj !== 'object' || obj === null) return obj;
     
-    const sanitized = Array.isArray(obj) ? [...obj] : { ...obj };
+    if (Array.isArray(obj)) {
+      return obj.map(item => DataMasking.sanitizeObject(item, sensitiveKeys));
+    }
+    
+    const sanitized: Record<string, unknown> = { ...obj as Record<string, unknown> };
     
     for (const key in sanitized) {
       if (sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive.toLowerCase()))) {
