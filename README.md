@@ -10,7 +10,8 @@
 ## 🎯 What's New in v4.3.3
 
 **Project-Specific Agent Installation & Enhanced Reliability:**
-- ✅ **Project-Specific Agents** - Installs to `.claude/agents/` in current project only  
+
+- ✅ **Project-Specific Agents** - Installs to `.claude/agents/` in current project only
 - ✅ **100% TypeScript Compliance** - Zero warnings, production-quality code
 - ✅ **Connection Timeout Protection** - 30-second timeout prevents hanging
 - ✅ **Advanced Diagnostics** - `validate_mcp_config` and `list_available_tools`
@@ -18,42 +19,46 @@
 - ✅ **Comprehensive Testing** - 158/159 tests passing with E2E validation
 
 **Complete Tool & Agent Ecosystem:**
-- ✅ **100 Total Tools** - Comprehensive n8n automation coverage
-- ✅ **6-Agent Hierarchy** - Optimized for Claude Code workflows  
+
+- ✅ **108 Total Tools** - Comprehensive n8n automation coverage
+- ✅ **6-Agent Hierarchy** - Optimized for Claude Code workflows
 - ✅ **Code Generation** - AI-powered workflow creation (12 tools)
 - ✅ **DevOps Integration** - CI/CD & deployment automation (10 tools)
 - ✅ **Performance Monitoring** - Advanced observability & optimization (12 tools)
-- ✅ **Comprehensive n8n** - Complete ecosystem management (53 tools)
+- ✅ **Comprehensive n8n** - Complete ecosystem management (58 tools)
 - ✅ **Configuration Management** - MCP setup validation & auto-fix
 - ✅ **Claude MCP Integration** - One-command install with agent deployment
 
 **Architecture & Performance:**
-- 🚀 **95% Smaller Bundle**: 1.1GB → 15MB  
+
+- 🚀 **95% Smaller Bundle**: 1.1GB → 15MB
 - ⚡ **10x Faster Install**: 3+ minutes → <30 seconds
-- 🔒 **Zero Vulnerabilities**: 16 critical issues → 0  
+- 🔒 **Zero Vulnerabilities**: 16 critical issues → 0
 - 💨 **2x Faster Runtime**: Modern V8 optimizations
 - 🎯 **100% Test Coverage**: All 29 agent tests passing
 
 ## 🏗️ Architecture
 
 ### Ultra-Minimal Dependencies
+
 ```json
 {
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.3",    // Official MCP SDK
-    "better-sqlite3": "^12.2.0",               // Database
-    "undici": "^7.0.0",                        // HTTP client
-    "dotenv": "^16.6.1",                       // Config
-    "zod": "^3.25.76"                          // Validation
+    "@modelcontextprotocol/sdk": "^1.17.3", // Official MCP SDK
+    "better-sqlite3": "^12.2.0", // Database
+    "undici": "^7.0.0", // HTTP client
+    "dotenv": "^16.6.1", // Config
+    "zod": "^3.25.76" // Validation
   }
 }
 ```
 
 ### Core Components
+
 ```
 src/
 ├── server/           # MCP server implementation
-├── database/         # SQLite with clean schemas  
+├── database/         # SQLite with clean schemas
 ├── tools/           # 100 MCP tools (modern patterns)
 ├── agents/          # 6-agent hierarchical system
 ├── validation/      # Zod-based validation engine
@@ -74,6 +79,7 @@ validate_mcp_config {"fix_issues": true}
 ```
 
 **Features:**
+
 - ✅ Validates `.mcp.json` structure and syntax
 - ✅ Checks Node.js version requirements (22+)
 - ✅ Verifies build artifacts exist (`dist/index.js`)
@@ -85,13 +91,16 @@ validate_mcp_config {"fix_issues": true}
 ### Installation
 
 > **🐳 Self-Hosted n8n with Docker**: If you're running n8n via docker-compose, you MUST add this environment variable to your n8n service BEFORE creating your API key:
+>
 > ```yaml
 > environment:
 >   - N8N_API_ENDPOINT_REST=api/v1
 > ```
+>
 > Run `docker-compose up -d --build` to rebuild your container, then create your API key. This enables the REST API endpoints required by the MCP server.
 
 **Method 1: Claude MCP Integration (Recommended)**
+
 ```bash
 # Basic usage (offline mode - limited functionality)
 claude mcp add n8n-mcp-modern -- npx -y @lexinet/n8n-mcp-modern
@@ -107,7 +116,30 @@ claude mcp add n8n-mcp-modern \
 
 > **⚠️ Important**: For full n8n workflow automation capabilities, you MUST provide your n8n API credentials via environment variables as shown above.
 
+### 🔄 Upgrading
+
+**Smart Upgrade (Recommended)**
+
+```bash
+npx @lexinet/n8n-mcp-modern upgrade
+```
+
+✅ **Preserves** your configuration & environment variables  
+✅ **Updates** all 6 agents to latest capabilities  
+✅ **Fixes** comprehensive tool routing (108 tools now functional)  
+✅ **Rollback** protection with automatic verification
+
+**Manual Upgrade (Fallback)**
+
+```bash
+claude mcp remove @lexinet/n8n-mcp-modern
+claude mcp add @lexinet/n8n-mcp-modern
+```
+
+> See [UPGRADE.md](./UPGRADE.md) for detailed upgrade documentation and troubleshooting.
+
 **Method 2: Global Install**
+
 ```bash
 npm install -g @lexinet/n8n-mcp-modern
 ```
@@ -138,9 +170,9 @@ This package includes Claude Code agents that work with the MCP server:
 TIER 1: MASTER ORCHESTRATOR
 ├─ n8n-workflow-architect - Strategic planning & coordination
 
-TIER 2: CORE DOMAIN SPECIALISTS  
+TIER 2: CORE DOMAIN SPECIALISTS
 ├─ n8n-developer-specialist - Code generation, templates, DevOps workflows
-├─ n8n-integration-specialist - Authentication & connectivity  
+├─ n8n-integration-specialist - Authentication & connectivity
 ├─ n8n-node-specialist - 525+ node expertise + AI/ML patterns
 └─ n8n-performance-specialist - Monitoring, optimization, analytics
 
@@ -160,25 +192,28 @@ TIER 3: SUPPORT SPECIALIST
 
 This architecture leverages Claude Code's built-in agent system while providing deep n8n integration through MCP tools.
 
-## 🛠️ 100 MCP Tools
+## 🛠️ 108 MCP Tools
 
 **🔧 Code Generation (12 tools):**
+
 - `generate_workflow_from_description` - Natural language → n8n workflow
-- `create_api_integration_template` - API integration scaffolding  
+- `create_api_integration_template` - API integration scaffolding
 - `build_data_processing_pipeline` - Data transformation workflows
 - `generate_notification_workflow` - Alert & notification systems
 - `create_webhook_handler` - Webhook processing automation
 - Plus 7 more advanced code generation tools
 
 **🛠️ DevOps Integration (10 tools):**
+
 - `integrate_with_git` - Git repository integration
-- `setup_cicd_pipeline` - CI/CD automation  
+- `setup_cicd_pipeline` - CI/CD automation
 - `create_deployment_automation` - Multi-environment deployment
 - `generate_code_quality_checks` - Quality assurance automation
 - `setup_environment_management` - Configuration management
 - Plus 5 more DevOps workflow tools
 
 **📊 Performance & Observability (12 tools):**
+
 - `analyze_workflow_performance` - Deep performance analysis
 - `monitor_system_metrics` - Real-time system monitoring
 - `generate_optimization_recommendations` - AI-powered optimization
@@ -186,28 +221,30 @@ This architecture leverages Claude Code's built-in agent system while providing 
 - `perform_capacity_planning` - Scaling & resource forecasting
 - Plus 7 more monitoring & analytics tools
 
-**📚 Comprehensive n8n (53 tools):**
-- **Core Discovery (6):** Node search, documentation, database stats
-- **Validation Engine (7):** Schema validation, workflow verification
-- **Credential Management (7):** OAuth, API keys, authentication
-- **User Management (4):** Permissions, admin functions  
-- **System Management (5):** Health checks, status monitoring
-- **Workflow Management (7):** Advanced workflow operations
-- **Advanced Features (17):** Specialized n8n functionality
+**📚 Comprehensive n8n (58 tools):**
+
+- **Core Discovery (8):** Node search, documentation, database stats
+- **Validation Engine (6):** Schema validation, workflow verification
+- **Credential Management (14):** OAuth, API keys, authentication
+- **User Management (8):** Permissions, admin functions
+- **System Management (10):** Health checks, status monitoring
+- **Workflow Management (12):** Advanced workflow operations
 
 **🎯 Original Tools (11):**
+
 - Basic workflow CRUD, execution monitoring, agent routing
 
 ## 🔧 Configuration
 
 ### Environment Variables
+
 ```bash
 # Core MCP Settings
 MCP_MODE=stdio              # Optimized for Claude Code
 LOG_LEVEL=info             # Minimal logging
 DISABLE_CONSOLE_OUTPUT=false
 
-# n8n API Integration (Optional)  
+# n8n API Integration (Optional)
 N8N_API_URL=https://your-n8n-instance.com
 N8N_API_KEY=your-api-key
 
@@ -221,14 +258,14 @@ MAX_CONCURRENT_REQUESTS=10
 
 To use the full functionality, you need to obtain API credentials from your n8n instance:
 
-1. **n8n Cloud Users**: 
+1. **n8n Cloud Users**:
    - Go to your n8n dashboard → Settings → API
    - Generate a new API key
    - Use your cloud URL: `https://your-workspace.app.n8n.cloud`
 
 2. **Self-hosted n8n**:
    - Enable API in your n8n settings
-   - Generate an API key in Settings → API  
+   - Generate an API key in Settings → API
    - Use your instance URL: `https://your-domain.com`
 
 3. **Add to Claude MCP**:
@@ -240,9 +277,11 @@ To use the full functionality, you need to obtain API credentials from your n8n 
    ```
 
 ### URL Auto-Normalization
+
 The package automatically handles URL formatting:
+
 - ✅ `https://n8n.example.com` → `https://n8n.example.com/api/v1`
-- ✅ `https://n8n.example.com/` → `https://n8n.example.com/api/v1`  
+- ✅ `https://n8n.example.com/` → `https://n8n.example.com/api/v1`
 - ✅ `https://n8n.example.com/api` → `https://n8n.example.com/api/v1`
 
 ## 📊 Migration from Legacy
@@ -255,11 +294,12 @@ The package automatically handles URL formatting:
 4. **Zero Breaking Changes** - Drop-in replacement
 
 **Migration Command:**
+
 ```bash
 # Remove old version
 claude mcp remove n8n-mcp-enhanced
 
-# Add modern version  
+# Add modern version
 claude mcp add n8n-mcp-modern -- npx -y @lexinet/n8n-mcp-modern
 ```
 
@@ -267,7 +307,7 @@ claude mcp add n8n-mcp-modern -- npx -y @lexinet/n8n-mcp-modern
 
 ```bash
 npm test              # Run all tests
-npm run test:watch    # Watch mode  
+npm run test:watch    # Watch mode
 npm run test:coverage # Coverage report
 npm run typecheck     # Type validation
 ```
@@ -275,8 +315,9 @@ npm run typecheck     # Type validation
 ## 🤝 Contributing
 
 **Modern Development Standards:**
+
 - TypeScript-first with strict mode
-- ESM-only architecture  
+- ESM-only architecture
 - Zod validation schemas
 - Comprehensive test coverage
 - Security-first approach
@@ -284,6 +325,7 @@ npm run typecheck     # Type validation
 ## 🎯 Claude Code Hooks System
 
 **Project-Specific Quality Enforcement:**
+
 - **Agent Routing Validation** - Ensures queries go to appropriate n8n specialists
 - **File Protection** - Prevents accidental modification of critical files (package.json, .env, .git/)
 - **Bash Command Security** - Validates commands for security and performance best practices
@@ -292,6 +334,7 @@ npm run typecheck     # Type validation
 - **Completion Validation** - Ensures TypeScript compiles, tests pass, linting passes before task completion
 
 **File Type Coverage:**
+
 - **TypeScript/JavaScript** - Type safety, security patterns, performance optimization
 - **JSON** - n8n node validation (displayName, properties, inputs/outputs)
 - **Markdown** - Agent frontmatter validation, code block language tags
@@ -304,6 +347,7 @@ All hooks stored in `.claude/hooks/` for project isolation. See `.claude/hooks/R
 ### Common Installation Issues
 
 **Issue: MCP server hangs during installation**
+
 ```bash
 # v4.3.2 includes 30-second timeout protection
 # If hanging occurs, use diagnostic tools:
@@ -311,6 +355,7 @@ validate_mcp_config {"fix_issues": true}
 ```
 
 **Issue: "Connection refused" or API errors**
+
 ```bash
 # Validate your n8n configuration:
 validate_mcp_config
@@ -323,6 +368,7 @@ curl -H "Authorization: Bearer YOUR_KEY" YOUR_N8N_URL/api/v1/workflows
 ```
 
 **Issue: Tools not working properly**
+
 ```bash
 # List all available tools and their status:
 list_available_tools
@@ -332,6 +378,7 @@ list_available_tools {"category": "core"}
 ```
 
 **Issue: TypeScript compilation errors**
+
 ```bash
 # All TypeScript issues were fixed in v4.3.2
 npm run typecheck  # Should show zero errors
@@ -339,6 +386,7 @@ npm run lint       # Should show zero warnings
 ```
 
 ### Environment Variable Setup
+
 ```bash
 # Required for full functionality:
 export N8N_API_URL="https://your-n8n-instance.com"
@@ -351,7 +399,9 @@ export MAX_CONCURRENT_REQUESTS="10"  # API rate limiting
 ```
 
 ### Docker Users (Self-Hosted n8n)
+
 If using docker-compose, ensure your n8n service includes:
+
 ```yaml
 environment:
   - N8N_API_ENDPOINT_REST=api/v1
@@ -371,4 +421,4 @@ Modern TypeScript rebuild by [eekfonky](https://github.com/eekfonky).
 
 ---
 
-*Built for Claude Code users who demand modern, secure, high-performance n8n automation.* 🎯
+_Built for Claude Code users who demand modern, secure, high-performance n8n automation._ 🎯

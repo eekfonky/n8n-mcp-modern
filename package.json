@@ -28,6 +28,7 @@
     "rebuild-db": "tsx src/scripts/rebuild-database.ts",
     "validate": "tsx src/scripts/validate-data.ts",
     "install-agents": "node scripts/install-claude-mcp.js",
+    "upgrade": "node scripts/upgrade.js",
     "postinstall": "node scripts/install-claude-mcp.js",
     "ci": "npm run lint && npm run typecheck && npm run test:all",
     "precommit": "npm run lint && npm run typecheck && npm run test:quick"
