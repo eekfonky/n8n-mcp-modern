@@ -11,8 +11,11 @@ import { config } from './config.js';
  * Circuit breaker states
  */
 enum CircuitState {
+   
   CLOSED = 'CLOSED',
+   
   OPEN = 'OPEN',
+   
   HALF_OPEN = 'HALF_OPEN'
 }
 
@@ -59,8 +62,8 @@ export class CircuitBreaker extends EventEmitter {
   private nextAttempt: Date | undefined;
 
   constructor(
-    private name: string,
-    private config: CircuitBreakerConfig = {
+    private readonly name: string,
+    private readonly config: CircuitBreakerConfig = {
       threshold: 5,
       timeout: 60000,
       resetTimeout: 30000,
@@ -154,14 +157,16 @@ export class CircuitBreaker extends EventEmitter {
  */
 export class RetryHandler {
   constructor(
-    private config: RetryConfig = {
+    private readonly config: RetryConfig = {
       maxAttempts: 3,
       initialDelay: 1000,
       maxDelay: 30000,
       backoffMultiplier: 2,
       jitter: true
     }
-  ) {}
+  ) {
+    // Private config property is used in execute method
+  }
 
   /**
    * Execute function with retry logic
@@ -175,13 +180,13 @@ export class RetryHandler {
 
     for (let attempt = 1; attempt <= this.config.maxAttempts; attempt++) {
       try {
-        logger.debug(`Attempt ${attempt}/${this.config.maxAttempts} for ${context || 'operation'}`);
+        logger.debug(`Attempt ${attempt}/${this.config.maxAttempts} for ${context ?? 'operation'}`);
         return await fn();
       } catch (error) {
         lastError = error as Error;
         
         if (attempt === this.config.maxAttempts) {
-          logger.error(`All retry attempts failed for ${context || 'operation'}`, error);
+          logger.error(`All retry attempts failed for ${context ?? 'operation'}`, error);
           break;
         }
 
@@ -190,7 +195,7 @@ export class RetryHandler {
           delay = delay + Math.random() * 1000;
         }
         
-        logger.warn(`Attempt ${attempt} failed for ${context || 'operation'}, retrying in ${delay}ms`, {
+        logger.warn(`Attempt ${attempt} failed for ${context ?? 'operation'}, retrying in ${delay}ms`, {
           error: (error as Error).message
         });
         
@@ -199,14 +204,14 @@ export class RetryHandler {
       }
     }
 
-    throw lastError || new Error('Retry failed');
+    throw lastError ?? new Error('Retry failed');
   }
 
   /**
    * Sleep for specified milliseconds
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise(resolve => globalThis.setTimeout(resolve, ms));
   }
 }
 
@@ -216,7 +221,7 @@ export class RetryHandler {
 export class HealthMonitor extends EventEmitter {
   private checks: Map<string, () => Promise<boolean>> = new Map();
   private results: Map<string, HealthCheckResult> = new Map();
-  private monitoringInterval: NodeJS.Timeout | undefined;
+  private monitoringInterval: ReturnType<typeof setInterval> | undefined;
   private isHealthy = true;
 
   /**
@@ -292,7 +297,7 @@ export class HealthMonitor extends EventEmitter {
     this.performChecks();
     
     // Set up periodic monitoring
-    this.monitoringInterval = setInterval(() => {
+    this.monitoringInterval = globalThis.setInterval(() => {
       this.performChecks();
     }, intervalMs);
   }
@@ -302,7 +307,7 @@ export class HealthMonitor extends EventEmitter {
    */
   stopMonitoring(): void {
     if (this.monitoringInterval) {
-      clearInterval(this.monitoringInterval);
+      globalThis.clearInterval(this.monitoringInterval);
       this.monitoringInterval = undefined;
       logger.info('Health monitoring stopped');
     }
@@ -321,12 +326,12 @@ export class HealthMonitor extends EventEmitter {
   /**
    * Express/HTTP endpoint handler
    */
-  getHealthEndpoint() {
-    return async (_req: any, res: any) => {
+  getHealthEndpoint(): (req: unknown, res: unknown) => Promise<void> {
+    return async (_req: unknown, res: unknown) => {
       const status = this.getStatus();
       const httpStatus = status.healthy ? 200 : 503;
       
-      res.status(httpStatus).json({
+      (res as any).status(httpStatus).json({
         status: status.healthy ? 'UP' : 'DOWN',
         timestamp: new Date().toISOString(),
         checks: Object.fromEntries(status.checks)
@@ -354,7 +359,7 @@ export class GracefulShutdown {
    * Initialize shutdown listeners
    */
   initialize(): void {
-    const signals: NodeJS.Signals[] = ['SIGTERM', 'SIGINT', 'SIGUSR2'];
+    const signals: Array<'SIGTERM' | 'SIGINT' | 'SIGUSR2'> = ['SIGTERM', 'SIGINT', 'SIGUSR2'];
     
     signals.forEach(signal => {
       process.on(signal, async () => {
@@ -388,7 +393,7 @@ export class GracefulShutdown {
     logger.info('Starting graceful shutdown...');
 
     // Set timeout for forced shutdown
-    const forceShutdown = setTimeout(() => {
+    const forceShutdown = globalThis.setTimeout(() => {
       logger.error('Graceful shutdown timeout, forcing exit');
       process.exit(exitCode);
     }, this.shutdownTimeout);
@@ -404,11 +409,11 @@ export class GracefulShutdown {
       );
 
       logger.info('Graceful shutdown complete');
-      clearTimeout(forceShutdown);
+      globalThis.clearTimeout(forceShutdown);
       process.exit(exitCode);
     } catch (error) {
       logger.error('Error during graceful shutdown', error);
-      clearTimeout(forceShutdown);
+      globalThis.clearTimeout(forceShutdown);
       process.exit(1);
     }
   }
@@ -439,10 +444,11 @@ export function initializeResilience(): void {
   if (config.n8nApiUrl && config.n8nApiKey) {
     healthMonitor.registerCheck('n8n-api', async () => {
       try {
+        const { fetch } = await import('undici');
         const response = await fetch(`${config.n8nApiUrl}/workflows`, {
           method: 'HEAD',
           headers: {
-            'X-N8N-API-KEY': config.n8nApiKey!
+            'X-N8N-API-KEY': config.n8nApiKey ?? ''
           }
         });
         return response.ok;

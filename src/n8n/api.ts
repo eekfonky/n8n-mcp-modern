@@ -192,7 +192,7 @@ export class N8NApiClient {
       return await retryHandler.execute(async () => {
         logger.debug(`Making request to n8n API: ${requestOptions.method ?? 'GET'} ${url}`);
         
-        const response = await fetch(url, requestOptions as any);
+        const response = await fetch(url, requestOptions as Record<string, unknown>);
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -386,7 +386,7 @@ export class N8NApiClient {
     
     const executionTimes = executions
       .filter(e => e.startedAt && e.stoppedAt)
-      .map(e => new Date(e.stoppedAt!).getTime() - new Date(e.startedAt).getTime());
+      .map(e => new Date(e.stoppedAt ?? '').getTime() - new Date(e.startedAt).getTime());
     
     const avgExecutionTime = executionTimes.length > 0 
       ? executionTimes.reduce((a, b) => a + b, 0) / executionTimes.length 
@@ -606,7 +606,7 @@ export class N8NApiClient {
     try {
       const response = await this.request<N8NHealthStatus>('/health');
       return response;
-    } catch (_error) {
+    } catch {
       return {
         status: 'error',
         database: { status: 'error' }
@@ -621,7 +621,7 @@ export class N8NApiClient {
     try {
       const response = await this.request<{ version: string; build?: string }>('/version');
       return response;
-    } catch (_error) {
+    } catch {
       // Fallback for instances without version endpoint
       return { version: 'unknown' };
     }
@@ -636,7 +636,7 @@ export class N8NApiClient {
     try {
       const response = await this.request<N8NApiResponse<{ name: string }[]>>('/tags');
       return response.data.map(tag => tag.name);
-    } catch (_error) {
+    } catch {
       // Not all n8n versions support tags
       return [];
     }
@@ -662,7 +662,7 @@ export class N8NApiClient {
     try {
       const response = await this.request<N8NApiResponse<Record<string, unknown>[]>>('/workflows/templates');
       return response.data;
-    } catch (_error) {
+    } catch {
       // Templates might not be available in all n8n versions
       return [];
     }
@@ -703,7 +703,7 @@ export class N8NApiClient {
     try {
       const response = await this.request<Record<string, unknown>>(`/executions/${id}/logs`);
       return response;
-    } catch (_error) {
+    } catch {
       // Fallback to execution data
       return await this.getExecutionData(id);
     }

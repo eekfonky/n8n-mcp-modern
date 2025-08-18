@@ -12,13 +12,21 @@ import { logger } from './logger.js';
  * Security event types for audit logging
  */
 export enum SecurityEventType {
+   
   ACCESS_GRANTED = 'ACCESS_GRANTED',
+   
   ACCESS_DENIED = 'ACCESS_DENIED',
+   
   API_KEY_VALIDATED = 'API_KEY_VALIDATED',
+   
   API_KEY_INVALID = 'API_KEY_INVALID',
+   
   TOOL_EXECUTED = 'TOOL_EXECUTED',
+   
   TOOL_DENIED = 'TOOL_DENIED',
+   
   CONFIG_CHANGED = 'CONFIG_CHANGED',
+   
   SECURITY_ERROR = 'SECURITY_ERROR'
 }
 
@@ -172,8 +180,9 @@ export class InputSanitizer {
    * Sanitize string input
    */
   sanitizeString(input: string, maxLength = 1000): string {
-    // Remove null bytes
-    let sanitized = input.replace(/\0/g, '');
+    // Remove null bytes and other control characters
+    // eslint-disable-next-line no-control-regex
+    let sanitized = input.replace(/[\u0000-\u001f\u007f]/g, '');
     
     // Truncate to max length
     if (sanitized.length > maxLength) {
@@ -181,6 +190,7 @@ export class InputSanitizer {
     }
     
     // Remove control characters except newlines and tabs
+    // eslint-disable-next-line no-control-regex
     sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
     
     return sanitized;
@@ -231,7 +241,7 @@ export class RateLimiter {
    */
   isAllowed(identifier: string): boolean {
     const now = Date.now();
-    const requests = this.requests.get(identifier) || [];
+    const requests = this.requests.get(identifier) ?? [];
     
     // Filter out old requests
     const recentRequests = requests.filter(time => now - time < this.windowMs);

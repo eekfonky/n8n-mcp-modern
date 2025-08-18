@@ -85,14 +85,14 @@ export class DataEncryption {
     const salt = randomBytes(this.config.saltLength);
     const key = scryptSync(this.masterKey, salt, this.config.keyLength);
     
-    const cipher = createCipheriv(this.config.algorithm, key, iv) as any;
+    const cipher = createCipheriv(this.config.algorithm, key, iv);
     
     const encrypted = Buffer.concat([
       cipher.update(typeof data === 'string' ? Buffer.from(data) : data),
       cipher.final()
     ]);
     
-    const authTag = cipher.getAuthTag();
+    const authTag = (cipher as any).getAuthTag();
 
     return {
       encrypted: encrypted.toString('base64'),
@@ -121,9 +121,9 @@ export class DataEncryption {
       encryptedData.algorithm,
       key,
       Buffer.from(encryptedData.iv, 'base64')
-    ) as any;
+    );
     
-    decipher.setAuthTag(Buffer.from(encryptedData.authTag, 'base64'));
+    (decipher as any).setAuthTag(Buffer.from(encryptedData.authTag, 'base64'));
     
     const decrypted = Buffer.concat([
       decipher.update(Buffer.from(encryptedData.encrypted, 'base64')),
@@ -275,7 +275,7 @@ export class DataMasking {
     const [local, domain] = email.split('@');
     if (!domain) return DataMasking.maskString(email);
     
-    const maskedLocal = DataMasking.maskString(local || '', 2);
+    const maskedLocal = DataMasking.maskString(local ?? '', 2);
     return `${maskedLocal}@${domain}`;
   }
 

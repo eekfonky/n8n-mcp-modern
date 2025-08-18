@@ -181,6 +181,32 @@ class N8NMcpServer {
       },
       async (args: Record<string, unknown>) => this.executeToolWithRouting('get_tool_usage_stats', args)
     );
+
+    // List all available tools
+    this.server.registerTool(
+      'list_available_tools',
+      {
+        title: 'List Available Tools',
+        description: 'Get comprehensive list of all 98 available tools with categories',
+        inputSchema: {
+          category: z.string().optional().describe('Filter by category: core, code-generation, developer-workflows, performance-observability, comprehensive')
+        }
+      },
+      async (args: Record<string, unknown>) => this.executeToolWithRouting('list_available_tools', args)
+    );
+
+    // Validate MCP configuration
+    this.server.registerTool(
+      'validate_mcp_config',
+      {
+        title: 'Validate MCP Configuration',
+        description: 'Check .mcp.json configuration and environment setup for common issues',
+        inputSchema: {
+          fix_issues: z.boolean().optional().default(false).describe('Attempt to auto-fix common configuration issues')
+        }
+      },
+      async (args: Record<string, unknown>) => this.executeToolWithRouting('validate_mcp_config', args)
+    );
   }
 
   private async executeToolWithRouting(toolName: string, args: Record<string, unknown>): Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
@@ -225,21 +251,29 @@ class N8NMcpServer {
       };
       
     } catch (error) {
-      logger.error(`Tool execution failed: ${toolName}`, error);
+      const errorDetails = {
+        tool: toolName,
+        args,
+        timestamp: new Date().toISOString(),
+        error: (error as Error).message,
+        stack: (error as Error).stack?.split('\n').slice(0, 3).join('\n')
+      };
+      
+      logger.error(`Tool execution failed: ${toolName}`, errorDetails);
       
       // Log security event for tool execution failure
       securityAudit.logEvent({
         eventType: SecurityEventType.SECURITY_ERROR,
         success: false,
         toolName,
-        details: { error: (error as Error).message }
+        details: errorDetails
       });
       
       return {
         content: [
           {
             type: 'text' as const,
-            text: `Error executing ${toolName}: ${(error as Error).message}`
+            text: `Error executing ${toolName}:\n${(error as Error).message}\n\nContext: ${JSON.stringify({ args, timestamp: errorDetails.timestamp }, null, 2)}`
           }
         ],
         isError: true
@@ -247,7 +281,7 @@ class N8NMcpServer {
     }
   }
 
-  private buildContext(toolName: string, args: Record<string, unknown>): Record<string, unknown> {
+  private buildContext(toolName: string, _args: Record<string, unknown>): Record<string, unknown> {
     const context = AgentContextBuilder.create();
     
     // Analyze tool complexity
@@ -365,7 +399,7 @@ class N8NMcpServer {
     await this.server.connect(transport);
     
     logger.info('n8n-MCP Modern server started successfully');
-    logger.info('98 MCP tools registered and ready for use');
+    logger.info('100 total tools available: 13 MCP-registered + 87 execution-routed');
   }
 }
 

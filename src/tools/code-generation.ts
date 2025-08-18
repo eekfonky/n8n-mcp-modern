@@ -108,7 +108,11 @@ export class CodeGenerationTools {
   /**
    * 1. Generate workflow from natural language description
    */
-  static async generateWorkflowFromDescription(args: z.infer<typeof GenerateWorkflowSchema>) {
+  static async generateWorkflowFromDescription(args: z.infer<typeof GenerateWorkflowSchema>): Promise<{
+    workflow: Record<string, unknown>;
+    summary: string;
+    nextSteps: string[];
+  }> {
     logger.info('Generating workflow from description:', args.description);
 
     const workflow = {
@@ -141,7 +145,10 @@ export class CodeGenerationTools {
   /**
    * 2. Create API integration template
    */
-  static async createAPIIntegrationTemplate(args: z.infer<typeof APIIntegrationSchema>) {
+  static async createAPIIntegrationTemplate(args: z.infer<typeof APIIntegrationSchema>): Promise<{
+    template: Record<string, unknown>;
+    implementation: Record<string, unknown>;
+  }> {
     logger.info('Creating API integration template for:', args.serviceName);
 
     const template = {
@@ -178,7 +185,7 @@ export class CodeGenerationTools {
     const pipeline = {
       input: this.generateInputHandler(args.inputFormat),
       transformations: await this.generateTransformationNodes(args.transformations),
-      validations: this.generateValidationNodes(args.validations || []),
+      validations: this.generateValidationNodes(args.validations ?? []),
       output: this.generateOutputHandler(args.outputFormat),
       errorHandling: this.generateDataPipelineErrorHandling()
     };
@@ -315,7 +322,7 @@ export class CodeGenerationTools {
     return nodes;
   }
 
-  private static generateConnections(args: z.infer<typeof GenerateWorkflowSchema>): Record<string, unknown> {
+  private static generateConnections(_args: z.infer<typeof GenerateWorkflowSchema>): Record<string, unknown> {
     return { connections: {}, connectionsBySource: {} };
   }
 

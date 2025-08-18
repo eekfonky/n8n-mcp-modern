@@ -238,14 +238,23 @@ export interface N8NWorkflowNode {
 
 // Error Types
 export class N8NMcpError extends Error {
+  public readonly code: string;
+  public readonly statusCode?: number;
+  public readonly details?: unknown;
+
   constructor(
     message: string,
-    public code: string,
-    public statusCode?: number,
-    public details?: unknown
+    code: string,
+    statusCode?: number,
+    details?: unknown
   ) {
     super(message);
     this.name = 'N8NMcpError';
+    this.code = code;
+    if (statusCode !== undefined) {
+      this.statusCode = statusCode;
+    }
+    this.details = details;
   }
 }
 

@@ -21,17 +21,29 @@ import { logger } from '../server/logger.js';
  * Agent capability types - used in agent definitions
  */
 export enum AgentCapability {
+   
   WORKFLOW_DESIGN = 'workflow_design',
+   
   CODE_GENERATION = 'code_generation',
+   
   DEVELOPER_WORKFLOWS = 'developer_workflows', 
+   
   NODE_EXPERTISE = 'node_expertise',
+   
   AUTHENTICATION = 'authentication',
+   
   PERFORMANCE_OPTIMIZATION = 'performance_optimization',
+   
   MONITORING_ANALYTICS = 'monitoring_analytics',
+   
   DOCUMENTATION = 'documentation',
+   
   RESEARCH = 'research',
+   
   COMMUNITY = 'community',
+   
   SYSTEM_ADMIN = 'system_admin',
+   
   GUIDANCE_SUPPORT = 'guidance_support'
 }
 
@@ -39,8 +51,11 @@ export enum AgentCapability {
  * Agent tier levels - used in agent hierarchy  
  */
 export enum AgentTier {
+   
   MASTER = 1,       // Master Orchestrator (1 agent)
+   
   SPECIALIST = 2,   // Core Domain Specialists (4 agents)  
+   
   SUPPORT = 3       // Support Specialist (1 agent)
 }
 
@@ -80,8 +95,8 @@ export interface Agent {
   tier: AgentTier;
   capabilities: AgentCapability[];
   description: string;
-  canHandle(toolName: string, context?: AgentContext): boolean;
-  getPriority(toolName: string, context?: AgentContext): number;
+  canHandle(_toolName: string, _context?: AgentContext): boolean;
+  getPriority(_toolName: string, _context?: AgentContext): number;
 }
 
 /**
@@ -602,5 +617,5 @@ export class AgentContextBuilder {
   }
 }
 
-// Export AgentContextBuilder as AgentContext for test compatibility
-export const AgentContext = AgentContextBuilder;
+// Export AgentContextBuilder as AgentContextClass for test compatibility
+export const AgentContextClass = AgentContextBuilder;

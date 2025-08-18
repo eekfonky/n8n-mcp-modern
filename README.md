@@ -10,12 +10,13 @@
 ## 🎯 What's New in v4.3
 
 **Complete Tool & Agent Ecosystem:**
-- ✅ **98 Total Tools** - Comprehensive n8n automation coverage
+- ✅ **100 Total Tools** - Comprehensive n8n automation coverage
 - ✅ **6-Agent Hierarchy** - Optimized for Claude Code workflows  
 - ✅ **Code Generation** - AI-powered workflow creation (12 tools)
 - ✅ **DevOps Integration** - CI/CD & deployment automation (10 tools)
 - ✅ **Performance Monitoring** - Advanced observability & optimization (12 tools)
 - ✅ **Comprehensive n8n** - Complete ecosystem management (53 tools)
+- ✅ **Configuration Management** - MCP setup validation & auto-fix
 - ✅ **Claude MCP Integration** - One-command install with agent deployment
 
 **Architecture & Performance:**
@@ -45,12 +46,31 @@
 src/
 ├── server/           # MCP server implementation
 ├── database/         # SQLite with clean schemas  
-├── tools/           # 98 MCP tools (modern patterns)
+├── tools/           # 100 MCP tools (modern patterns)
 ├── agents/          # 6-agent hierarchical system
 ├── validation/      # Zod-based validation engine
 ├── n8n/            # Minimal n8n integration layer
 └── types/          # Full TypeScript definitions
 ```
+
+## 🛠️ MCP Configuration Management
+
+New in v4.3! Validate and fix your `.mcp.json` configuration:
+
+```bash
+# Check your MCP configuration
+validate_mcp_config
+
+# Auto-fix common issues
+validate_mcp_config {"fix_issues": true}
+```
+
+**Features:**
+- ✅ Validates `.mcp.json` structure and syntax
+- ✅ Checks Node.js version requirements (22+)
+- ✅ Verifies build artifacts exist (`dist/index.js`)
+- ✅ Auto-generates missing configuration files
+- ✅ Provides clear recommendations for fixes
 
 ## 🚀 Quick Start
 
@@ -126,13 +146,13 @@ TIER 3: SUPPORT SPECIALIST
 
 **Clean Separation of Concerns:**
 
-1. **🔧 MCP Server** (`@lexinet/n8n-mcp-modern`): Provides 98 n8n-specific tools
+1. **🔧 MCP Server** (`@lexinet/n8n-mcp-modern`): Provides 100 n8n-specific tools
 2. **🤖 Claude Code Agents** (`agents/*.md`): 6 specialized agents using MCP tools
 3. **⚡ User Experience**: Claude Code Task tool → Agent → MCP tools → n8n API
 
 This architecture leverages Claude Code's built-in agent system while providing deep n8n integration through MCP tools.
 
-## 🛠️ 98 MCP Tools
+## 🛠️ 100 MCP Tools
 
 **🔧 Code Generation (12 tools):**
 - `generate_workflow_from_description` - Natural language → n8n workflow

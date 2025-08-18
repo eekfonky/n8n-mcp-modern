@@ -15,7 +15,7 @@ import { PerformanceObservabilityTools, performanceObservabilityTools } from './
 import { 
   SearchNodesArgsSchema, GetWorkflowsArgsSchema, GetWorkflowArgsSchema, 
   CreateWorkflowArgsSchema, ExecuteWorkflowArgsSchema, RouteToAgentArgsSchema,
-  N8NWorkflowNodeSchema, N8NConnectionsSchema
+  N8NWorkflowNodeSchema as _N8NWorkflowNodeSchema, N8NConnectionsSchema as _N8NConnectionsSchema
 } from '../types/index.js';
 import type { 
   SearchNodesArgs, GetWorkflowsArgs, GetWorkflowArgs, CreateWorkflowArgs, 
@@ -244,6 +244,19 @@ export class N8NMCPTools {
             }
           },
           required: ['query']
+        }
+      },
+      {
+        name: 'list_available_tools',
+        description: 'Get comprehensive list of all 98 available tools with categories',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            category: {
+              type: 'string',
+              description: 'Filter by category: core, code-generation, developer-workflows, performance-observability, comprehensive'
+            }
+          }
         }
       }
     ];
@@ -486,7 +499,7 @@ export class N8NMCPTools {
     
     if (args.category) {
       return nodes.filter(node => 
-        node.category.toLowerCase() === args.category!.toLowerCase()
+        node.category.toLowerCase() === (args.category ?? '').toLowerCase()
       );
     }
     
@@ -560,7 +573,9 @@ export class N8NMCPTools {
     });
     
     if (args.active) {
-      await n8nApi.activateWorkflow(workflow.id!);
+      if (workflow.id) {
+        await n8nApi.activateWorkflow(workflow.id);
+      }
     }
     
     return workflow;

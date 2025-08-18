@@ -366,7 +366,7 @@ export class PerformanceObservabilityTools {
   }
 
   // Helper methods with simplified implementations
-  private static generatePerformanceMetrics(args: z.infer<typeof WorkflowPerformanceSchema>): Record<string, unknown> {
+  private static generatePerformanceMetrics(_args: z.infer<typeof WorkflowPerformanceSchema>): Record<string, unknown> {
     return {
       averageExecutionTime: Math.random() * 5000 + 1000, // 1-6 seconds
       successRate: Math.random() * 20 + 80, // 80-100%
@@ -375,7 +375,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  private static generateNodeBreakdown(workflowId: string): Record<string, unknown>[] {
+  private static generateNodeBreakdown(_workflowId: string): Record<string, unknown>[] {
     return [
       { nodeId: 'node1', name: 'HTTP Request', avgTime: 2000, successRate: 95 },
       { nodeId: 'node2', name: 'Data Transform', avgTime: 500, successRate: 99 },
@@ -383,7 +383,7 @@ export class PerformanceObservabilityTools {
     ];
   }
 
-  private static generatePerformanceRecommendations(args: z.infer<typeof WorkflowPerformanceSchema>): string[] {
+  private static generatePerformanceRecommendations(_args: z.infer<typeof WorkflowPerformanceSchema>): string[] {
     return [
       'Consider adding caching for frequently accessed data',
       'Optimize database queries to reduce execution time',
@@ -391,7 +391,7 @@ export class PerformanceObservabilityTools {
     ];
   }
 
-  private static generatePerformanceBenchmarks(workflowId: string): Record<string, unknown> {
+  private static generatePerformanceBenchmarks(_workflowId: string): Record<string, unknown> {
     return {
       industryAverage: { executionTime: 3000, successRate: 92 },
       bestPractice: { executionTime: 1500, successRate: 99 },
@@ -432,7 +432,7 @@ export class PerformanceObservabilityTools {
     return Math.max(0, 100 - ((successRate + (100 - errorRate)) / 2));
   }
 
-  private static generateSystemMetrics(components: string[], aggregation: string): Record<string, unknown> {
+  private static generateSystemMetrics(components: string[], _aggregation: string): Record<string, unknown> {
     const metrics: Record<string, unknown> = {};
     components.forEach(component => {
       metrics[component] = {
@@ -451,23 +451,23 @@ export class PerformanceObservabilityTools {
     ];
   }
 
-  private static generateSystemTrends(components: string[], timeRange: string): any {
+  private static generateSystemTrends(components: string[], _timeRange: string): any {
     return { trending: 'up', confidence: 85, components };
   }
 
-  private static generateCapacityMetrics(components: string[]): any {
+  private static generateCapacityMetrics(_components: string[]): any {
     return { utilizationRate: 65, projectedCapacity: 'adequate', growthRate: 1.15 };
   }
 
-  private static identifyBottlenecks(components: any): string[] {
+  private static identifyBottlenecks(_components: any): string[] {
     return ['Database connection pool', 'Network I/O'];
   }
 
-  private static assessScalingNeeds(metrics: any): any {
+  private static assessScalingNeeds(_metrics: any): any {
     return { immediate: false, upcoming: true, timeframe: '3 months' };
   }
 
-  private static identifyOptimizationOpportunities(metrics: any): string[] {
+  private static identifyOptimizationOpportunities(_metrics: any): string[] {
     return ['Enable connection pooling', 'Implement query caching', 'Optimize memory allocation'];
   }
 
@@ -480,7 +480,7 @@ export class PerformanceObservabilityTools {
     }));
   }
 
-  private static generateImplementationPlan(args: z.infer<typeof PerformanceOptimizationSchema>): Record<string, unknown> {
+  private static generateImplementationPlan(_args: z.infer<typeof PerformanceOptimizationSchema>): Record<string, unknown> {
     return {
       phases: ['Analysis', 'Testing', 'Implementation', 'Monitoring'],
       estimatedTimeframe: '2-4 weeks',
@@ -488,7 +488,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  private static estimateOptimizationImpact(args: z.infer<typeof PerformanceOptimizationSchema>): Record<string, unknown> {
+  private static estimateOptimizationImpact(_args: z.infer<typeof PerformanceOptimizationSchema>): Record<string, unknown> {
     return {
       performanceGain: '25-40%',
       costSavings: '$500-1500/month',
@@ -496,7 +496,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  private static generateTestPlan(args: z.infer<typeof PerformanceOptimizationSchema>): Record<string, unknown> {
+  private static generateTestPlan(_args: z.infer<typeof PerformanceOptimizationSchema>): Record<string, unknown> {
     return {
       testEnvironment: 'staging',
       testDuration: '1 week',
@@ -517,7 +517,7 @@ export class PerformanceObservabilityTools {
     return optimizations.recommendations.filter((r: any) => r.effort === 'high');
   }
 
-  private static generateCapacityProjections(args: z.infer<typeof CapacityPlanningSchema>): Record<string, unknown> {
+  private static generateCapacityProjections(_args: z.infer<typeof CapacityPlanningSchema>): Record<string, unknown> {
     return {
       currentCapacity: '1000 workflows/day',
       projectedCapacity: '1800 workflows/day',
@@ -525,11 +525,11 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  private static generateCapacityRecommendations(args: z.infer<typeof CapacityPlanningSchema>): string[] {
+  private static generateCapacityRecommendations(_args: z.infer<typeof CapacityPlanningSchema>): string[] {
     return ['Add 2 additional worker nodes', 'Increase database connection pool', 'Implement auto-scaling'];
   }
 
-  private static generateHealthCheckResults(args: z.infer<typeof HealthCheckSchema>): Record<string, unknown>[] {
+  private static generateHealthCheckResults(_args: z.infer<typeof HealthCheckSchema>): Record<string, unknown>[] {
     return [
       { check: 'API Connectivity', status: 'healthy', details: 'All endpoints responding' },
       { check: 'Database Health', status: 'warning', details: 'Slow query detected' },
@@ -537,11 +537,11 @@ export class PerformanceObservabilityTools {
     ];
   }
 
-  private static generateHealthRecommendations(args: z.infer<typeof HealthCheckSchema>): string[] {
+  private static generateHealthRecommendations(_args: z.infer<typeof HealthCheckSchema>): string[] {
     return ['Optimize slow database queries', 'Monitor memory usage trends', 'Set up alerting for API failures'];
   }
 
-  private static generateTrendAnalysis(args: z.infer<typeof PerformanceTrendSchema>): Record<string, unknown> {
+  private static generateTrendAnalysis(_args: z.infer<typeof PerformanceTrendSchema>): Record<string, unknown> {
     return {
       overallTrend: 'improving',
       seasonality: 'detected',
@@ -550,7 +550,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  private static generateForecasts(args: z.infer<typeof PerformanceTrendSchema>): Record<string, unknown> {
+  private static generateForecasts(_args: z.infer<typeof PerformanceTrendSchema>): Record<string, unknown> {
     return {
       nextPeriod: 'slight increase expected',
       confidence: '85%',
@@ -570,11 +570,11 @@ export class PerformanceObservabilityTools {
     return metrics;
   }
 
-  private static generateResourceOptimization(args: z.infer<typeof ResourceUtilizationSchema>): string[] {
+  private static generateResourceOptimization(_args: z.infer<typeof ResourceUtilizationSchema>): string[] {
     return ['Right-size memory allocation', 'Optimize CPU usage patterns', 'Implement resource pooling'];
   }
 
-  private static generateSLADashboard(args: z.infer<typeof SLAMonitoringSchema>): Record<string, unknown> {
+  private static generateSLADashboard(_args: z.infer<typeof SLAMonitoringSchema>): Record<string, unknown> {
     return {
       url: '/dashboards/sla-monitoring',
       widgets: ['SLA Compliance', 'Breach Timeline', 'Target vs Actual'],
@@ -582,7 +582,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  private static generateBreachAnalysis(args: z.infer<typeof SLAMonitoringSchema>): Record<string, unknown> {
+  private static generateBreachAnalysis(_args: z.infer<typeof SLAMonitoringSchema>): Record<string, unknown> {
     return {
       totalBreaches: 3,
       breachRate: '2.1%',
@@ -591,7 +591,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  private static generateLogPatterns(args: z.infer<typeof LogAnalysisSchema>): Record<string, unknown>[] {
+  private static generateLogPatterns(_args: z.infer<typeof LogAnalysisSchema>): Record<string, unknown>[] {
     return [
       { pattern: 'Connection timeout', frequency: 15, severity: 'warning' },
       { pattern: 'Database lock', frequency: 5, severity: 'error' },
@@ -599,7 +599,7 @@ export class PerformanceObservabilityTools {
     ];
   }
 
-  private static detectLogAnomalies(args: z.infer<typeof LogAnalysisSchema>): Record<string, unknown>[] {
+  private static detectLogAnomalies(_args: z.infer<typeof LogAnalysisSchema>): Record<string, unknown>[] {
     return [
       { timestamp: '2024-01-20T10:30:00Z', anomaly: 'Unusual error rate spike', severity: 'high' },
       { timestamp: '2024-01-20T14:15:00Z', anomaly: 'Performance degradation', severity: 'medium' }
@@ -618,7 +618,7 @@ export class PerformanceObservabilityTools {
     return breakdown;
   }
 
-  private static generateCostOptimization(args: z.infer<typeof CostAnalysisSchema>): string[] {
+  private static generateCostOptimization(_args: z.infer<typeof CostAnalysisSchema>): string[] {
     return [
       'Right-size compute resources based on actual usage',
       'Implement storage tiering for older data',

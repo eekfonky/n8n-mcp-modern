@@ -4,9 +4,9 @@
  */
 
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { z } from 'zod';
+import { z as _z } from 'zod';
 import { n8nApi, type N8NCredential } from '../n8n/api.js';
-import { database } from '../database/index.js';
+import { database as _database } from '../database/index.js';
 import { logger } from '../server/logger.js';
 import { inputSanitizer } from '../server/security.js';
 
@@ -730,15 +730,15 @@ export class ComprehensiveMCPTools {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const nodes = await n8nApi.searchNodeTypes(args.query as string, args.category as string);
-    const results = nodes.slice(0, (args.limit as number) || 20);
+    const results = nodes.slice(0, (args.limit as number) ?? 20);
     
     if (args.includeCredentials) {
       return results.map(node => ({
         ...node,
         credentialRequirements: node.credentials?.map(c => ({
           name: c.name,
-          required: c.required || false
-        })) || []
+          required: c.required ?? false
+        })) ?? []
       }));
     }
     
@@ -753,7 +753,7 @@ export class ComprehensiveMCPTools {
     
     nodes.forEach(node => {
       node.group.forEach(category => {
-        categories.set(category, (categories.get(category) || 0) + 1);
+        categories.set(category, (categories.get(category) ?? 0) + 1);
       });
     });
     
@@ -782,7 +782,7 @@ export class ComprehensiveMCPTools {
         name: prop.name,
         displayName: prop.displayName,
         type: prop.type,
-        required: prop.required || false,
+        required: prop.required ?? false,
         description: prop.description,
         default: prop.default,
         options: prop.options
@@ -794,7 +794,7 @@ export class ComprehensiveMCPTools {
         {
           name: 'Basic Usage',
           description: `Basic example of using ${node.displayName}`,
-          configuration: node.defaults || {}
+          configuration: node.defaults ?? {}
         }
       ];
     }
@@ -815,7 +815,7 @@ export class ComprehensiveMCPTools {
       outputs: node.outputs.length,
       requiredProperties: node.properties.filter(p => p.required).map(p => p.name),
       optionalProperties: node.properties.filter(p => !p.required).length,
-      credentialsRequired: node.credentials?.filter(c => c.required).map(c => c.name) || []
+      credentialsRequired: node.credentials?.filter(c => c.required).map(c => c.name) ?? []
     };
   }
 
@@ -953,7 +953,7 @@ export class ComprehensiveMCPTools {
     return await n8nApi.testCredential(args.credentialId as string);
   }
 
-  private static async getCredentialTypes(args: Record<string, unknown>) {
+  private static async getCredentialTypes(_args: Record<string, unknown>) {
     // This would require the node types to extract credential type information
     if (!n8nApi) throw new Error('n8n API not available');
     
@@ -1022,13 +1022,13 @@ export class ComprehensiveMCPTools {
     const clonedWorkflow = {
       ...workflowData,
       name: args.name as string,
-      active: (args.activate as boolean) || false
+      active: (args.activate as boolean) ?? false
     };
     
     const result = await n8nApi.createWorkflow(clonedWorkflow);
     
-    if (args.activate) {
-      await n8nApi.activateWorkflow(result.id!);
+    if (args.activate && result.id) {
+      await n8nApi.activateWorkflow(result.id);
     }
     
     return result;
