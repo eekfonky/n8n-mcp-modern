@@ -4,29 +4,29 @@
  * Modern n8n MCP server built with official TypeScript SDK
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
 import { config } from './server/config.js';
 import { logger } from './server/logger.js';
+import { database } from './database/index.js';
+import { N8NMCPTools } from './tools/index.js';
+import { agentRouter, AgentContext } from './agents/index.js';
+import { initializeResilience } from './server/resilience.js';
+import { initializeSecurity, createClaudeContext, validateToolAccess, securityAudit, inputSanitizer, SecurityEventType } from './server/security.js';
+import { n8nApi } from './n8n/api.js';
 
 /**
  * Main MCP Server Implementation
  */
 class N8NMcpServer {
-  private server: Server;
+  private server: McpServer;
 
   constructor() {
-    this.server = new Server(
-      {
-        name: '@lexinet/n8n-mcp-modern',
-        version: '4.0.0',
-      },
-      {
-        capabilities: {
-          tools: {},
-        },
-      }
-    );
+    this.server = new McpServer({
+      name: '@lexinet/n8n-mcp-modern',
+      version: '4.1.0',
+    });
 
     this.setupTools();
     this.setupErrorHandlers();
@@ -35,17 +35,248 @@ class N8NMcpServer {
   private setupTools(): void {
     logger.info('Setting up n8n MCP tools...');
     
-    // TODO: Implement the 87+ n8n-specific MCP tools
-    // These tools will be used by Claude Code agents for n8n automation
-    // Examples: search_nodes, create_workflow, validate_workflow, etc.
+    // Register each tool individually using the MCP SDK pattern
+    this.registerN8NTools();
     
-    logger.info('MCP tools ready - agents can use these for n8n automation');
+    logger.info('Registered MCP tools with agent routing system');
+  }
+
+  private registerN8NTools(): void {
+    // Search n8n nodes
+    this.server.registerTool(
+      'search_n8n_nodes',
+      {
+        title: 'Search n8n Nodes',
+        description: 'Search for available n8n nodes by name, description, or category',
+        inputSchema: {
+          query: z.string().describe('Search term for n8n nodes'),
+          category: z.string().optional().describe('Filter by node category')
+        }
+      },
+      async (args: any) => this.executeToolWithRouting('search_n8n_nodes', args)
+    );
+
+    // Get n8n workflows
+    this.server.registerTool(
+      'get_n8n_workflows',
+      {
+        title: 'Get n8n Workflows',
+        description: 'Retrieve all workflows from n8n instance',
+        inputSchema: {
+          limit: z.number().optional().default(10).describe('Maximum number of workflows to return')
+        }
+      },
+      async (args: any) => this.executeToolWithRouting('get_n8n_workflows', args)
+    );
+
+    // Get specific workflow
+    this.server.registerTool(
+      'get_n8n_workflow',
+      {
+        title: 'Get n8n Workflow',
+        description: 'Get a specific workflow by ID',
+        inputSchema: {
+          id: z.string().describe('Workflow ID')
+        }
+      },
+      async (args: any) => this.executeToolWithRouting('get_n8n_workflow', args)
+    );
+
+    // Create workflow
+    this.server.registerTool(
+      'create_n8n_workflow',
+      {
+        title: 'Create n8n Workflow',
+        description: 'Create a new workflow in n8n',
+        inputSchema: {
+          name: z.string().describe('Workflow name'),
+          nodes: z.array(z.any()).describe('Array of workflow nodes'),
+          connections: z.record(z.any()).describe('Node connections'),
+          active: z.boolean().optional().default(false).describe('Whether to activate the workflow')
+        }
+      },
+      async (args: any) => this.executeToolWithRouting('create_n8n_workflow', args)
+    );
+
+    // Execute workflow
+    this.server.registerTool(
+      'execute_n8n_workflow',
+      {
+        title: 'Execute n8n Workflow',
+        description: 'Execute a workflow in n8n',
+        inputSchema: {
+          id: z.string().describe('Workflow ID to execute'),
+          data: z.any().optional().describe('Input data for the workflow')
+        }
+      },
+      async (args: any) => this.executeToolWithRouting('execute_n8n_workflow', args)
+    );
+
+    // Activate workflow
+    this.server.registerTool(
+      'activate_n8n_workflow',
+      {
+        title: 'Activate n8n Workflow',
+        description: 'Activate a workflow in n8n',
+        inputSchema: {
+          id: z.string().describe('Workflow ID to activate')
+        }
+      },
+      async (args: any) => this.executeToolWithRouting('activate_n8n_workflow', args)
+    );
+
+    // Deactivate workflow
+    this.server.registerTool(
+      'deactivate_n8n_workflow',
+      {
+        title: 'Deactivate n8n Workflow',
+        description: 'Deactivate a workflow in n8n',
+        inputSchema: {
+          id: z.string().describe('Workflow ID to deactivate')
+        }
+      },
+      async (args: any) => this.executeToolWithRouting('deactivate_n8n_workflow', args)
+    );
+
+    // Get executions
+    this.server.registerTool(
+      'get_n8n_executions',
+      {
+        title: 'Get n8n Executions',
+        description: 'Get workflow execution history',
+        inputSchema: {
+          workflowId: z.string().optional().describe('Filter by workflow ID'),
+          limit: z.number().optional().default(10).describe('Maximum number of executions to return')
+        }
+      },
+      async (args: any) => this.executeToolWithRouting('get_n8n_executions', args)
+    );
+
+    // Get workflow stats
+    this.server.registerTool(
+      'get_workflow_stats',
+      {
+        title: 'Get Workflow Statistics',
+        description: 'Get execution statistics for a workflow',
+        inputSchema: {
+          id: z.string().describe('Workflow ID')
+        }
+      },
+      async (args: any) => this.executeToolWithRouting('get_workflow_stats', args)
+    );
+
+    // Get tool usage stats
+    this.server.registerTool(
+      'get_tool_usage_stats',
+      {
+        title: 'Get Tool Usage Statistics',
+        description: 'Get statistics about MCP tool usage',
+        inputSchema: {
+          period: z.string().optional().default('daily').describe('Time period (daily, weekly, monthly)')
+        }
+      },
+      async (args: any) => this.executeToolWithRouting('get_tool_usage_stats', args)
+    );
+  }
+
+  private async executeToolWithRouting(toolName: string, args: any) {
+    try {
+      // Create security context for Claude Code
+      const securityContext = createClaudeContext();
+      
+      // Validate tool access
+      if (!validateToolAccess(toolName, securityContext)) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Access denied for tool: ${toolName}`
+            }
+          ],
+          isError: true
+        };
+      }
+      
+      // Sanitize input arguments
+      const sanitizedArgs = inputSanitizer.sanitizeObject(args);
+      
+      // Build context for intelligent agent routing
+      const context = this.buildContext(toolName, sanitizedArgs);
+      
+      // Route to appropriate agent
+      const agent = agentRouter.routeTool(toolName, context);
+      
+      logger.info(`Tool ${toolName} routed to agent: ${agent.name}`);
+      
+      // Execute the tool with sanitized arguments
+      const result = await N8NMCPTools.executeTool(toolName, sanitizedArgs);
+      
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2)
+          }
+        ]
+      };
+      
+    } catch (error) {
+      logger.error(`Tool execution failed: ${toolName}`, error);
+      
+      // Log security event for tool execution failure
+      securityAudit.logEvent({
+        eventType: SecurityEventType.SECURITY_ERROR,
+        success: false,
+        toolName,
+        details: { error: (error as Error).message }
+      });
+      
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error executing ${toolName}: ${(error as Error).message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+
+  private buildContext(toolName: string, args: any): any {
+    const context = AgentContext.create();
+    
+    // Analyze tool complexity
+    if (toolName.includes('create') || toolName.includes('execute')) {
+      context.complexity('high');
+    } else if (toolName.includes('get') && toolName.includes('stats')) {
+      context.complexity('medium').requiresValidation();
+    } else {
+      context.complexity('low');
+    }
+    
+    // Route based on tool patterns
+    if (toolName.includes('node')) {
+      context.nodeExpertise();
+    }
+    
+    if (toolName.includes('workflow') && (toolName.includes('activate') || toolName.includes('execute'))) {
+      context.requiresAuthentication();
+    }
+    
+    if (toolName.includes('stats') || toolName.includes('usage')) {
+      context.requiresValidation();
+    }
+    
+    if (toolName === 'search_n8n_nodes' || toolName === 'get_tool_usage_stats') {
+      context.quickHelp();
+    }
+    
+    return context.build();
   }
 
   private setupErrorHandlers(): void {
-    this.server.onerror = (error): void => {
-      logger.error('MCP Server error:', error);
-    };
+    // McpServer handles errors internally - we just set up process handlers
 
     process.on('SIGINT', async () => {
       logger.info('Received SIGINT, shutting down gracefully...');
@@ -65,16 +296,46 @@ class N8NMcpServer {
     logger.info(`Mode: ${config.mcpMode}`);
     logger.info(`Log Level: ${config.logLevel}`);
     
-    if (config.n8nApiUrl) {
+    // Initialize database
+    await database.initialize();
+    logger.info('Database initialized');
+    
+    // Initialize resilience features
+    initializeResilience();
+    logger.info('Resilience features initialized');
+    
+    // Initialize security module
+    initializeSecurity();
+    logger.info('Security module initialized');
+    
+    // Test n8n API connection
+    if (config.n8nApiUrl && config.n8nApiKey) {
       logger.info(`n8n API URL: ${config.n8nApiUrl}`);
+      
+      if (n8nApi) {
+        const connected = await n8nApi.testConnection();
+        if (connected) {
+          logger.info('n8n API connection successful');
+        } else {
+          logger.warn('n8n API connection failed - running in offline mode');
+        }
+      }
     } else {
       logger.info('No n8n API configured - running in offline mode');
     }
+    
+    // Log agent system status
+    const agents = agentRouter.getAllAgents();
+    logger.info(`Agent system ready: ${agents.length} agents available`);
+    agents.forEach(agent => {
+      logger.debug(`  - ${agent.name} (Tier ${agent.tier}): ${agent.capabilities.join(', ')}`);
+    });
 
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     
     logger.info('n8n-MCP Modern server started successfully');
+    logger.info('10 MCP tools registered and ready for use');
   }
 }
 
