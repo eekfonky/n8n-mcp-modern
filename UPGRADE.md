@@ -21,7 +21,7 @@ That's it! The smart upgrade will:
 
 ### What Gets Upgraded
 
-#### 🛠️ **MCP Server (v4.3.3)**
+#### 🛠️ **MCP Server (v4.3.4)**
 
 - Complete implementation of all **108 tools** (up from broken "87+")
 - Fixed comprehensive tool routing (no more "Unknown tool" errors)
@@ -109,7 +109,7 @@ npx @lexinet/n8n-mcp-modern --health-check
 # ✅ All systems operational
 ```
 
-## 🎉 What's New in v4.3.3
+## 🎉 What's New in v4.3.4
 
 ### 🔧 **Major Fixes**
 

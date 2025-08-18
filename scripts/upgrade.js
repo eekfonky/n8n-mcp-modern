@@ -348,7 +348,7 @@ async function main() {
     console.log(
       "\n🎉 Upgrade complete! Your n8n MCP Modern installation is now up to date.",
     );
-    console.log("\n📝 What's new in v4.3.3:");
+    console.log("\n📝 What's new in v4.3.4:");
     console.log("  • Complete implementation of all 108 MCP tools");
     console.log(
       '  • Fixed comprehensive tool routing (no more "Unknown tool" errors)',

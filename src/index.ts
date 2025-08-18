@@ -36,7 +36,7 @@ class N8NMcpServer {
   constructor() {
     this.server = new McpServer({
       name: "@lexinet/n8n-mcp-modern",
-      version: "4.3.3",
+      version: "4.3.4",
     });
 
     this.setupTools();
