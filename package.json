@@ -1,6 +1,6 @@
 {
   "name": "@lexinet/n8n-mcp-modern",
-  "version": "4.3.1",
+  "version": "4.3.2",
   "description": "Modern n8n MCP server built with official TypeScript SDK - zero legacy, maximum performance",
   "type": "module",
   "main": "dist/index.js",

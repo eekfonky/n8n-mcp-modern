@@ -1,13 +1,13 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-4.3.1-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-4.3.2-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
 
-## 🎯 What's New in v4.3.1
+## 🎯 What's New in v4.3.2
 
 **Enhanced Reliability & Code Quality:**
 - ✅ **100% TypeScript Compliance** - Zero warnings, production-quality code
@@ -304,7 +304,7 @@ All hooks stored in `.claude/hooks/` for project isolation. See `.claude/hooks/R
 
 **Issue: MCP server hangs during installation**
 ```bash
-# v4.3.1 includes 30-second timeout protection
+# v4.3.2 includes 30-second timeout protection
 # If hanging occurs, use diagnostic tools:
 validate_mcp_config {"fix_issues": true}
 ```
@@ -332,7 +332,7 @@ list_available_tools {"category": "core"}
 
 **Issue: TypeScript compilation errors**
 ```bash
-# All TypeScript issues were fixed in v4.3.1
+# All TypeScript issues were fixed in v4.3.2
 npm run typecheck  # Should show zero errors
 npm run lint       # Should show zero warnings
 ```
