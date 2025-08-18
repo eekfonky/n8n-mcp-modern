@@ -14,12 +14,12 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const CLAUDE_AGENTS_DIR = path.join(os.homedir(), '.claude', 'agents');
+const CLAUDE_AGENTS_DIR = path.join(process.cwd(), '.claude', 'agents');
 const PACKAGE_AGENTS_DIR = path.join(__dirname, '..', 'agents');
 const VERSION_FILE = path.join(CLAUDE_AGENTS_DIR, '.n8n-mcp-version');
 
 // Current package version
-const CURRENT_VERSION = '4.3.0';
+const CURRENT_VERSION = '4.3.2';
 
 /**
  * Ensure directory exists

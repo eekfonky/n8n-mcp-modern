@@ -1,15 +1,16 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-4.3.2-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-4.3.3-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
 
-## 🎯 What's New in v4.3.2
+## 🎯 What's New in v4.3.3
 
-**Enhanced Reliability & Code Quality:**
+**Project-Specific Agent Installation & Enhanced Reliability:**
+- ✅ **Project-Specific Agents** - Installs to `.claude/agents/` in current project only  
 - ✅ **100% TypeScript Compliance** - Zero warnings, production-quality code
 - ✅ **Connection Timeout Protection** - 30-second timeout prevents hanging
 - ✅ **Advanced Diagnostics** - `validate_mcp_config` and `list_available_tools`
@@ -101,7 +102,7 @@ claude mcp add n8n-mcp-modern \
   --env N8N_API_KEY="your-api-key" \
   -- npx -y @lexinet/n8n-mcp-modern
 
-# ✨ Agents are automatically installed to ~/.claude/agents/ during setup!
+# ✨ Agents are automatically installed to .claude/agents/ in your project during setup!
 ```
 
 > **⚠️ Important**: For full n8n workflow automation capabilities, you MUST provide your n8n API credentials via environment variables as shown above.
@@ -147,7 +148,7 @@ TIER 3: SUPPORT SPECIALIST
 └─ n8n-guidance-specialist - Documentation, support & admin (merged)
 ```
 
-**Installation:** Copy `agents/*.md` files to `~/.claude/agents/` for Claude Code integration.
+**Installation:** Agents automatically install to `.claude/agents/` in your project for Claude Code integration.
 
 ## 🏗️ Architecture
 

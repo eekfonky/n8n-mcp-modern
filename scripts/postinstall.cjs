@@ -12,13 +12,13 @@ async function installAgents() {
   console.log('🤖 Installing n8n Claude Code agents...');
   
   try {
-    // Determine Claude agents directory
-    const homeDir = os.homedir();
-    const claudeAgentsDir = path.join(homeDir, '.claude', 'agents');
+    // Use current working directory for project-specific installation
+    const currentDir = process.cwd();
+    const claudeAgentsDir = path.join(currentDir, '.claude', 'agents');
     
-    // Create ~/.claude/agents directory if it doesn't exist
+    // Create .claude/agents directory if it doesn't exist  
     if (!fs.existsSync(claudeAgentsDir)) {
-      console.log('📁 Creating ~/.claude/agents directory...');
+      console.log('📁 Creating .claude/agents directory...');
       fs.mkdirSync(claudeAgentsDir, { recursive: true });
     }
     
