@@ -36,7 +36,7 @@ class N8NMcpServer {
   constructor() {
     this.server = new McpServer({
       name: "@lexinet/n8n-mcp-modern",
-      version: "4.3.4",
+      version: "4.3.5",
     });
 
     this.setupTools();
@@ -495,10 +495,59 @@ class N8NMcpServer {
 }
 
 /**
+ * Handle CLI commands
+ */
+function handleCliCommands(): boolean {
+  const args = process.argv.slice(2);
+
+  if (args.includes("--version") || args.includes("-v")) {
+    console.log("4.3.5");
+    return true;
+  }
+
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(`
+n8n-MCP Modern v4.3.5 - 108 MCP Tools for n8n Automation
+
+Usage:
+  npx @lexinet/n8n-mcp-modern              # Start MCP server (stdio mode)
+  npx @lexinet/n8n-mcp-modern --version    # Show version
+  npx @lexinet/n8n-mcp-modern --help       # Show this help
+  npx @lexinet/n8n-mcp-modern upgrade      # Smart upgrade (preserves config)
+
+Environment Variables:
+  N8N_API_URL       # Your n8n instance URL
+  N8N_API_KEY       # Your n8n API key
+  LOG_LEVEL         # debug, info, warn, error (default: info)
+
+For Claude Code integration:
+  claude mcp add n8n-mcp-modern -- npx -y @lexinet/n8n-mcp-modern
+
+Documentation: https://github.com/eekfonky/n8n-mcp-modern
+`);
+    return true;
+  }
+
+  if (args.includes("upgrade")) {
+    console.log("🔄 Starting n8n MCP Modern upgrade...");
+    console.log("Please run: npx @lexinet/n8n-mcp-modern upgrade");
+    console.log("This will preserve your configuration and update all agents.");
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Start the server
  */
 async function main(): Promise<void> {
   try {
+    // Handle CLI commands first
+    if (handleCliCommands()) {
+      return;
+    }
+
     const server = new N8NMcpServer();
     await server.start();
   } catch (error) {
