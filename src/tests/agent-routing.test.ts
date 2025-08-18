@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { agentRouter, AgentContext, AgentTier } from '../agents/index.js';
+import { agentRouter, AgentContextBuilder, AgentTier } from '../agents/index.js';
 
 describe('Agent Routing System Tests', () => {
   describe('Agent Hierarchy', () => {
@@ -37,7 +37,7 @@ describe('Agent Routing System Tests', () => {
 
   describe('Tool Routing Logic', () => {
     it('should route workflow creation to architect', () => {
-      const context = AgentContext.create()
+      const context = AgentContextBuilder.create()
         .complexity('high')
         .build();
 
@@ -47,7 +47,7 @@ describe('Agent Routing System Tests', () => {
     });
 
     it('should route performance analysis tasks to performance specialist', () => {
-      const context = AgentContext.create()
+      const context = AgentContextBuilder.create()
         .performance(true)
         .monitoring(true)
         .build();
@@ -59,7 +59,7 @@ describe('Agent Routing System Tests', () => {
     });
 
     it('should route authentication tasks to integration specialist', () => {
-      const context = AgentContext.create()
+      const context = AgentContextBuilder.create()
         .requiresAuthentication()
         .build();
 
@@ -68,7 +68,7 @@ describe('Agent Routing System Tests', () => {
     });
 
     it('should route node-related tasks to node specialist', () => {
-      const context = AgentContext.create()
+      const context = AgentContextBuilder.create()
         .nodeExpertise()
         .build();
 
@@ -77,7 +77,7 @@ describe('Agent Routing System Tests', () => {
     });
 
     it('should route general help to guidance specialist', () => {
-      const context = AgentContext.create()
+      const context = AgentContextBuilder.create()
         .guidance(true)
         .build();
 
@@ -86,7 +86,7 @@ describe('Agent Routing System Tests', () => {
     });
 
     it('should route code generation to developer specialist', () => {
-      const context = AgentContext.create()
+      const context = AgentContextBuilder.create()
         .codeGeneration(true)
         .build();
 
@@ -98,7 +98,7 @@ describe('Agent Routing System Tests', () => {
 
   describe('Context Building', () => {
     it('should build complex workflow context correctly', () => {
-      const context = AgentContext.create()
+      const context = AgentContextBuilder.create()
         .complexity('high')
         .requiresValidation()
         .nodeExpertise()
@@ -110,7 +110,7 @@ describe('Agent Routing System Tests', () => {
     });
 
     it('should build authentication context correctly', () => {
-      const context = AgentContext.create()
+      const context = AgentContextBuilder.create()
         .requiresAuthentication()
         .complexity('medium')
         .build();
@@ -120,7 +120,7 @@ describe('Agent Routing System Tests', () => {
     });
 
     it('should build research context correctly', () => {
-      const context = AgentContext.create()
+      const context = AgentContextBuilder.create()
         .quickHelp()
         .complexity('low')
         .build();
@@ -133,7 +133,7 @@ describe('Agent Routing System Tests', () => {
   describe('Priority-Based Selection', () => {
     it('should select highest priority agent for complex tasks', () => {
       // Test that high complexity tasks go to master architect
-      const highComplexityContext = AgentContext.create()
+      const highComplexityContext = AgentContextBuilder.create()
         .complexity('high')
         .build();
 
@@ -152,7 +152,7 @@ describe('Agent Routing System Tests', () => {
 
     it('should respect agent specialization', () => {
       // Node search should prefer node specialist over others
-      const nodeContext = AgentContext.create()
+      const nodeContext = AgentContextBuilder.create()
         .nodeExpertise()
         .build();
 
@@ -205,7 +205,7 @@ describe('Agent Routing System Tests', () => {
 
     it('should handle conflicting context requirements', () => {
       // Test context with conflicting requirements
-      const conflictContext = AgentContext.create()
+      const conflictContext = AgentContextBuilder.create()
         .complexity('high')
         .quickHelp()
         .requiresValidation()

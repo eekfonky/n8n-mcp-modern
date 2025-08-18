@@ -103,7 +103,10 @@ export class DeveloperWorkflowTools {
   /**
    * 1. Integrate with Git repositories
    */
-  static async integrateWithGit(args: z.infer<typeof GitIntegrationSchema>) {
+  static async integrateWithGit(args: z.infer<typeof GitIntegrationSchema>): Promise<{
+    integration: Record<string, unknown>;
+    setup: Record<string, unknown>;
+  }> {
     logger.info(`Integrating with Git repository: ${args.repository}, action: ${args.action}`);
 
     const integration = {
@@ -134,7 +137,10 @@ export class DeveloperWorkflowTools {
   /**
    * 2. Setup CI/CD pipeline
    */
-  static async setupCICDPipeline(args: z.infer<typeof CICDPipelineSchema>) {
+  static async setupCICDPipeline(args: z.infer<typeof CICDPipelineSchema>): Promise<{
+    pipeline: Record<string, unknown>;
+    deployment: Record<string, unknown>;
+  }> {
     logger.info('Setting up CI/CD pipeline on:', args.platform);
 
     const pipeline = {
@@ -166,7 +172,7 @@ export class DeveloperWorkflowTools {
   /**
    * 3-10. Additional workflow tools with simplified implementations
    */
-  static async createDeploymentAutomation(args: z.infer<typeof DeploymentSchema>) {
+  static async createDeploymentAutomation(args: z.infer<typeof DeploymentSchema>): Promise<{ deployment: Record<string, unknown> }> {
     logger.info(`Creating deployment automation for: ${args.target}, environment: ${args.environment}`);
     try {
       await database.recordToolUsage('create_deployment_automation', 0, true);
@@ -176,7 +182,7 @@ export class DeveloperWorkflowTools {
     return { deployment: { target: args.target, strategy: args.strategy } };
   }
 
-  static async generateCodeQualityChecks(args: z.infer<typeof CodeQualitySchema>) {
+  static async generateCodeQualityChecks(args: z.infer<typeof CodeQualitySchema>): Promise<{ qualityChecks: Record<string, unknown> }> {
     logger.info('Generating code quality checks:', args.checks);
     try {
       await database.recordToolUsage('generate_code_quality_checks', 0, true);
@@ -186,7 +192,7 @@ export class DeveloperWorkflowTools {
     return { qualityChecks: { checks: args.checks, thresholds: args.thresholds } };
   }
 
-  static async setupEnvironmentManagement(args: z.infer<typeof EnvironmentSchema>) {
+  static async setupEnvironmentManagement(args: z.infer<typeof EnvironmentSchema>): Promise<{ environment: Record<string, unknown> }> {
     logger.info('Setting up environment management for:', args.name);
     try {
       await database.recordToolUsage('setup_environment_management', 0, true);
@@ -196,7 +202,7 @@ export class DeveloperWorkflowTools {
     return { environment: { name: args.name, variables: args.variables } };
   }
 
-  static async createMonitoringAlerting(args: z.infer<typeof MonitoringSetupSchema>) {
+  static async createMonitoringAlerting(args: z.infer<typeof MonitoringSetupSchema>): Promise<{ monitoring: Record<string, unknown> }> {
     logger.info('Creating monitoring and alerting for metrics:', args.metrics);
     try {
       await database.recordToolUsage('create_monitoring_alerting', 0, true);
@@ -206,7 +212,7 @@ export class DeveloperWorkflowTools {
     return { monitoring: { metrics: args.metrics, alerts: args.alerts } };
   }
 
-  static async buildBackupRecovery(args: z.infer<typeof BackupStrategySchema>) {
+  static async buildBackupRecovery(args: z.infer<typeof BackupStrategySchema>): Promise<{ backup: Record<string, unknown> }> {
     logger.info(`Building backup and recovery strategy: ${args.frequency} to ${args.storage}`);
     try {
       await database.recordToolUsage('build_backup_recovery', 0, true);
@@ -216,7 +222,7 @@ export class DeveloperWorkflowTools {
     return { backup: { frequency: args.frequency, storage: args.storage } };
   }
 
-  static async generateAPITestingWorkflows(args: z.infer<typeof APITestingSchema>) {
+  static async generateAPITestingWorkflows(args: z.infer<typeof APITestingSchema>): Promise<{ testing: Record<string, unknown> }> {
     logger.info('Generating API testing workflows for', args.endpoints.length, 'endpoints');
     try {
       await database.recordToolUsage('generate_api_testing_workflows', 0, true);
@@ -226,7 +232,7 @@ export class DeveloperWorkflowTools {
     return { testing: { endpoints: args.endpoints, methods: args.methods } };
   }
 
-  static async setupInfrastructureAsCode(args: z.infer<typeof InfrastructureSchema>) {
+  static async setupInfrastructureAsCode(args: z.infer<typeof InfrastructureSchema>): Promise<{ infrastructure: Record<string, unknown> }> {
     logger.info('Setting up infrastructure as code on:', args.provider);
     try {
       await database.recordToolUsage('setup_infrastructure_as_code', 0, true);
@@ -236,7 +242,7 @@ export class DeveloperWorkflowTools {
     return { infrastructure: { provider: args.provider, components: args.components } };
   }
 
-  static async createWorkflowOrchestration(args: z.infer<typeof WorkflowOrchestrationSchema>) {
+  static async createWorkflowOrchestration(args: z.infer<typeof WorkflowOrchestrationSchema>): Promise<{ orchestration: Record<string, unknown> }> {
     logger.info('Creating workflow orchestration for', args.workflows.length, 'workflows');
     try {
       await database.recordToolUsage('create_workflow_orchestration', 0, true);
@@ -262,7 +268,7 @@ export class DeveloperWorkflowTools {
     return { autoCommit: _args.action === 'commit', autoPush: _args.action === 'push' };
   }
 
-  private static generateGitSecurity(): any {
+  private static generateGitSecurity(): Record<string, unknown> {
     return { signedCommits: true, branchProtection: true, secretsScanning: true };
   }
 
@@ -278,7 +284,7 @@ export class DeveloperWorkflowTools {
     return ['Test repository connection', 'Verify branch access', 'Test webhook delivery', 'Validate automation'];
   }
 
-  private static getGitTroubleshooting(): any {
+  private static getGitTroubleshooting(): Record<string, unknown> {
     return {
       commonIssues: ['Authentication failed', 'Branch not found', 'Webhook timeout'],
       solutions: ['Check credentials', 'Verify branch name', 'Check network connectivity']
@@ -303,15 +309,15 @@ export class DeveloperWorkflowTools {
     }
   }
 
-  private static generatePipelineTriggers(triggers: string[]): any[] {
+  private static generatePipelineTriggers(triggers: string[]): Array<Record<string, unknown>> {
     return triggers.map(trigger => ({ type: trigger, enabled: true }));
   }
 
-  private static generatePipelineNotifications(): any {
+  private static generatePipelineNotifications(): Record<string, unknown> {
     return { onSuccess: true, onFailure: true, channels: ['email', 'slack'] };
   }
 
-  private static generatePipelineSecrets(): any {
+  private static generatePipelineSecrets(): Record<string, unknown> {
     return { required: ['API_KEY', 'DATABASE_URL'], management: 'vault' };
   }
 
@@ -366,7 +372,7 @@ ${_args.stages.map((stage: string) => `        stage('${stage}') {
   private static getPipelineBestPractices(platform: string): string[] { 
     return [`Use ${platform} best practices`]; 
   }
-  private static getPipelineMonitoring(): any { return { enabled: true }; }
+  private static getPipelineMonitoring(): Record<string, unknown> { return { enabled: true }; }
 }
 
 // Export tool definitions for registration  

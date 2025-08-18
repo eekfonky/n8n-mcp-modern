@@ -1,13 +1,20 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-4.3.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-4.3.1-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
 
-## 🎯 What's New in v4.3
+## 🎯 What's New in v4.3.1
+
+**Enhanced Reliability & Code Quality:**
+- ✅ **100% TypeScript Compliance** - Zero warnings, production-quality code
+- ✅ **Connection Timeout Protection** - 30-second timeout prevents hanging
+- ✅ **Advanced Diagnostics** - `validate_mcp_config` and `list_available_tools`
+- ✅ **Robust Error Handling** - Better configuration validation and auto-fix
+- ✅ **Comprehensive Testing** - 158/159 tests passing with E2E validation
 
 **Complete Tool & Agent Ecosystem:**
 - ✅ **100 Total Tools** - Comprehensive n8n automation coverage
@@ -290,6 +297,66 @@ npm run typecheck     # Type validation
 - **YAML** - Docker Compose, configuration validation, syntax checking
 
 All hooks stored in `.claude/hooks/` for project isolation. See `.claude/hooks/README.md` for details.
+
+## 🔧 Troubleshooting
+
+### Common Installation Issues
+
+**Issue: MCP server hangs during installation**
+```bash
+# v4.3.1 includes 30-second timeout protection
+# If hanging occurs, use diagnostic tools:
+validate_mcp_config {"fix_issues": true}
+```
+
+**Issue: "Connection refused" or API errors**
+```bash
+# Validate your n8n configuration:
+validate_mcp_config
+
+# Check Node.js version (requires 22+):
+node --version
+
+# Verify n8n API endpoint is accessible:
+curl -H "Authorization: Bearer YOUR_KEY" YOUR_N8N_URL/api/v1/workflows
+```
+
+**Issue: Tools not working properly**
+```bash
+# List all available tools and their status:
+list_available_tools
+
+# Check specific category:
+list_available_tools {"category": "core"}
+```
+
+**Issue: TypeScript compilation errors**
+```bash
+# All TypeScript issues were fixed in v4.3.1
+npm run typecheck  # Should show zero errors
+npm run lint       # Should show zero warnings
+```
+
+### Environment Variable Setup
+```bash
+# Required for full functionality:
+export N8N_API_URL="https://your-n8n-instance.com"
+export N8N_API_KEY="your-api-key"
+
+# Optional performance tuning:
+export LOG_LEVEL="info"          # debug, info, warn, error
+export ENABLE_CACHE="true"       # Caches API responses
+export MAX_CONCURRENT_REQUESTS="10"  # API rate limiting
+```
+
+### Docker Users (Self-Hosted n8n)
+If using docker-compose, ensure your n8n service includes:
+```yaml
+environment:
+  - N8N_API_ENDPOINT_REST=api/v1
+```
+
+Then rebuild: `docker-compose up -d --build`
 
 ## 📄 License
 

@@ -331,7 +331,7 @@ export class HealthMonitor extends EventEmitter {
       const status = this.getStatus();
       const httpStatus = status.healthy ? 200 : 503;
       
-      (res as any).status(httpStatus).json({
+      (res as unknown as { status(code: number): { json(data: Record<string, unknown>): void } }).status(httpStatus).json({
         status: status.healthy ? 'UP' : 'DOWN',
         timestamp: new Date().toISOString(),
         checks: Object.fromEntries(status.checks)

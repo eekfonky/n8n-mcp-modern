@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { agentRouter, type Agent, AgentContext } from '../../agents/index.js';
+import { agentRouter, type Agent, AgentContextBuilder } from '../../agents/index.js';
 
 describe('Agent System Tests', () => {
   beforeEach(() => {
@@ -133,7 +133,7 @@ describe('Agent System Tests', () => {
 
   describe('Agent Context Management', () => {
     it('should create valid agent context', () => {
-      const context = AgentContext.create()
+      const context = AgentContextBuilder.create()
         .complexity('high')
         .requiresValidation(true)
         .build();
@@ -144,7 +144,7 @@ describe('Agent System Tests', () => {
     });
 
     it('should support complex context building', () => {
-      const context = AgentContext.create()
+      const context = AgentContextBuilder.create()
         .complexity('medium')
         .requiresAuthentication(true)
         .nodeExpertise(false)
@@ -157,7 +157,7 @@ describe('Agent System Tests', () => {
     });
 
     it('should support all context options', () => {
-      const context = AgentContext.create()
+      const context = AgentContextBuilder.create()
         .documentation(true)
         .community(true)
         .codeGeneration(true)

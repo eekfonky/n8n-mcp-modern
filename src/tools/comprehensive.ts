@@ -726,7 +726,7 @@ export class ComprehensiveMCPTools {
 
   // ============== CORE DISCOVERY IMPLEMENTATIONS ==============
 
-  private static async searchNodesAdvanced(args: Record<string, unknown>) {
+  private static async searchNodesAdvanced(args: Record<string, unknown>): Promise<Record<string, unknown>[]> {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const nodes = await n8nApi.searchNodeTypes(args.query as string, args.category as string);
@@ -734,7 +734,7 @@ export class ComprehensiveMCPTools {
     
     if (args.includeCredentials) {
       return results.map(node => ({
-        ...node,
+        ...(node as unknown as Record<string, unknown>),
         credentialRequirements: node.credentials?.map(c => ({
           name: c.name,
           required: c.required ?? false
@@ -742,10 +742,10 @@ export class ComprehensiveMCPTools {
       }));
     }
     
-    return results;
+    return results.map(node => node as unknown as Record<string, unknown>);
   }
 
-  private static async listNodeCategories(args: Record<string, unknown>) {
+  private static async listNodeCategories(args: Record<string, unknown>): Promise<Array<Record<string, unknown>>> {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const nodes = await n8nApi.getNodeTypes();
@@ -765,7 +765,7 @@ export class ComprehensiveMCPTools {
     return result.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  private static async getNodeDocumentation(args: Record<string, unknown>) {
+  private static async getNodeDocumentation(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const node = await n8nApi.getNodeType(args.nodeType as string);
@@ -802,7 +802,7 @@ export class ComprehensiveMCPTools {
     return documentation;
   }
 
-  private static async getNodeEssentials(args: Record<string, unknown>) {
+  private static async getNodeEssentials(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const node = await n8nApi.getNodeType(args.nodeType as string);
@@ -819,7 +819,7 @@ export class ComprehensiveMCPTools {
     };
   }
 
-  private static async listAiTools(args: Record<string, unknown>) {
+  private static async listAiTools(args: Record<string, unknown>): Promise<Array<Record<string, unknown>>> {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const nodes = await n8nApi.getNodeTypes();
@@ -837,7 +837,7 @@ export class ComprehensiveMCPTools {
       return aiNodes.filter(node => 
         node.name.toLowerCase().includes(provider.toLowerCase()) ||
         node.displayName.toLowerCase().includes(provider.toLowerCase())
-      );
+      ).map(node => node as unknown as Record<string, unknown>);
     }
     
     return aiNodes.map(node => ({
@@ -845,10 +845,10 @@ export class ComprehensiveMCPTools {
       displayName: node.displayName,
       description: node.description,
       category: node.group
-    }));
+    }) as Record<string, unknown>);
   }
 
-  private static async getDatabaseStatistics(args: Record<string, unknown>) {
+  private static async getDatabaseStatistics(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const stats = {
       database: {
         totalNodes: 0,
@@ -865,7 +865,7 @@ export class ComprehensiveMCPTools {
     return stats;
   }
 
-  private static async searchNodeProperties(args: Record<string, unknown>) {
+  private static async searchNodeProperties(args: Record<string, unknown>): Promise<Array<Record<string, unknown>>> {
     if (!n8nApi) throw new Error('n8n API not available');
     
     let nodes: Array<Record<string, unknown>> = [];
@@ -899,7 +899,7 @@ export class ComprehensiveMCPTools {
     return results;
   }
 
-  private static async validateNodeAvailability(args: Record<string, unknown>) {
+  private static async validateNodeAvailability(args: Record<string, unknown>): Promise<Array<Record<string, unknown>>> {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const availableNodes = await n8nApi.getNodeTypes();
@@ -917,12 +917,12 @@ export class ComprehensiveMCPTools {
 
   // ============== CREDENTIAL MANAGEMENT IMPLEMENTATIONS ==============
 
-  private static async createCredential(args: Record<string, unknown>) {
+  private static async createCredential(args: Record<string, unknown>): Promise<unknown> {
     if (!n8nApi) throw new Error('n8n API not available');
     return await n8nApi.createCredential(args as Omit<N8NCredential, 'id' | 'createdAt' | 'updatedAt'>);
   }
 
-  private static async listCredentials(args: Record<string, unknown>) {
+  private static async listCredentials(args: Record<string, unknown>): Promise<Array<Record<string, unknown>>> {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const credentials = await n8nApi.getCredentials();
@@ -945,15 +945,15 @@ export class ComprehensiveMCPTools {
       }));
     }
     
-    return filtered;
+    return filtered.map(cred => cred as unknown as Record<string, unknown>);
   }
 
-  private static async testCredentialConnection(args: Record<string, unknown>) {
+  private static async testCredentialConnection(args: Record<string, unknown>): Promise<unknown> {
     if (!n8nApi) throw new Error('n8n API not available');
     return await n8nApi.testCredential(args.credentialId as string);
   }
 
-  private static async getCredentialTypes(_args: Record<string, unknown>) {
+  private static async getCredentialTypes(_args: Record<string, unknown>): Promise<string[]> {
     // This would require the node types to extract credential type information
     if (!n8nApi) throw new Error('n8n API not available');
     
@@ -973,7 +973,7 @@ export class ComprehensiveMCPTools {
 
   // ============== SYSTEM MANAGEMENT IMPLEMENTATIONS ==============
 
-  private static async getSystemHealth(args: Record<string, unknown>) {
+  private static async getSystemHealth(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const health = await n8nApi.getHealthStatus();
@@ -990,10 +990,10 @@ export class ComprehensiveMCPTools {
       };
     }
     
-    return health;
+    return health as unknown as Record<string, unknown>;
   }
 
-  private static async getVersionInfo(args: Record<string, unknown>) {
+  private static async getVersionInfo(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const version = await n8nApi.getVersionInfo();
@@ -1013,7 +1013,7 @@ export class ComprehensiveMCPTools {
 
   // ============== WORKFLOW MANAGEMENT IMPLEMENTATIONS ==============
 
-  private static async cloneWorkflow(args: Record<string, unknown>) {
+  private static async cloneWorkflow(args: Record<string, unknown>): Promise<unknown> {
     if (!n8nApi) throw new Error('n8n API not available');
     
     const sourceWorkflow = await n8nApi.getWorkflow(args.workflowId as string);
@@ -1034,7 +1034,7 @@ export class ComprehensiveMCPTools {
     return result;
   }
 
-  private static async exportWorkflowToFormat(args: Record<string, unknown>) {
+  private static async exportWorkflowToFormat(args: Record<string, unknown>): Promise<unknown> {
     if (!n8nApi) throw new Error('n8n API not available');
     
     return await n8nApi.exportWorkflow(args.workflowId as string, args.format as 'json' | 'yaml');

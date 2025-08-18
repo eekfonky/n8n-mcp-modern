@@ -92,7 +92,7 @@ export class DataEncryption {
       cipher.final()
     ]);
     
-    const authTag = (cipher as any).getAuthTag();
+    const authTag = (cipher as unknown as { getAuthTag(): Buffer }).getAuthTag();
 
     return {
       encrypted: encrypted.toString('base64'),
@@ -123,7 +123,7 @@ export class DataEncryption {
       Buffer.from(encryptedData.iv, 'base64')
     );
     
-    (decipher as any).setAuthTag(Buffer.from(encryptedData.authTag, 'base64'));
+    (decipher as unknown as { setAuthTag(tag: Buffer): void }).setAuthTag(Buffer.from(encryptedData.authTag, 'base64'));
     
     const decrypted = Buffer.concat([
       decipher.update(Buffer.from(encryptedData.encrypted, 'base64')),

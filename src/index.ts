@@ -29,7 +29,7 @@ class N8NMcpServer {
   constructor() {
     this.server = new McpServer({
       name: '@lexinet/n8n-mcp-modern',
-      version: '4.3.0',
+      version: '4.3.1',
     });
 
     this.setupTools();
@@ -396,10 +396,20 @@ class N8NMcpServer {
     this.installClaudeAgents();
 
     const transport = new StdioServerTransport();
-    await this.server.connect(transport);
+    
+    // Add connection timeout
+    const connectWithTimeout = Promise.race([
+      this.server.connect(transport),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('MCP connection timeout after 30 seconds')), 30000)
+      )
+    ]);
+    
+    await connectWithTimeout;
     
     logger.info('n8n-MCP Modern server started successfully');
     logger.info('100 total tools available: 13 MCP-registered + 87 execution-routed');
+    logger.info('Server ready for Claude Code integration');
   }
 }
 

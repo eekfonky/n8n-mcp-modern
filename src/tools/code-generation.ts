@@ -179,7 +179,11 @@ export class CodeGenerationTools {
   /**
    * 3. Build data processing pipeline
    */
-  static async buildDataProcessingPipeline(args: z.infer<typeof DataProcessingSchema>) {
+  static async buildDataProcessingPipeline(args: z.infer<typeof DataProcessingSchema>): Promise<{
+    pipeline: Record<string, unknown>;
+    workflow: Record<string, unknown>;
+    performance: Record<string, unknown>;
+  }> {
     logger.info(`Building data processing pipeline: ${args.inputFormat} → ${args.outputFormat}`);
 
     const pipeline = {
@@ -210,7 +214,7 @@ export class CodeGenerationTools {
   /**
    * 4-12. Additional tool methods with simplified implementations
    */
-  static async generateNotificationWorkflow(args: z.infer<typeof NotificationSchema>) {
+  static async generateNotificationWorkflow(args: z.infer<typeof NotificationSchema>): Promise<{ workflow: Record<string, unknown> }> {
     logger.info('Generating notification workflow with channels:', args.channels);
     try {
       await database.recordToolUsage('generate_notification_workflow', 0, true);
@@ -220,7 +224,7 @@ export class CodeGenerationTools {
     return { workflow: { channels: args.channels, triggers: args.triggers } };
   }
 
-  static async createWebhookHandler(args: z.infer<typeof WebhookHandlerSchema>) {
+  static async createWebhookHandler(args: z.infer<typeof WebhookHandlerSchema>): Promise<{ handler: Record<string, unknown> }> {
     logger.info('Creating webhook handler:', args.method);
     try {
       await database.recordToolUsage('create_webhook_handler', 0, true);
@@ -230,7 +234,7 @@ export class CodeGenerationTools {
     return { handler: { method: args.method, authentication: args.authentication } };
   }
 
-  static async exportWorkflowAsTemplate(args: z.infer<typeof WorkflowTemplateSchema>) {
+  static async exportWorkflowAsTemplate(args: z.infer<typeof WorkflowTemplateSchema>): Promise<{ template: Record<string, unknown> }> {
     logger.info('Exporting workflow as template:', args.templateName);
     try {
       await database.recordToolUsage('export_workflow_as_template', 0, true);
@@ -240,7 +244,7 @@ export class CodeGenerationTools {
     return { template: { name: args.templateName, workflowId: args.workflowId } };
   }
 
-  static async generateDockerCompose(args: z.infer<typeof DockerComposeSchema>) {
+  static async generateDockerCompose(args: z.infer<typeof DockerComposeSchema>): Promise<{ compose: Record<string, unknown> }> {
     logger.info('Generating Docker Compose for environment:', args.environment);
     try {
       await database.recordToolUsage('generate_docker_compose', 0, true);
@@ -250,7 +254,7 @@ export class CodeGenerationTools {
     return { compose: { environment: args.environment, services: args.services } };
   }
 
-  static async createWorkflowDocumentation(args: z.infer<typeof DocumentationSchema>) {
+  static async createWorkflowDocumentation(args: z.infer<typeof DocumentationSchema>): Promise<{ documentation: Record<string, unknown> }> {
     logger.info('Creating documentation for workflow:', args.workflowId);
     try {
       await database.recordToolUsage('create_workflow_documentation', 0, true);
@@ -260,7 +264,7 @@ export class CodeGenerationTools {
     return { documentation: { workflowId: args.workflowId, format: args.format } };
   }
 
-  static async buildConditionalLogic(args: z.infer<typeof ConditionalLogicSchema>) {
+  static async buildConditionalLogic(args: z.infer<typeof ConditionalLogicSchema>): Promise<{ logic: Record<string, unknown> }> {
     logger.info('Building conditional logic with', args.conditions.length, 'conditions');
     try {
       await database.recordToolUsage('build_conditional_logic', 0, true);
@@ -270,7 +274,7 @@ export class CodeGenerationTools {
     return { logic: { conditions: args.conditions, actions: args.actions } };
   }
 
-  static async createErrorHandling(args: z.infer<typeof ErrorHandlingSchema>) {
+  static async createErrorHandling(args: z.infer<typeof ErrorHandlingSchema>): Promise<{ errorHandling: Record<string, unknown> }> {
     logger.info('Creating error handling for error types:', args.errorTypes);
     try {
       await database.recordToolUsage('create_error_handling', 0, true);
@@ -280,7 +284,7 @@ export class CodeGenerationTools {
     return { errorHandling: { types: args.errorTypes, strategies: args.strategies } };
   }
 
-  static async generateTestingScenarios(args: z.infer<typeof TestingScenariosSchema>) {
+  static async generateTestingScenarios(args: z.infer<typeof TestingScenariosSchema>): Promise<{ scenarios: Record<string, unknown> }> {
     logger.info('Generating test scenarios for workflow:', args.workflowId);
     try {
       await database.recordToolUsage('generate_testing_scenarios', 0, true);
@@ -290,7 +294,7 @@ export class CodeGenerationTools {
     return { scenarios: { workflowId: args.workflowId, types: args.testTypes } };
   }
 
-  static async buildIntegrationBoilerplate(args: z.infer<typeof IntegrationBoilerplateSchema>) {
+  static async buildIntegrationBoilerplate(args: z.infer<typeof IntegrationBoilerplateSchema>): Promise<{ boilerplate: Record<string, unknown> }> {
     logger.info('Building integration boilerplate for node:', args.nodeName);
     try {
       await database.recordToolUsage('build_integration_boilerplate', 0, true);
@@ -363,16 +367,16 @@ export class CodeGenerationTools {
     return [`Rate limiting for ${serviceName}`, 'Authentication errors', 'Network timeouts'];
   }
 
-  private static generateInputHandler(format: string): any { return { format }; }
-  private static async generateTransformationNodes(transformations: string[]): Promise<any[]> { 
+  private static generateInputHandler(format: string): Record<string, unknown> { return { format }; }
+  private static async generateTransformationNodes(transformations: string[]): Promise<Record<string, unknown>[]> { 
     return transformations.map(t => ({ transformation: t })); 
   }
-  private static generateValidationNodes(validations: string[]): any[] { 
+  private static generateValidationNodes(validations: string[]): Record<string, unknown>[] { 
     return validations.map(v => ({ validation: v })); 
   }
-  private static generateOutputHandler(format: string): any { return { format }; }
-  private static generateDataPipelineErrorHandling(): any { return { strategy: 'retry' }; }
-  private static assembleDataWorkflow(pipeline: any): any { return { pipeline }; }
+  private static generateOutputHandler(format: string): Record<string, unknown> { return { format }; }
+  private static generateDataPipelineErrorHandling(): Record<string, unknown> { return { strategy: 'retry' }; }
+  private static assembleDataWorkflow(pipeline: Record<string, unknown>): Record<string, unknown> { return { pipeline }; }
   private static estimateThroughput(_args: z.infer<typeof DataProcessingSchema>): string { 
     return '1000 records/minute'; 
   }

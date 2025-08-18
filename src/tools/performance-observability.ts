@@ -121,7 +121,10 @@ export class PerformanceObservabilityTools {
   /**
    * 1. Analyze workflow performance metrics
    */
-  static async analyzeWorkflowPerformance(args: z.infer<typeof WorkflowPerformanceSchema>) {
+  static async analyzeWorkflowPerformance(args: z.infer<typeof WorkflowPerformanceSchema>): Promise<{
+    analysis: Record<string, unknown>;
+    summary: Record<string, unknown>;
+  }> {
     logger.info(`Analyzing workflow performance for ${args.workflowId} over ${args.timeRange}`);
 
     const analysis = {
@@ -152,7 +155,10 @@ export class PerformanceObservabilityTools {
   /**
    * 2. Monitor system-wide performance metrics
    */
-  static async monitorSystemMetrics(args: z.infer<typeof SystemMetricsSchema>) {
+  static async monitorSystemMetrics(args: z.infer<typeof SystemMetricsSchema>): Promise<{
+    metrics: Record<string, unknown>;
+    insights: Record<string, unknown>;
+  }> {
     logger.info(`Monitoring system metrics: ${args.components.join(', ')} over ${args.timeRange}`);
 
     const metrics = {
@@ -183,7 +189,10 @@ export class PerformanceObservabilityTools {
   /**
    * 3. Generate performance optimization recommendations
    */
-  static async generateOptimizationRecommendations(args: z.infer<typeof PerformanceOptimizationSchema>) {
+  static async generateOptimizationRecommendations(args: z.infer<typeof PerformanceOptimizationSchema>): Promise<{
+    optimizations: Record<string, unknown>;
+    prioritization: Record<string, unknown>;
+  }> {
     logger.info(`Generating optimization recommendations for workflow ${args.workflowId}`);
 
     const optimizations = {
@@ -213,7 +222,7 @@ export class PerformanceObservabilityTools {
   /**
    * 4-12. Additional performance tools with simplified implementations
    */
-  static async setupAlertConfiguration(args: z.infer<typeof AlertConfigurationSchema>) {
+  static async setupAlertConfiguration(args: z.infer<typeof AlertConfigurationSchema>): Promise<{ alert: Record<string, unknown> }> {
     logger.info(`Setting up alert configuration: ${args.name}`);
     try {
       await database.recordToolUsage('setup_alert_configuration', 0, true);
@@ -230,7 +239,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  static async createCustomDashboard(args: z.infer<typeof CustomDashboardSchema>) {
+  static async createCustomDashboard(args: z.infer<typeof CustomDashboardSchema>): Promise<{ dashboard: Record<string, unknown> }> {
     logger.info(`Creating custom dashboard: ${args.name}`);
     try {
       await database.recordToolUsage('create_custom_dashboard', 0, true);
@@ -247,7 +256,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  static async performCapacityPlanning(args: z.infer<typeof CapacityPlanningSchema>) {
+  static async performCapacityPlanning(args: z.infer<typeof CapacityPlanningSchema>): Promise<{ planning: Record<string, unknown> }> {
     logger.info(`Performing capacity planning: ${args.analysisType} for ${args.timeHorizon}`);
     try {
       await database.recordToolUsage('perform_capacity_planning', 0, true);
@@ -264,7 +273,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  static async generateHealthChecks(args: z.infer<typeof HealthCheckSchema>) {
+  static async generateHealthChecks(args: z.infer<typeof HealthCheckSchema>): Promise<{ healthChecks: Record<string, unknown> }> {
     logger.info(`Generating health checks for scope: ${args.scope}`);
     try {
       await database.recordToolUsage('generate_health_checks', 0, true);
@@ -280,7 +289,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  static async analyzePerformanceTrends(args: z.infer<typeof PerformanceTrendSchema>) {
+  static async analyzePerformanceTrends(args: z.infer<typeof PerformanceTrendSchema>): Promise<{ trends: Record<string, unknown> }> {
     logger.info(`Analyzing performance trends for ${args.metrics.length} metrics over ${args.timeRange}`);
     try {
       await database.recordToolUsage('analyze_performance_trends', 0, true);
@@ -297,7 +306,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  static async monitorResourceUtilization(args: z.infer<typeof ResourceUtilizationSchema>) {
+  static async monitorResourceUtilization(args: z.infer<typeof ResourceUtilizationSchema>): Promise<{ utilization: Record<string, unknown> }> {
     logger.info(`Monitoring resource utilization for: ${args.resources.join(', ')}`);
     try {
       await database.recordToolUsage('monitor_resource_utilization', 0, true);
@@ -314,7 +323,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  static async setupSLAMonitoring(args: z.infer<typeof SLAMonitoringSchema>) {
+  static async setupSLAMonitoring(args: z.infer<typeof SLAMonitoringSchema>): Promise<{ slaMonitoring: Record<string, unknown> }> {
     logger.info(`Setting up SLA monitoring for ${args.slaTargets.length} targets`);
     try {
       await database.recordToolUsage('setup_sla_monitoring', 0, true);
@@ -331,7 +340,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  static async performLogAnalysis(args: z.infer<typeof LogAnalysisSchema>) {
+  static async performLogAnalysis(args: z.infer<typeof LogAnalysisSchema>): Promise<{ logAnalysis: Record<string, unknown> }> {
     logger.info(`Performing log analysis over ${args.timeRange} for levels: ${args.logLevels.join(', ')}`);
     try {
       await database.recordToolUsage('perform_log_analysis', 0, true);
@@ -348,7 +357,7 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  static async generateCostAnalysis(args: z.infer<typeof CostAnalysisSchema>) {
+  static async generateCostAnalysis(args: z.infer<typeof CostAnalysisSchema>): Promise<{ costAnalysis: Record<string, unknown> }> {
     logger.info(`Generating cost analysis: ${args.analysisType} over ${args.timeRange}`);
     try {
       await database.recordToolUsage('generate_cost_analysis', 0, true);
@@ -451,23 +460,23 @@ export class PerformanceObservabilityTools {
     ];
   }
 
-  private static generateSystemTrends(components: string[], _timeRange: string): any {
+  private static generateSystemTrends(components: string[], _timeRange: string): Record<string, unknown> {
     return { trending: 'up', confidence: 85, components };
   }
 
-  private static generateCapacityMetrics(_components: string[]): any {
+  private static generateCapacityMetrics(_components: string[]): Record<string, unknown> {
     return { utilizationRate: 65, projectedCapacity: 'adequate', growthRate: 1.15 };
   }
 
-  private static identifyBottlenecks(_components: any): string[] {
+  private static identifyBottlenecks(_components: Record<string, unknown>): string[] {
     return ['Database connection pool', 'Network I/O'];
   }
 
-  private static assessScalingNeeds(_metrics: any): any {
+  private static assessScalingNeeds(_metrics: Record<string, unknown>): Record<string, unknown> {
     return { immediate: false, upcoming: true, timeframe: '3 months' };
   }
 
-  private static identifyOptimizationOpportunities(_metrics: any): string[] {
+  private static identifyOptimizationOpportunities(_metrics: Record<string, unknown>): string[] {
     return ['Enable connection pooling', 'Implement query caching', 'Optimize memory allocation'];
   }
 
@@ -505,16 +514,16 @@ export class PerformanceObservabilityTools {
     };
   }
 
-  private static getHighImpactOptimizations(optimizations: any): any[] {
-    return optimizations.recommendations.filter((r: any) => r.impact === 'high');
+  private static getHighImpactOptimizations(optimizations: Record<string, unknown>): Array<Record<string, unknown>> {
+    return (optimizations.recommendations as Array<Record<string, unknown>>).filter((r: Record<string, unknown>) => r.impact === 'high');
   }
 
-  private static getQuickWins(optimizations: any): any[] {
-    return optimizations.recommendations.filter((r: any) => r.effort === 'low');
+  private static getQuickWins(optimizations: Record<string, unknown>): Array<Record<string, unknown>> {
+    return (optimizations.recommendations as Array<Record<string, unknown>>).filter((r: Record<string, unknown>) => r.effort === 'low');
   }
 
-  private static getLongTermImprovements(optimizations: any): any[] {
-    return optimizations.recommendations.filter((r: any) => r.effort === 'high');
+  private static getLongTermImprovements(optimizations: Record<string, unknown>): Array<Record<string, unknown>> {
+    return (optimizations.recommendations as Array<Record<string, unknown>>).filter((r: Record<string, unknown>) => r.effort === 'high');
   }
 
   private static generateCapacityProjections(_args: z.infer<typeof CapacityPlanningSchema>): Record<string, unknown> {
@@ -559,7 +568,7 @@ export class PerformanceObservabilityTools {
   }
 
   private static generateResourceMetrics(args: z.infer<typeof ResourceUtilizationSchema>): Record<string, unknown> {
-    const metrics: any = {};
+    const metrics: Record<string, Record<string, number>> = {};
     args.resources.forEach((resource: string) => {
       metrics[resource] = {
         current: Math.random() * 100,
@@ -607,7 +616,7 @@ export class PerformanceObservabilityTools {
   }
 
   private static generateCostBreakdown(args: z.infer<typeof CostAnalysisSchema>): Record<string, unknown> {
-    const breakdown: any = {};
+    const breakdown: Record<string, Record<string, unknown>> = {};
     args.costCategories.forEach((category: string) => {
       breakdown[category] = {
         current: Math.random() * 1000 + 100,
