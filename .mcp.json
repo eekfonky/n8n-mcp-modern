@@ -1,12 +1,15 @@
 {
   "mcpServers": {
     "n8n-mcp-modern": {
-      "command": "node",
-      "args": ["dist/index.js"],
-      "cwd": "/home/chris/Code/n8n-mcp-modern",
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@lexinet/n8n-mcp-modern"
+      ],
       "env": {
-        "NODE_ENV": "production",
-        "LOG_LEVEL": "info"
+        "N8N_API_URL": "https://n8n.srv925321.hstgr.cloud",
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3NjYwNWZlZi0yMjdlLTQ4ZGEtODhkOC05ZTJkNGMwMTM2ZjIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzU1NTU1MDU5fQ.kUQtb9aLt1RFcO-azJIbXRyUriGMKCwo_djgWJP0QKo"
       }
     }
   }

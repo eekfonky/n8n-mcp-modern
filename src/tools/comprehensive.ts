@@ -1751,7 +1751,9 @@ export class ComprehensiveMCPTools {
       return {
         users: includeInactive
           ? users
-          : users.filter((user: any) => user.active !== false),
+          : users.filter(
+              (user) => (user as { active?: boolean }).active !== false,
+            ),
         totalCount: users.length,
       };
     } catch (error) {
@@ -1851,8 +1853,9 @@ export class ComprehensiveMCPTools {
       return {
         userId,
         role: user.role,
-        permissions: (user as any).permissions ?? {},
-        lastActivity: (user as any).lastActivity,
+        permissions:
+          (user as { permissions?: Record<string, unknown> }).permissions ?? {},
+        lastActivity: (user as { lastActivity?: string }).lastActivity,
       };
     } catch (error) {
       throw new Error(
@@ -1921,7 +1924,8 @@ export class ComprehensiveMCPTools {
       if (category) {
         return {
           category,
-          settings: (settings as any)[category] ?? {},
+          settings:
+            (settings as unknown as Record<string, unknown>)[category] ?? {},
         };
       }
 

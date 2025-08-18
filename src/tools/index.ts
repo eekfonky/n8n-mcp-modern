@@ -468,7 +468,6 @@ export class N8NMCPTools {
           break;
 
         case "get_n8n_executions":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           result = await this.getExecutions(args as any);
           break;
 
@@ -495,12 +494,10 @@ export class N8NMCPTools {
           break;
 
         case "list_available_tools":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           result = await this.listAvailableTools(args as any);
           break;
 
         case "validate_mcp_config":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           result = await this.validateMcpConfig(args as any);
           break;
 
@@ -522,65 +519,53 @@ export class N8NMCPTools {
 
         // Phase 1: Code Generation Tools
         case "generate_workflow_from_description":
-           
           result = await CodeGenerationTools.generateWorkflowFromDescription(
             args as any,
           );
           break;
         case "create_api_integration_template":
-           
           result = await CodeGenerationTools.createAPIIntegrationTemplate(
             args as any,
           );
           break;
         case "build_data_processing_pipeline":
-           
           result = await CodeGenerationTools.buildDataProcessingPipeline(
             args as any,
           );
           break;
         case "generate_notification_workflow":
-           
           result = await CodeGenerationTools.generateNotificationWorkflow(
             args as any,
           );
           break;
         case "create_webhook_handler":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           result = await CodeGenerationTools.createWebhookHandler(args as any);
           break;
         case "export_workflow_as_template":
-           
           result = await CodeGenerationTools.exportWorkflowAsTemplate(
             args as any,
           );
           break;
         case "generate_docker_compose":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           result = await CodeGenerationTools.generateDockerCompose(args as any);
           break;
         case "create_workflow_documentation":
-           
           result = await CodeGenerationTools.createWorkflowDocumentation(
             args as any,
           );
           break;
         case "build_conditional_logic":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           result = await CodeGenerationTools.buildConditionalLogic(args as any);
           break;
         case "create_error_handling":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           result = await CodeGenerationTools.createErrorHandling(args as any);
           break;
         case "generate_testing_scenarios":
-           
           result = await CodeGenerationTools.generateTestingScenarios(
             args as any,
           );
           break;
         case "build_integration_boilerplate":
-           
           result = await CodeGenerationTools.buildIntegrationBoilerplate(
             args as any,
           );
@@ -588,57 +573,47 @@ export class N8NMCPTools {
 
         // Phase 2: Developer Workflow Tools
         case "integrate_with_git":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           result = await DeveloperWorkflowTools.integrateWithGit(args as any);
           break;
         case "setup_cicd_pipeline":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           result = await DeveloperWorkflowTools.setupCICDPipeline(args as any);
           break;
         case "create_deployment_automation":
-           
           result = await DeveloperWorkflowTools.createDeploymentAutomation(
             args as any,
           );
           break;
         case "generate_code_quality_checks":
-           
           result = await DeveloperWorkflowTools.generateCodeQualityChecks(
             args as any,
           );
           break;
         case "setup_environment_management":
-           
           result = await DeveloperWorkflowTools.setupEnvironmentManagement(
             args as any,
           );
           break;
         case "create_monitoring_alerting":
-           
           result = await DeveloperWorkflowTools.createMonitoringAlerting(
             args as any,
           );
           break;
         case "build_backup_recovery":
-           
           result = await DeveloperWorkflowTools.buildBackupRecovery(
             args as any,
           );
           break;
         case "generate_api_testing_workflows":
-           
           result = await DeveloperWorkflowTools.generateAPITestingWorkflows(
             args as any,
           );
           break;
         case "setup_infrastructure_as_code":
-           
           result = await DeveloperWorkflowTools.setupInfrastructureAsCode(
             args as any,
           );
           break;
         case "create_workflow_orchestration":
-           
           result = await DeveloperWorkflowTools.createWorkflowOrchestration(
             args as any,
           );
@@ -646,76 +621,64 @@ export class N8NMCPTools {
 
         // Phase 3: Performance & Observability Tools
         case "analyze_workflow_performance":
-           
           result =
             await PerformanceObservabilityTools.analyzeWorkflowPerformance(
               args as any,
             );
           break;
         case "monitor_system_metrics":
-           
           result = await PerformanceObservabilityTools.monitorSystemMetrics(
             args as any,
           );
           break;
         case "generate_optimization_recommendations":
-           
           result =
             await PerformanceObservabilityTools.generateOptimizationRecommendations(
               args as any,
             );
           break;
         case "setup_alert_configuration":
-           
           result = await PerformanceObservabilityTools.setupAlertConfiguration(
             args as any,
           );
           break;
         case "create_custom_dashboard":
-           
           result = await PerformanceObservabilityTools.createCustomDashboard(
             args as any,
           );
           break;
         case "perform_capacity_planning":
-           
           result = await PerformanceObservabilityTools.performCapacityPlanning(
             args as any,
           );
           break;
         case "generate_health_checks":
-           
           result = await PerformanceObservabilityTools.generateHealthChecks(
             args as any,
           );
           break;
         case "analyze_performance_trends":
-           
           result = await PerformanceObservabilityTools.analyzePerformanceTrends(
             args as any,
           );
           break;
         case "monitor_resource_utilization":
-           
           result =
             await PerformanceObservabilityTools.monitorResourceUtilization(
               args as any,
             );
           break;
         case "setup_sla_monitoring":
-           
           result = await PerformanceObservabilityTools.setupSLAMonitoring(
             args as any,
           );
           break;
         case "perform_log_analysis":
-           
           result = await PerformanceObservabilityTools.performLogAnalysis(
             args as any,
           );
           break;
         case "generate_cost_analysis":
-           
           result = await PerformanceObservabilityTools.generateCostAnalysis(
             args as any,
           );

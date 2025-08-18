@@ -501,18 +501,19 @@ function handleCliCommands(): boolean {
   const args = process.argv.slice(2);
 
   if (args.includes("--version") || args.includes("-v")) {
-    console.log("4.3.5");
+    process.stdout.write("4.3.5\n");
     return true;
   }
 
   if (args.includes("--help") || args.includes("-h")) {
-    console.log(`
+    process.stdout.write(`
 n8n-MCP Modern v4.3.5 - 108 MCP Tools for n8n Automation
 
 Usage:
   npx @lexinet/n8n-mcp-modern              # Start MCP server (stdio mode)
   npx @lexinet/n8n-mcp-modern --version    # Show version
   npx @lexinet/n8n-mcp-modern --help       # Show this help
+  npx @lexinet/n8n-mcp-modern install      # Smart MCP installation (auto-detects scope)
   npx @lexinet/n8n-mcp-modern upgrade      # Smart upgrade (preserves config)
 
 Environment Variables:
@@ -528,10 +529,28 @@ Documentation: https://github.com/eekfonky/n8n-mcp-modern
     return true;
   }
 
+  if (args.includes("install")) {
+    // Run the smart installer
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const installerPath = join(__dirname, "..", "scripts", "install-mcp.js");
+
+    const installer = spawn("node", [installerPath], {
+      stdio: "inherit",
+      env: process.env,
+    });
+
+    installer.on("close", (code) => {
+      process.exit(code ?? 0);
+    });
+
+    return true;
+  }
   if (args.includes("upgrade")) {
-    console.log("🔄 Starting n8n MCP Modern upgrade...");
-    console.log("Please run: npx @lexinet/n8n-mcp-modern upgrade");
-    console.log("This will preserve your configuration and update all agents.");
+    process.stdout.write("🔄 Starting n8n MCP Modern upgrade...\n");
+    process.stdout.write("Please run: npx @lexinet/n8n-mcp-modern upgrade\n");
+    process.stdout.write(
+      "This will preserve your configuration and update all agents.\n",
+    );
     return true;
   }
 

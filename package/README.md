@@ -99,44 +99,19 @@ validate_mcp_config {"fix_issues": true}
 >
 > Run `docker-compose up -d --build` to rebuild your container, then create your API key. This enables the REST API endpoints required by the MCP server.
 
-**Method 1: Smart Installation (Recommended)**
+**Method 1: Claude MCP Integration (Recommended)**
 
 ```bash
-# Install the package first
-npm install -g @lexinet/n8n-mcp-modern
+# Basic usage (offline mode - limited functionality)
+claude mcp add n8n-mcp-modern -- npx -y @lexinet/n8n-mcp-modern
 
-# Smart installer - automatically detects project vs global scope
-N8N_API_URL="https://your-n8n-instance.com" \
-N8N_API_KEY="your-api-key" \
-npm run mcp:install
-
-# Or run from any directory
-N8N_API_URL="https://your-n8n-instance.com" \
-N8N_API_KEY="your-api-key" \
-npx @lexinet/n8n-mcp-modern install
-```
-
-**The smart installer automatically:**
-
-- ✅ **Project Detection**: Uses `--scope project` when in a project directory with `.mcp.json` or `package.json`
-- ✅ **Global Fallback**: Uses `--scope local` when no project context detected
-- ✅ **Team Sharing**: Creates `.mcp.json` for version control when project-scoped
-- ✅ **Environment Validation**: Ensures API credentials are properly configured
-
-**Method 2: Manual Installation**
-
-```bash
-# Project-scoped (recommended for development projects)
-claude mcp add n8n-mcp-modern --scope project \
+# Full functionality with your n8n instance (RECOMMENDED)
+claude mcp add n8n-mcp-modern \
   --env N8N_API_URL="https://your-n8n-instance.com" \
   --env N8N_API_KEY="your-api-key" \
   -- npx -y @lexinet/n8n-mcp-modern
 
-# Global installation
-claude mcp add n8n-mcp-modern --scope local \
-  --env N8N_API_URL="https://your-n8n-instance.com" \
-  --env N8N_API_KEY="your-api-key" \
-  -- npx -y @lexinet/n8n-mcp-modern
+# ✨ Agents are automatically installed to .claude/agents/ in your project during setup!
 ```
 
 > **⚠️ Important**: For full n8n workflow automation capabilities, you MUST provide your n8n API credentials via environment variables as shown above.
