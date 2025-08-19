@@ -1,18 +1,26 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-4.4.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-4.5.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
 
-## 🎯 What's New in v4.4.0
+## 🎯 What's New in v4.5.0
+
+**JavaScript Specialist Agent & Context7 MCP Integration:**
+
+- ✅ **7-Agent System** - Added n8n-javascript-specialist for Code node validation
+- ✅ **Context7 MCP Integration** - Real-time documentation access for 5 key agents
+- ✅ **Enhanced Code Generation** - Current API docs for better templates
+- ✅ **Up-to-Date Auth Patterns** - Live documentation for 525+ platform integrations
+- ✅ **Current Best Practices** - Always-current Node.js and library documentation
 
 **Enhanced Stability & Production Readiness:**
 
 - ✅ **Production Stability** - Enhanced error handling and graceful shutdown
-- ✅ **Complete Test Coverage** - 158/159 tests passing with full E2E validation
+- ✅ **Complete Test Coverage** - 156/159 tests passing with full E2E validation
 - ✅ **Zero Security Issues** - Clean dependency tree with minimal attack surface
 - ✅ **TypeScript Excellence** - Strict mode compliance with comprehensive type safety
 - ✅ **Performance Optimized** - Advanced caching and connection pooling
@@ -21,7 +29,7 @@
 **Complete Tool & Agent Ecosystem:**
 
 - ✅ **108 Total Tools** - Comprehensive n8n automation coverage
-- ✅ **6-Agent Hierarchy** - Optimized for Claude Code workflows
+- ✅ **7-Agent Hierarchy** - Optimized for Claude Code workflows
 - ✅ **Code Generation** - AI-powered workflow creation (12 tools)
 - ✅ **DevOps Integration** - CI/CD & deployment automation (10 tools)
 - ✅ **Performance Monitoring** - Advanced observability & optimization (12 tools)
@@ -119,7 +127,35 @@ n8n-mcp install
 - ✅ **Project Detection**: Uses `--scope project` when in a project directory with `.mcp.json` or `package.json`
 - ✅ **Global Fallback**: Uses `--scope local` when no project context detected
 - ✅ **Team Sharing**: Creates `.mcp.json` for version control when project-scoped
-- ✅ **Environment Validation**: Ensures API credentials are properly configured
+
+### 📚 Context7 MCP (Recommended for Full Functionality)
+
+For enhanced agent capabilities with real-time documentation access, install Context7 MCP:
+
+```bash
+# Install Context7 MCP for up-to-date documentation
+claude mcp add context7 -s user -- npx -y @upstash/context7-mcp
+
+# Optional: Also install Sequential Thinking MCP for complex analysis
+claude mcp add sequential-thinking -s user -- npx -y @modelcontextprotocol/server-sequential-thinking
+```
+
+**What Context7 Enables:**
+
+- ✅ **Real-time API Documentation** - Current docs instead of outdated knowledge
+- ✅ **Enhanced Code Generation** - Better templates with current API patterns
+- ✅ **Up-to-Date Auth Patterns** - Live documentation for 525+ integrations
+- ✅ **Current Best Practices** - Always-current Node.js and library standards
+
+**Agents with Context7 Integration:**
+
+- `n8n-developer-specialist` - Current API/library docs for code generation
+- `n8n-integration-specialist` - Up-to-date auth docs across 525+ platforms
+- `n8n-guidance-specialist` - Current documentation and tutorials
+- `n8n-node-specialist` - AI/ML library docs and community packages
+- `n8n-javascript-specialist` - Current Node.js and JavaScript library documentation
+
+> **Note**: n8n-MCP Modern works fully without Context7, but agents will rely on training knowledge cutoffs instead of real-time documentation.
 
 **Method 2: Manual Installation**
 
@@ -201,6 +237,7 @@ TIER 2: CORE DOMAIN SPECIALISTS
 ├─ n8n-developer-specialist - Code generation, templates, DevOps workflows
 ├─ n8n-integration-specialist - Authentication & connectivity
 ├─ n8n-node-specialist - 525+ node expertise + AI/ML patterns
+├─ n8n-javascript-specialist - Code node validation & optimization
 └─ n8n-performance-specialist - Monitoring, optimization, analytics
 
 TIER 3: SUPPORT SPECIALIST
@@ -214,7 +251,7 @@ TIER 3: SUPPORT SPECIALIST
 **Clean Separation of Concerns:**
 
 1. **🔧 MCP Server** (`@lexinet/n8n-mcp-modern`): Provides 108 n8n-specific tools
-2. **🤖 Claude Code Agents** (`agents/*.md`): 6 specialized agents using MCP tools
+2. **🤖 Claude Code Agents** (`agents/*.md`): 7 specialized agents using MCP tools
 3. **⚡ User Experience**: Claude Code Task tool → Agent → MCP tools → n8n API
 
 This architecture leverages Claude Code's built-in agent system while providing deep n8n integration through MCP tools.
