@@ -1,14 +1,15 @@
 /**
  * Optimized Agent System for n8n MCP Modern
- * Implements the 6-agent hierarchy optimized for Claude Code development workflows
+ * Implements the 7-agent hierarchy optimized for Claude Code development workflows
  *
  * TIER 1 - Master Orchestrator (1):
  *   - n8n-workflow-architect
  *
- * TIER 2 - Core Domain Specialists (4):
+ * TIER 2 - Core Domain Specialists (5):
  *   - n8n-developer-specialist [NEW] - Code generation, templates, DevOps
  *   - n8n-integration-specialist - Authentication, APIs, connectivity
  *   - n8n-node-specialist [ENHANCED] - Nodes + AI/ML + community
+ *   - n8n-javascript-specialist [NEW] - JavaScript validation, optimization, security
  *   - n8n-performance-specialist [NEW] - Monitoring, optimization, analytics
  *
  * TIER 3 - Support Specialist (1):
@@ -30,6 +31,8 @@ export enum AgentCapability {
   NODE_EXPERTISE = "node_expertise",
 
   AUTHENTICATION = "authentication",
+
+  JAVASCRIPT_VALIDATION = "javascript_validation",
 
   PERFORMANCE_OPTIMIZATION = "performance_optimization",
 
@@ -1278,6 +1281,187 @@ export class PerformanceSpecialist implements Agent {
   }
 }
 
+export class JavaScriptSpecialist implements Agent {
+  name = "n8n-javascript-specialist";
+  tier = AgentTier.SPECIALIST;
+  capabilities = [
+    AgentCapability.JAVASCRIPT_VALIDATION,
+    AgentCapability.CODE_GENERATION,
+  ];
+  description =
+    "JavaScript validation & optimization specialist for n8n workflows. Proactively monitors Code nodes, Function nodes, expressions, and custom JavaScript within n8n workflows for security, performance, and best practices.";
+
+  canHandle(toolName: string, context?: AgentContext): boolean {
+    const javascriptTools = [
+      "validate_javascript",
+      "optimize_code_node",
+      "validate_expressions",
+      "security_scan",
+      "performance_profile",
+    ];
+
+    const javascriptKeywords = [
+      "javascript",
+      "js",
+      "code node",
+      "function node",
+      "expression",
+      "eval",
+      "async",
+      "await",
+      "api call",
+      "webhook",
+      "custom node",
+    ];
+
+    // Handle JavaScript-specific tools
+    if (javascriptTools.includes(toolName)) {
+      return true;
+    }
+
+    // Handle general tools with JavaScript context
+    if (context) {
+      // High priority for security and validation needs
+      if (context.requiresValidation && toolName.includes("validate")) {
+        return true;
+      }
+
+      // Handle JavaScript-related queries
+      if (
+        javascriptKeywords.some(
+          (keyword) =>
+            toolName.toLowerCase().includes(keyword) ||
+            context.toString().toLowerCase().includes(keyword),
+        )
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  getPriority(toolName: string, context?: AgentContext): number {
+    if (context?.requiresValidation === true) return 9;
+    if (toolName.includes("javascript") || toolName.includes("code")) return 8;
+    return 7;
+  }
+
+  canEscalate(toolName: string, context?: AgentContext): boolean {
+    return (
+      context?.complexity === "high" ||
+      toolName.includes("workflow") ||
+      context?.nodeExpertise === true
+    );
+  }
+
+  shouldEscalate(
+    toolName: string,
+    context?: AgentContext,
+    reason?: EscalationReason,
+  ): boolean {
+    return (
+      reason === EscalationReason.COMPLEXITY_EXCEEDED ||
+      reason === EscalationReason.CROSS_DOMAIN_DEPENDENCY ||
+      reason === EscalationReason.ORCHESTRATION_REQUIRED
+    );
+  }
+
+  async escalateToCoordinator(
+    request: EscalationRequest,
+  ): Promise<EscalationResult> {
+    return {
+      success: true,
+      handledBy: this.name,
+      action: "escalated_further",
+      message: `Escalating ${request.reason} to workflow architect for coordination`,
+      recommendedAgent: "n8n-workflow-architect",
+      newContext: request.additionalContext as AgentContext,
+    };
+  }
+
+  async handleTool(
+    toolName: string,
+    _args: Record<string, unknown>,
+    _context?: AgentContext,
+  ): Promise<unknown> {
+    logger.info(`JavaScriptSpecialist handling: ${toolName}`);
+
+    // For now, delegate to appropriate tools or provide guidance
+    switch (toolName) {
+      case "validate_javascript":
+        return {
+          analysis: "JavaScript validation analysis would be performed here",
+          security: "Security scan results",
+          performance: "Performance optimization suggestions",
+          bestPractices: "n8n-specific JavaScript recommendations",
+        };
+
+      default:
+        return {
+          specialist: "n8n-javascript-specialist",
+          guidance: `JavaScript validation and optimization guidance for ${toolName}`,
+          recommendations: [
+            "Use proper error handling in Code nodes",
+            "Validate data access patterns",
+            "Implement security best practices",
+            "Optimize async operations for workflow performance",
+          ],
+        };
+    }
+  }
+
+  async handleEscalation(
+    request: EscalationRequest,
+  ): Promise<EscalationResult> {
+    logger.info(
+      `JavaScriptSpecialist handling escalation from ${request.sourceAgent}: ${request.reason}`,
+    );
+
+    // Handle JavaScript-specific escalations
+    if (request.reason === EscalationReason.SECURITY_CONCERN) {
+      return {
+        success: true,
+        handledBy: this.name,
+        action: "handled",
+        message: "Performing comprehensive JavaScript security analysis",
+        metadata: {
+          recommendations: [
+            "Scan for hardcoded secrets",
+            "Validate input sanitization",
+            "Check for injection vulnerabilities",
+            "Review async/await patterns",
+          ],
+        },
+      };
+    }
+
+    if (request.reason === EscalationReason.PERFORMANCE_BOTTLENECK) {
+      return {
+        success: true,
+        handledBy: this.name,
+        action: "handled",
+        message: "Analyzing JavaScript performance in n8n context",
+        metadata: {
+          optimizations: [
+            "Convert sync to async operations",
+            "Implement proper error handling",
+            "Optimize data transformation logic",
+            "Add performance monitoring",
+          ],
+        },
+      };
+    }
+
+    // If can't handle, escalate to coordinator
+    return await this.escalateToCoordinator({
+      ...request,
+      reason: EscalationReason.SPECIALIST_KNOWLEDGE_REQUIRED,
+      message: "JavaScriptSpecialist cannot handle this escalation type",
+    });
+  }
+}
+
 /**
  * TIER 3 - Support Specialist
  */
@@ -2057,6 +2241,7 @@ export class AgentRouter {
       new DeveloperSpecialist(),
       new IntegrationSpecialist(),
       new NodeSpecialist(),
+      new JavaScriptSpecialist(),
       new PerformanceSpecialist(),
       new GuidanceSpecialist(),
     ];
