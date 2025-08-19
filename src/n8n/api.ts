@@ -275,11 +275,14 @@ export class N8NApiClient {
    * Create new workflow
    */
   async createWorkflow(
-    workflow: Omit<N8NWorkflow, "id">,
+    workflow: Omit<N8NWorkflow, "id" | "active"> & { active?: boolean },
   ): Promise<N8NWorkflow> {
+    // Remove the active field before sending to API (it's read-only during creation)
+    const { active, ...workflowPayload } = workflow;
+
     const response = await this.request<N8NWorkflow>("/workflows", {
       method: "POST",
-      body: JSON.stringify(workflow),
+      body: JSON.stringify(workflowPayload),
     });
 
     logger.info(`Created workflow: ${workflow.name} (ID: ${response.id})`);

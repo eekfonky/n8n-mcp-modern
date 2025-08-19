@@ -839,10 +839,11 @@ export class N8NMCPTools {
       return normalizedNode;
     });
 
-    const workflowData: Omit<import("../n8n/api.js").N8NWorkflow, "id" | "active"> = {
+    const workflowData: Omit<import("../n8n/api.js").N8NWorkflow, "id"> = {
       name: args.name,
       nodes: normalizedNodes,
       connections: args.connections,
+      active: args.active,
       settings: args.settings ?? {
         saveDataErrorExecution: "all",
         saveDataSuccessExecution: "all",
