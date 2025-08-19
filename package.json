@@ -1,6 +1,6 @@
 {
   "name": "@lexinet/n8n-mcp-modern",
-  "version": "4.3.7",
+  "version": "4.3.8",
   "description": "Modern n8n MCP server built with official TypeScript SDK - zero legacy, maximum performance",
   "type": "module",
   "main": "dist/index.js",
@@ -33,7 +33,6 @@
     "mcp:install-global": "echo 'Run: claude mcp add n8n-mcp-modern --scope local --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @lexinet/n8n-mcp-modern'",
     "upgrade": "node scripts/upgrade.js",
     "sync-release": "./scripts/sync-release.sh",
-    "postinstall": "node scripts/install-claude-mcp.js",
     "ci": "npm run lint && npm run typecheck && npm run test:all",
     "precommit": "npm run lint && npm run typecheck && npm run test:quick"
   },
