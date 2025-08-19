@@ -36,7 +36,7 @@ class N8NMcpServer {
   constructor() {
     this.server = new McpServer({
       name: "@lexinet/n8n-mcp-modern",
-      version: "4.3.9",
+      version: "4.4.0",
     });
 
     this.setupTools();
@@ -501,13 +501,13 @@ function handleCliCommands(): boolean {
   const args = process.argv.slice(2);
 
   if (args.includes("--version") || args.includes("-v")) {
-    process.stdout.write("4.3.9\n");
+    process.stdout.write("4.4.0\n");
     return true;
   }
 
   if (args.includes("--help") || args.includes("-h")) {
     process.stdout.write(`
-n8n-MCP Modern v4.3.9 - 108 MCP Tools for n8n Automation
+n8n-MCP Modern v4.4.0 - 108 MCP Tools for n8n Automation
 
 Usage:
   npx @lexinet/n8n-mcp-modern              # Start MCP server (stdio mode)
@@ -576,7 +576,13 @@ async function main(): Promise<void> {
 }
 
 // Only run if this is the main module
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Check multiple conditions to handle npx, direct execution, etc.
+const isMainModule =
+  import.meta.url === `file://${process.argv[1]}` ||
+  (process.argv[1] && process.argv[1].endsWith("/dist/index.js")) ||
+  (process.argv[1] && process.argv[1].endsWith("n8n-mcp"));
+
+if (isMainModule) {
   main().catch((error) => {
     logger.error("Unhandled error in main:", error);
     process.exit(1);
