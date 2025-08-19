@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // Core MCP Types
 export interface ToolDefinition {
@@ -12,17 +12,17 @@ export interface ToolDefinition {
 export const ConfigSchema = z.object({
   n8nApiUrl: z.string().url().optional(),
   n8nApiKey: z.string().optional(),
-  logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
   disableConsoleOutput: z.boolean().default(false),
-  mcpMode: z.enum(['stdio', 'http']).default('stdio'),
+  mcpMode: z.enum(["stdio", "http"]).default("stdio"),
   mcpTimeout: z.number().default(30000),
-  databasePath: z.string().default('./data/nodes.db'),
+  databasePath: z.string().default("./data/nodes.db"),
   databaseInMemory: z.boolean().default(false),
   enableCache: z.boolean().default(true),
   cacheTtl: z.number().default(3600),
   maxConcurrentRequests: z.number().default(10),
-  nodeEnv: z.enum(['development', 'production', 'test']).default('production'),
-  debug: z.boolean().default(false)
+  nodeEnv: z.enum(["development", "production", "test"]).default("production"),
+  debug: z.boolean().default(false),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -88,7 +88,12 @@ export interface N8NWebhook {
 }
 
 // Validation Types
-export const ValidationProfileSchema = z.enum(['minimal', 'runtime', 'ai-friendly', 'strict']);
+export const ValidationProfileSchema = z.enum([
+  "minimal",
+  "runtime",
+  "ai-friendly",
+  "strict",
+]);
 export type ValidationProfile = z.infer<typeof ValidationProfileSchema>;
 
 export interface ValidationResult {
@@ -131,7 +136,7 @@ export interface DatabaseNode {
   group: string;
   description: string;
   properties: string; // JSON stringified
-  credentials?: string; // JSON stringified  
+  credentials?: string; // JSON stringified
   webhooks?: string; // JSON stringified
   codex?: string; // JSON stringified
   isAiTool: boolean;
@@ -142,7 +147,7 @@ export interface DatabaseNode {
 }
 
 // Search Types
-export const SearchModeSchema = z.enum(['OR', 'AND', 'FUZZY']);
+export const SearchModeSchema = z.enum(["OR", "AND", "FUZZY"]);
 export type SearchMode = z.infer<typeof SearchModeSchema>;
 
 export interface SearchOptions {
@@ -159,12 +164,12 @@ export interface SearchOptions {
 export const N8NConnectionSchema = z.object({
   node: z.string(),
   type: z.string(),
-  index: z.number()
+  index: z.number(),
 });
 
 export const N8NConnectionsSchema = z.record(
   z.string(),
-  z.record(z.string(), z.array(z.array(N8NConnectionSchema)))
+  z.record(z.string(), z.array(z.array(N8NConnectionSchema))),
 );
 
 // N8N Workflow Node Schema
@@ -186,7 +191,7 @@ export const N8NWorkflowNodeSchema = z.object({
   retryOnFail: z.boolean().optional(),
   maxTries: z.number().optional(),
   waitBetweenTries: z.number().optional(),
-  onError: z.string().optional()
+  onError: z.string().optional(),
 });
 
 // N8N Workflow Schema
@@ -199,7 +204,7 @@ export const N8NWorkflowSchema = z.object({
   settings: z.record(z.unknown()).optional(),
   staticData: z.record(z.unknown()).optional(),
   tags: z.array(z.string()).optional(),
-  versionId: z.string().optional()
+  versionId: z.string().optional(),
 });
 
 // N8N API Types (Minimal)
@@ -207,7 +212,10 @@ export interface N8NWorkflow {
   id?: string;
   name: string;
   nodes: N8NWorkflowNode[];
-  connections: Record<string, Record<string, Array<Array<{ node: string; type: string; index: number }>>>>;
+  connections: Record<
+    string,
+    Record<string, Array<Array<{ node: string; type: string; index: number }>>>
+  >;
   active?: boolean;
   settings?: Record<string, unknown>;
   staticData?: Record<string, unknown>;
@@ -246,10 +254,10 @@ export class N8NMcpError extends Error {
     message: string,
     code: string,
     statusCode?: number,
-    details?: unknown
+    details?: unknown,
   ) {
     super(message);
-    this.name = 'N8NMcpError';
+    this.name = "N8NMcpError";
     this.code = code;
     if (statusCode !== undefined) {
       this.statusCode = statusCode;
@@ -276,36 +284,39 @@ export type OptionalKeys<T> = {
 // MCP Tool Argument Schemas
 export const SearchNodesArgsSchema = z.object({
   query: z.string(),
-  category: z.string().optional()
+  category: z.string().optional(),
 });
 
 export const GetWorkflowsArgsSchema = z.object({
-  limit: z.number().optional().default(10)
+  limit: z.number().optional().default(10),
 });
 
 export const GetWorkflowArgsSchema = z.object({
-  id: z.string()
+  id: z.string(),
 });
 
 export const CreateWorkflowArgsSchema = z.object({
   name: z.string(),
   nodes: z.array(N8NWorkflowNodeSchema),
   connections: N8NConnectionsSchema,
-  active: z.boolean().optional().default(false)
+  active: z.boolean().optional().default(false),
+  settings: z.record(z.unknown()).optional(),
+  staticData: z.record(z.unknown()).optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 export const ExecuteWorkflowArgsSchema = z.object({
   id: z.string(),
-  data: z.record(z.unknown()).optional()
+  data: z.record(z.unknown()).optional(),
 });
 
 export const GetExecutionsArgsSchema = z.object({
   workflowId: z.string().optional(),
-  limit: z.number().optional().default(20)
+  limit: z.number().optional().default(20),
 });
 
 export const RouteToAgentArgsSchema = z.object({
-  query: z.string()
+  query: z.string(),
 });
 
 // Type inference from schemas
@@ -320,7 +331,7 @@ export type RouteToAgentArgs = z.infer<typeof RouteToAgentArgsSchema>;
 // Tool response types for better type safety
 export interface ToolExecutionResult {
   content: Array<{
-    type: 'text';
+    type: "text";
     text: string;
   }>;
   isError?: boolean;
@@ -328,7 +339,7 @@ export interface ToolExecutionResult {
 
 // Context building types
 export interface AgentContext {
-  complexity: 'low' | 'medium' | 'high';
+  complexity: "low" | "medium" | "high";
   requiresValidation: boolean;
   requiresAuthentication: boolean;
   nodeExpertise: boolean;

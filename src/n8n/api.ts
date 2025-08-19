@@ -20,9 +20,12 @@ export interface N8NWorkflow {
     string,
     Record<string, Array<Array<{ node: string; type: string; index: number }>>>
   >;
+  settings?: Record<string, unknown>;
+  staticData?: Record<string, unknown>;
+  tags?: string[];
+  versionId?: string;
   createdAt?: string;
   updatedAt?: string;
-  tags?: string[];
 }
 
 /**
@@ -206,11 +209,31 @@ export class N8NApiClient {
           );
 
           if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`n8n API error (${response.status}): ${errorText}`);
+            let errorMessage: string;
+            try {
+              const errorJson = (await response.json()) as {
+                message?: string;
+                error?: string;
+              };
+              errorMessage =
+                errorJson.message ??
+                errorJson.error ??
+                JSON.stringify(errorJson);
+            } catch {
+              errorMessage = await response.text();
+            }
+            throw new Error(
+              `n8n API error (${response.status}): ${errorMessage}`,
+            );
           }
 
-          return (await response.json()) as T;
+          try {
+            return (await response.json()) as T;
+          } catch (error) {
+            throw new Error(
+              `Failed to parse n8n API response as JSON: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
         },
         `n8n API ${options.method ?? "GET"} ${endpoint}`,
       );
