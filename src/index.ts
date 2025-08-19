@@ -579,8 +579,8 @@ async function main(): Promise<void> {
 // Check multiple conditions to handle npx, direct execution, etc.
 const isMainModule =
   import.meta.url === `file://${process.argv[1]}` ||
-  (process.argv[1] && process.argv[1].endsWith("/dist/index.js")) ||
-  (process.argv[1] && process.argv[1].endsWith("n8n-mcp"));
+  (process.argv[1]?.endsWith("/dist/index.js") ?? false) ||
+  (process.argv[1]?.endsWith("n8n-mcp") ?? false);
 
 if (isMainModule) {
   main().catch((error) => {
