@@ -4,9 +4,41 @@
  */
 
 import { fetch } from "undici";
+import { z } from "zod";
 import { config } from "../server/config.js";
 import { logger } from "../server/logger.js";
 import { retryHandler, n8nApiCircuitBreaker } from "../server/resilience.js";
+import type {
+  WorkflowCreatePayload,
+  WorkflowUpdatePayload,
+} from "../types/api-payloads.js";
+import {
+  PayloadSanitizers,
+  sanitizeWorkflowCreation,
+  validateWorkflowCreation,
+} from "../types/api-payloads.js";
+import {
+  validateApiResponse,
+  createValidationConfig,
+  ApiValidationError,
+  ApiConnectionError,
+} from "../types/api-validation.js";
+import {
+  N8NWorkflowResponseSchema,
+  WorkflowListResponseSchema,
+  N8NExecutionResponseSchema,
+  ExecutionListResponseSchema,
+  N8NHealthStatusResponseSchema,
+  VersionInfoResponseSchema,
+  N8NCredentialResponseSchema,
+  CredentialListResponseSchema,
+  N8NNodeTypeResponseSchema,
+  NodeTypeListResponseSchema,
+  N8NUserResponseSchema,
+  UserListResponseSchema,
+  N8NSettingsResponseSchema,
+  TagCreateResponseSchema,
+} from "../types/api-responses.js";
 
 /**
  * n8n Workflow structure
@@ -173,11 +205,12 @@ export class N8NApiClient {
   }
 
   /**
-   * Make authenticated request to n8n API
+   * Make authenticated request to n8n API with optional response validation
    */
   private async request<T = unknown>(
     endpoint: string,
     options: globalThis.RequestInit = {},
+    responseSchema?: z.ZodSchema<T>,
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
 
@@ -196,6 +229,8 @@ export class N8NApiClient {
       requestOptions.body = options.body;
     }
 
+    const startTime = Date.now();
+
     return await n8nApiCircuitBreaker.execute(async () => {
       return await retryHandler.execute(
         async () => {
@@ -207,6 +242,8 @@ export class N8NApiClient {
             url,
             requestOptions as Record<string, unknown>,
           );
+
+          const responseTime = Date.now() - startTime;
 
           if (!response.ok) {
             let errorMessage: string;
@@ -222,17 +259,73 @@ export class N8NApiClient {
             } catch {
               errorMessage = await response.text();
             }
-            throw new Error(
+            throw new ApiConnectionError(
               `n8n API error (${response.status}): ${errorMessage}`,
+              endpoint,
+              new Error(`HTTP ${response.status}: ${errorMessage}`),
+              responseTime,
             );
           }
 
+          let rawResponse: unknown;
           try {
-            return (await response.json()) as T;
+            rawResponse = await response.json();
           } catch (error) {
-            throw new Error(
-              `Failed to parse n8n API response as JSON: ${error instanceof Error ? error.message : String(error)}`,
+            throw new ApiConnectionError(
+              `Failed to parse n8n API response as JSON`,
+              endpoint,
+              error,
+              responseTime,
             );
+          }
+
+          // Apply response validation if schema provided
+          if (responseSchema) {
+            const validationConfig = createValidationConfig({
+              strict: config.strictApiValidation,
+              enableLogging: config.enableResponseLogging,
+              timeout: config.validationTimeout,
+              sanitizeResponses: config.sanitizeApiResponses,
+              maxResponseSize: config.maxResponseSize,
+            });
+
+            try {
+              return await validateApiResponse(
+                rawResponse,
+                responseSchema,
+                endpoint,
+                response.status,
+                validationConfig,
+                responseTime,
+              );
+            } catch (validationError) {
+              if (validationError instanceof ApiValidationError) {
+                // Re-throw validation errors as-is
+                throw validationError;
+              } else {
+                // Wrap other errors
+                throw new ApiValidationError(
+                  `Response validation failed: ${validationError instanceof Error ? validationError.message : String(validationError)}`,
+                  endpoint,
+                  response.status,
+                  rawResponse,
+                  new z.ZodError([
+                    {
+                      code: "custom",
+                      message:
+                        validationError instanceof Error
+                          ? validationError.message
+                          : String(validationError),
+                      path: [],
+                    },
+                  ]),
+                  responseTime,
+                );
+              }
+            }
+          } else {
+            // Return raw response without validation
+            return rawResponse as T;
           }
         },
         `n8n API ${options.method ?? "GET"} ${endpoint}`,
@@ -258,51 +351,103 @@ export class N8NApiClient {
    * Get all workflows
    */
   async getWorkflows(): Promise<N8NWorkflow[]> {
-    const response =
-      await this.request<N8NApiResponse<N8NWorkflow[]>>("/workflows");
-    return response.data;
+    const response = await this.request(
+      "/workflows",
+      {},
+      WorkflowListResponseSchema,
+    );
+    return response.data as N8NWorkflow[];
   }
 
   /**
    * Get workflow by ID
    */
   async getWorkflow(id: string): Promise<N8NWorkflow> {
-    const response = await this.request<N8NWorkflow>(`/workflows/${id}`);
-    return response;
+    const response = await this.request(
+      `/workflows/${id}`,
+      {},
+      N8NWorkflowResponseSchema,
+    );
+    return response as N8NWorkflow;
   }
 
   /**
-   * Create new workflow
+   * Create new workflow with strict type safety
+   * Automatically strips read-only fields to prevent API compliance issues
    */
   async createWorkflow(
-    workflow: Omit<N8NWorkflow, "id" | "active"> & { active?: boolean },
+    workflow: WorkflowCreatePayload | Record<string, unknown>,
   ): Promise<N8NWorkflow> {
-    // Remove the active field before sending to API (it's read-only during creation)
-    const { active, ...workflowPayload } = workflow;
+    // Ensure type safety by sanitizing payload
+    let cleanPayload: WorkflowCreatePayload;
 
-    const response = await this.request<N8NWorkflow>("/workflows", {
-      method: "POST",
-      body: JSON.stringify(workflowPayload),
+    if (typeof workflow === "object" && workflow !== null) {
+      // Sanitize any unknown payload to ensure API compliance
+      cleanPayload = sanitizeWorkflowCreation(
+        workflow as Record<string, unknown>,
+      );
+    } else {
+      throw new Error("Invalid workflow payload: must be an object");
+    }
+
+    // Additional runtime validation
+    if (!validateWorkflowCreation(cleanPayload)) {
+      throw new Error(
+        "Invalid workflow payload: missing required fields (name, nodes, connections)",
+      );
+    }
+
+    logger.debug("Creating workflow with sanitized payload", {
+      name: cleanPayload.name,
+      nodeCount: cleanPayload.nodes.length,
+      hasSettings: !!cleanPayload.settings,
     });
 
-    logger.info(`Created workflow: ${workflow.name} (ID: ${response.id})`);
-    return response;
+    const response = await this.request(
+      "/workflows",
+      {
+        method: "POST",
+        body: JSON.stringify(cleanPayload),
+      },
+      N8NWorkflowResponseSchema,
+    );
+
+    const createdWorkflow = response as N8NWorkflow;
+    logger.info(
+      `✅ Created workflow: ${cleanPayload.name} (ID: ${createdWorkflow.id})`,
+    );
+    return createdWorkflow;
   }
 
   /**
-   * Update existing workflow
+   * Update existing workflow with strict type safety
+   * Automatically strips read-only fields to prevent API compliance issues
    */
   async updateWorkflow(
     id: string,
-    workflow: Partial<N8NWorkflow>,
+    workflow: WorkflowUpdatePayload | Record<string, unknown>,
   ): Promise<N8NWorkflow> {
-    const response = await this.request<N8NWorkflow>(`/workflows/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(workflow),
+    // Sanitize payload to remove read-only fields
+    const cleanPayload = PayloadSanitizers.workflowUpdate(
+      workflow as Record<string, unknown>,
+    );
+
+    logger.debug(`Updating workflow ${id} with sanitized payload`, {
+      providedFields: Object.keys(workflow as Record<string, unknown>),
+      cleanedFields: Object.keys(cleanPayload),
     });
 
-    logger.info(`Updated workflow: ${id}`);
-    return response;
+    const response = await this.request(
+      `/workflows/${id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(cleanPayload),
+      },
+      N8NWorkflowResponseSchema,
+    );
+
+    logger.info(`✅ Updated workflow: ${id}`);
+    return response as N8NWorkflow;
   }
 
   /**
@@ -320,30 +465,32 @@ export class N8NApiClient {
    * Activate workflow
    */
   async activateWorkflow(id: string): Promise<N8NWorkflow> {
-    const response = await this.request<N8NWorkflow>(
+    const response = await this.request(
       `/workflows/${id}/activate`,
       {
         method: "POST",
       },
+      N8NWorkflowResponseSchema,
     );
 
     logger.info(`Activated workflow: ${id}`);
-    return response;
+    return response as N8NWorkflow;
   }
 
   /**
    * Deactivate workflow
    */
   async deactivateWorkflow(id: string): Promise<N8NWorkflow> {
-    const response = await this.request<N8NWorkflow>(
+    const response = await this.request(
       `/workflows/${id}/deactivate`,
       {
         method: "POST",
       },
+      N8NWorkflowResponseSchema,
     );
 
     logger.info(`Deactivated workflow: ${id}`);
-    return response;
+    return response as N8NWorkflow;
   }
 
   /**
@@ -353,16 +500,18 @@ export class N8NApiClient {
     id: string,
     data?: Record<string, unknown>,
   ): Promise<N8NExecution> {
-    const response = await this.request<N8NExecution>(
+    const response = await this.request(
       `/workflows/${id}/execute`,
       {
         method: "POST",
         body: JSON.stringify({ data }),
       },
+      N8NExecutionResponseSchema,
     );
 
-    logger.info(`Executed workflow: ${id} (Execution: ${response.id})`);
-    return response;
+    const execution = response as N8NExecution;
+    logger.info(`Executed workflow: ${id} (Execution: ${execution.id})`);
+    return execution;
   }
 
   /**
@@ -374,32 +523,40 @@ export class N8NApiClient {
       endpoint += `?workflowId=${workflowId}`;
     }
 
-    const response =
-      await this.request<N8NApiResponse<N8NExecution[]>>(endpoint);
-    return response.data;
+    const response = await this.request(
+      endpoint,
+      {},
+      ExecutionListResponseSchema,
+    );
+    return response.data as N8NExecution[];
   }
 
   /**
    * Get execution by ID
    */
   async getExecution(id: string): Promise<N8NExecution> {
-    const response = await this.request<N8NExecution>(`/executions/${id}`);
-    return response;
+    const response = await this.request(
+      `/executions/${id}`,
+      {},
+      N8NExecutionResponseSchema,
+    );
+    return response as N8NExecution;
   }
 
   /**
    * Stop execution
    */
   async stopExecution(id: string): Promise<N8NExecution> {
-    const response = await this.request<N8NExecution>(
+    const response = await this.request(
       `/executions/${id}/stop`,
       {
         method: "POST",
       },
+      N8NExecutionResponseSchema,
     );
 
     logger.info(`Stopped execution: ${id}`);
-    return response;
+    return response as N8NExecution;
   }
 
   /**
@@ -490,17 +647,24 @@ export class N8NApiClient {
    * Get all credentials
    */
   async getCredentials(): Promise<N8NCredential[]> {
-    const response =
-      await this.request<N8NApiResponse<N8NCredential[]>>("/credentials");
-    return response.data;
+    const response = await this.request(
+      "/credentials",
+      {},
+      CredentialListResponseSchema,
+    );
+    return response.data as N8NCredential[];
   }
 
   /**
    * Get credential by ID
    */
   async getCredential(id: string): Promise<N8NCredential> {
-    const response = await this.request<N8NCredential>(`/credentials/${id}`);
-    return response;
+    const response = await this.request(
+      `/credentials/${id}`,
+      {},
+      N8NCredentialResponseSchema,
+    );
+    return response as N8NCredential;
   }
 
   /**
@@ -509,13 +673,18 @@ export class N8NApiClient {
   async createCredential(
     credential: Omit<N8NCredential, "id" | "createdAt" | "updatedAt">,
   ): Promise<N8NCredential> {
-    const response = await this.request<N8NCredential>("/credentials", {
-      method: "POST",
-      body: JSON.stringify(credential),
-    });
+    const response = await this.request(
+      "/credentials",
+      {
+        method: "POST",
+        body: JSON.stringify(credential),
+      },
+      N8NCredentialResponseSchema,
+    );
 
-    logger.info(`Created credential: ${credential.name} (ID: ${response.id})`);
-    return response;
+    const cred = response as N8NCredential;
+    logger.info(`Created credential: ${credential.name} (ID: ${cred.id})`);
+    return cred;
   }
 
   /**
@@ -525,13 +694,17 @@ export class N8NApiClient {
     id: string,
     credential: Partial<N8NCredential>,
   ): Promise<N8NCredential> {
-    const response = await this.request<N8NCredential>(`/credentials/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(credential),
-    });
+    const response = await this.request(
+      `/credentials/${id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(credential),
+      },
+      N8NCredentialResponseSchema,
+    );
 
     logger.info(`Updated credential: ${id}`);
-    return response;
+    return response as N8NCredential;
   }
 
   /**
@@ -567,17 +740,24 @@ export class N8NApiClient {
    * Get all available node types
    */
   async getNodeTypes(): Promise<N8NNodeType[]> {
-    const response =
-      await this.request<N8NApiResponse<N8NNodeType[]>>("/node-types");
-    return response.data;
+    const response = await this.request(
+      "/node-types",
+      {},
+      NodeTypeListResponseSchema,
+    );
+    return response.data as N8NNodeType[];
   }
 
   /**
    * Get specific node type information
    */
   async getNodeType(nodeType: string): Promise<N8NNodeType> {
-    const response = await this.request<N8NNodeType>(`/node-types/${nodeType}`);
-    return response;
+    const response = await this.request(
+      `/node-types/${nodeType}`,
+      {},
+      N8NNodeTypeResponseSchema,
+    );
+    return response as N8NNodeType;
   }
 
   /**
@@ -612,16 +792,16 @@ export class N8NApiClient {
    * Get all users
    */
   async getUsers(): Promise<N8NUser[]> {
-    const response = await this.request<N8NApiResponse<N8NUser[]>>("/users");
-    return response.data;
+    const response = await this.request("/users", {}, UserListResponseSchema);
+    return response.data as N8NUser[];
   }
 
   /**
    * Get current user information
    */
   async getCurrentUser(): Promise<N8NUser> {
-    const response = await this.request<N8NUser>("/users/me");
-    return response;
+    const response = await this.request("/users/me", {}, N8NUserResponseSchema);
+    return response as N8NUser;
   }
 
   /**
@@ -630,26 +810,35 @@ export class N8NApiClient {
   async createUser(
     user: Omit<N8NUser, "id" | "createdAt" | "updatedAt">,
   ): Promise<N8NUser> {
-    const response = await this.request<N8NUser>("/users", {
-      method: "POST",
-      body: JSON.stringify(user),
-    });
+    const response = await this.request(
+      "/users",
+      {
+        method: "POST",
+        body: JSON.stringify(user),
+      },
+      N8NUserResponseSchema,
+    );
 
-    logger.info(`Created user: ${user.email} (ID: ${response.id})`);
-    return response;
+    const newUser = response as N8NUser;
+    logger.info(`Created user: ${user.email} (ID: ${newUser.id})`);
+    return newUser;
   }
 
   /**
    * Update user
    */
   async updateUser(id: string, user: Partial<N8NUser>): Promise<N8NUser> {
-    const response = await this.request<N8NUser>(`/users/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(user),
-    });
+    const response = await this.request(
+      `/users/${id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(user),
+      },
+      N8NUserResponseSchema,
+    );
 
     logger.info(`Updated user: ${id}`);
-    return response;
+    return response as N8NUser;
   }
 
   // ============== SYSTEM MANAGEMENT ==============
@@ -658,21 +847,29 @@ export class N8NApiClient {
    * Get system settings
    */
   async getSettings(): Promise<N8NSettings> {
-    const response = await this.request<N8NSettings>("/settings");
-    return response;
+    const response = await this.request(
+      "/settings",
+      {},
+      N8NSettingsResponseSchema,
+    );
+    return response as N8NSettings;
   }
 
   /**
    * Update system settings
    */
   async updateSettings(settings: Partial<N8NSettings>): Promise<N8NSettings> {
-    const response = await this.request<N8NSettings>("/settings", {
-      method: "PUT",
-      body: JSON.stringify(settings),
-    });
+    const response = await this.request(
+      "/settings",
+      {
+        method: "PUT",
+        body: JSON.stringify(settings),
+      },
+      N8NSettingsResponseSchema,
+    );
 
     logger.info("Updated system settings");
-    return response;
+    return response as N8NSettings;
   }
 
   /**
@@ -680,8 +877,12 @@ export class N8NApiClient {
    */
   async getHealthStatus(): Promise<N8NHealthStatus> {
     try {
-      const response = await this.request<N8NHealthStatus>("/health");
-      return response;
+      const response = await this.request(
+        "/health",
+        {},
+        N8NHealthStatusResponseSchema,
+      );
+      return response as N8NHealthStatus;
     } catch {
       return {
         status: "error",
@@ -695,10 +896,12 @@ export class N8NApiClient {
    */
   async getVersionInfo(): Promise<{ version: string; build?: string }> {
     try {
-      const response = await this.request<{ version: string; build?: string }>(
+      const response = await this.request(
         "/version",
+        {},
+        VersionInfoResponseSchema,
       );
-      return response;
+      return response as { version: string; build?: string };
     } catch {
       // Fallback for instances without version endpoint
       return { version: "unknown" };
@@ -725,13 +928,17 @@ export class N8NApiClient {
    * Create workflow tag
    */
   async createTag(name: string): Promise<{ id: string; name: string }> {
-    const response = await this.request<{ id: string; name: string }>("/tags", {
-      method: "POST",
-      body: JSON.stringify({ name }),
-    });
+    const response = await this.request(
+      "/tags",
+      {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      },
+      TagCreateResponseSchema,
+    );
 
     logger.info(`Created tag: ${name}`);
-    return response;
+    return response as { id: string; name: string };
   }
 
   /**
@@ -755,13 +962,18 @@ export class N8NApiClient {
   async importWorkflow(
     workflowData: Record<string, unknown>,
   ): Promise<N8NWorkflow> {
-    const response = await this.request<N8NWorkflow>("/workflows/import", {
-      method: "POST",
-      body: JSON.stringify(workflowData),
-    });
+    const response = await this.request(
+      "/workflows/import",
+      {
+        method: "POST",
+        body: JSON.stringify(workflowData),
+      },
+      N8NWorkflowResponseSchema,
+    );
 
-    logger.info(`Imported workflow: ${response.name} (ID: ${response.id})`);
-    return response;
+    const workflow = response as N8NWorkflow;
+    logger.info(`Imported workflow: ${workflow.name} (ID: ${workflow.id})`);
+    return workflow;
   }
 
   /**
@@ -801,22 +1013,29 @@ export class N8NApiClient {
    * Retry failed execution
    */
   async retryExecution(id: string): Promise<N8NExecution> {
-    const response = await this.request<N8NExecution>(
+    const response = await this.request(
       `/executions/${id}/retry`,
       {
         method: "POST",
       },
+      N8NExecutionResponseSchema,
     );
 
-    logger.info(`Retried execution: ${id} (New execution: ${response.id})`);
-    return response;
+    const execution = response as N8NExecution;
+    logger.info(`Retried execution: ${id} (New execution: ${execution.id})`);
+    return execution;
   }
 
   /**
    * Get user by ID
    */
   async getUser(id: string): Promise<N8NUser> {
-    return await this.request<N8NUser>(`/users/${id}`);
+    const response = await this.request(
+      `/users/${id}`,
+      {},
+      N8NUserResponseSchema,
+    );
+    return response as N8NUser;
   }
 
   /**
@@ -840,10 +1059,15 @@ export class N8NApiClient {
     userId: string,
     permissions: Record<string, unknown>,
   ): Promise<N8NUser> {
-    return await this.request<N8NUser>(`/users/${userId}/permissions`, {
-      method: "PUT",
-      body: JSON.stringify({ permissions }),
-    });
+    const response = await this.request(
+      `/users/${userId}/permissions`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ permissions }),
+      },
+      N8NUserResponseSchema,
+    );
+    return response as N8NUser;
   }
 
   /**

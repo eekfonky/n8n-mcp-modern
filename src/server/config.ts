@@ -1,26 +1,69 @@
-import { config as dotenvConfig } from 'dotenv';
-import { z } from 'zod';
-import type { Config } from '../types/index.js';
-import { ConfigSchema } from '../types/index.js';
+import { config as dotenvConfig } from "dotenv";
+import { z } from "zod";
+import type { Config } from "../types/index.js";
+import { ConfigSchema } from "../types/index.js";
 
 // Load environment variables
 dotenvConfig();
 
 // Environment variable parsing with validation
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("production"),
   N8N_API_URL: z.string().url().optional(),
   N8N_API_KEY: z.string().optional(),
-  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
-  DISABLE_CONSOLE_OUTPUT: z.string().transform(val => val === 'true').default('false'),
-  MCP_MODE: z.enum(['stdio', 'http']).default('stdio'),
-  MCP_TIMEOUT: z.string().transform(val => parseInt(val, 10)).default('30000'),
-  DATABASE_PATH: z.string().default('./data/nodes.db'),
-  DATABASE_IN_MEMORY: z.string().transform(val => val === 'true').default('false'),
-  ENABLE_CACHE: z.string().transform(val => val === 'true').default('true'),
-  CACHE_TTL: z.string().transform(val => parseInt(val, 10)).default('3600'),
-  MAX_CONCURRENT_REQUESTS: z.string().transform(val => parseInt(val, 10)).default('10'),
-  DEBUG: z.string().transform(val => val === 'true').default('false')
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  DISABLE_CONSOLE_OUTPUT: z
+    .string()
+    .transform((val) => val === "true")
+    .default("false"),
+  MCP_MODE: z.enum(["stdio", "http"]).default("stdio"),
+  MCP_TIMEOUT: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .default("30000"),
+  DATABASE_PATH: z.string().default("./data/nodes.db"),
+  DATABASE_IN_MEMORY: z
+    .string()
+    .transform((val) => val === "true")
+    .default("false"),
+  ENABLE_CACHE: z
+    .string()
+    .transform((val) => val === "true")
+    .default("true"),
+  CACHE_TTL: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .default("3600"),
+  MAX_CONCURRENT_REQUESTS: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .default("10"),
+  DEBUG: z
+    .string()
+    .transform((val) => val === "true")
+    .default("false"),
+
+  // API Response Validation Settings
+  STRICT_API_VALIDATION: z
+    .string()
+    .transform((val) => val === "true")
+    .default("false"),
+  ENABLE_RESPONSE_LOGGING: z
+    .string()
+    .transform((val) => val === "true")
+    .default("true"),
+  VALIDATION_TIMEOUT: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .default("5000"),
+  SANITIZE_API_RESPONSES: z
+    .string()
+    .transform((val) => val === "true")
+    .default("true"),
+  MAX_RESPONSE_SIZE: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .default("10485760"),
 });
 
 // Parse and validate environment variables
@@ -38,7 +81,12 @@ function parseEnvironment(): Config {
     ENABLE_CACHE: process.env.ENABLE_CACHE,
     CACHE_TTL: process.env.CACHE_TTL,
     MAX_CONCURRENT_REQUESTS: process.env.MAX_CONCURRENT_REQUESTS,
-    DEBUG: process.env.DEBUG
+    DEBUG: process.env.DEBUG,
+    STRICT_API_VALIDATION: process.env.STRICT_API_VALIDATION,
+    ENABLE_RESPONSE_LOGGING: process.env.ENABLE_RESPONSE_LOGGING,
+    VALIDATION_TIMEOUT: process.env.VALIDATION_TIMEOUT,
+    SANITIZE_API_RESPONSES: process.env.SANITIZE_API_RESPONSES,
+    MAX_RESPONSE_SIZE: process.env.MAX_RESPONSE_SIZE,
   });
 
   return ConfigSchema.parse({
@@ -54,23 +102,28 @@ function parseEnvironment(): Config {
     cacheTtl: env.CACHE_TTL,
     maxConcurrentRequests: env.MAX_CONCURRENT_REQUESTS,
     nodeEnv: env.NODE_ENV,
-    debug: env.DEBUG
+    debug: env.DEBUG,
+    strictApiValidation: env.STRICT_API_VALIDATION,
+    enableResponseLogging: env.ENABLE_RESPONSE_LOGGING,
+    validationTimeout: env.VALIDATION_TIMEOUT,
+    sanitizeApiResponses: env.SANITIZE_API_RESPONSES,
+    maxResponseSize: env.MAX_RESPONSE_SIZE,
   });
 }
 
-// Normalize N8N API URL to ensure correct format  
+// Normalize N8N API URL to ensure correct format
 function normalizeN8NUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
-  
+
   try {
     const parsed = new URL(url);
     const baseUrl = `${parsed.protocol}//${parsed.host}`;
-    
+
     // Remove trailing slashes and existing api paths
     const cleanPath = parsed.pathname
-      .replace(/\/+$/, '')
-      .replace(/\/api.*$/, '');
-    
+      .replace(/\/+$/, "")
+      .replace(/\/api.*$/, "");
+
     // Always append /api/v1
     return `${baseUrl}${cleanPath}/api/v1`;
   } catch {
@@ -94,8 +147,8 @@ export function validateConfig(cfg: unknown): Config {
 }
 
 // Environment helpers
-export const isDevelopment = config.nodeEnv === 'development';
-export const isProduction = config.nodeEnv === 'production';
+export const isDevelopment = config.nodeEnv === "development";
+export const isProduction = config.nodeEnv === "production";
 export const isDebug = config.debug || isDevelopment;
 
 // Feature flags based on config
@@ -103,5 +156,5 @@ export const features = {
   hasN8nApi: Boolean(config.n8nApiUrl && config.n8nApiKey),
   cachingEnabled: config.enableCache,
   consoleLoggingEnabled: !config.disableConsoleOutput,
-  debugMode: isDebug
+  debugMode: isDebug,
 } as const;

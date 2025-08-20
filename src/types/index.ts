@@ -23,6 +23,28 @@ export const ConfigSchema = z.object({
   maxConcurrentRequests: z.number().default(10),
   nodeEnv: z.enum(["development", "production", "test"]).default("production"),
   debug: z.boolean().default(false),
+
+  // API Response Validation Settings
+  strictApiValidation: z
+    .boolean()
+    .default(false)
+    .describe("Throw errors on API response validation failures"),
+  enableResponseLogging: z
+    .boolean()
+    .default(true)
+    .describe("Log API response validation details"),
+  validationTimeout: z
+    .number()
+    .default(5000)
+    .describe("Validation timeout in milliseconds"),
+  sanitizeApiResponses: z
+    .boolean()
+    .default(true)
+    .describe("Sanitize API responses before validation"),
+  maxResponseSize: z
+    .number()
+    .default(10485760)
+    .describe("Maximum response size to validate (10MB)"),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

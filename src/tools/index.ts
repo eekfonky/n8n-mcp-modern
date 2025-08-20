@@ -12,14 +12,54 @@ import {
   getAllComprehensiveTools,
   ComprehensiveMCPTools,
 } from "./comprehensive.js";
-import { CodeGenerationTools, codeGenerationTools } from "./code-generation.js";
+import {
+  CodeGenerationTools,
+  codeGenerationTools,
+  // Phase 1 schemas
+  GenerateWorkflowSchema,
+  APIIntegrationSchema,
+  DataProcessingSchema,
+  NotificationSchema,
+  WebhookHandlerSchema,
+  WorkflowTemplateSchema,
+  DockerComposeSchema,
+  DocumentationSchema,
+  ConditionalLogicSchema,
+  ErrorHandlingSchema,
+  TestingScenariosSchema,
+  IntegrationBoilerplateSchema,
+} from "./code-generation.js";
 import {
   DeveloperWorkflowTools,
   developerWorkflowTools,
+  // Phase 2 schemas
+  GitIntegrationSchema,
+  CICDPipelineSchema,
+  DeploymentSchema,
+  CodeQualitySchema,
+  EnvironmentSchema,
+  MonitoringSetupSchema,
+  BackupStrategySchema,
+  APITestingSchema,
+  InfrastructureSchema,
+  WorkflowOrchestrationSchema,
 } from "./developer-workflows.js";
 import {
   PerformanceObservabilityTools,
   performanceObservabilityTools,
+  // Phase 3 schemas
+  WorkflowPerformanceSchema,
+  SystemMetricsSchema,
+  PerformanceOptimizationSchema,
+  AlertConfigurationSchema,
+  CustomDashboardSchema,
+  CapacityPlanningSchema,
+  HealthCheckSchema,
+  PerformanceTrendSchema,
+  ResourceUtilizationSchema,
+  SLAMonitoringSchema,
+  LogAnalysisSchema,
+  CostAnalysisSchema,
 } from "./performance-observability.js";
 import {
   SearchNodesArgsSchema,
@@ -537,203 +577,182 @@ export class N8NMCPTools {
           break;
 
         // Phase 1: Code Generation Tools
-         
+
         case "generate_workflow_from_description":
           result = await CodeGenerationTools.generateWorkflowFromDescription(
-            args as any,
+            GenerateWorkflowSchema.parse(args),
           );
           break;
         case "create_api_integration_template":
-           
           result = await CodeGenerationTools.createAPIIntegrationTemplate(
-            args as any,
+            APIIntegrationSchema.parse(args),
           );
           break;
         case "build_data_processing_pipeline":
-           
           result = await CodeGenerationTools.buildDataProcessingPipeline(
-            args as any,
+            DataProcessingSchema.parse(args),
           );
           break;
         case "generate_notification_workflow":
-           
           result = await CodeGenerationTools.generateNotificationWorkflow(
-            args as any,
+            NotificationSchema.parse(args),
           );
           break;
         case "create_webhook_handler":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          result = await CodeGenerationTools.createWebhookHandler(args as any);
+          result = await CodeGenerationTools.createWebhookHandler(
+            WebhookHandlerSchema.parse(args),
+          );
           break;
         case "export_workflow_as_template":
-           
           result = await CodeGenerationTools.exportWorkflowAsTemplate(
-            args as any,
+            WorkflowTemplateSchema.parse(args),
           );
           break;
         case "generate_docker_compose":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          result = await CodeGenerationTools.generateDockerCompose(args as any);
+          result = await CodeGenerationTools.generateDockerCompose(
+            DockerComposeSchema.parse(args),
+          );
           break;
         case "create_workflow_documentation":
-           
           result = await CodeGenerationTools.createWorkflowDocumentation(
-            args as any,
+            DocumentationSchema.parse(args),
           );
           break;
         case "build_conditional_logic":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          result = await CodeGenerationTools.buildConditionalLogic(args as any);
+          result = await CodeGenerationTools.buildConditionalLogic(
+            ConditionalLogicSchema.parse(args),
+          );
           break;
         case "create_error_handling":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          result = await CodeGenerationTools.createErrorHandling(args as any);
+          result = await CodeGenerationTools.createErrorHandling(
+            ErrorHandlingSchema.parse(args),
+          );
           break;
         case "generate_testing_scenarios":
-           
           result = await CodeGenerationTools.generateTestingScenarios(
-            args as any,
+            TestingScenariosSchema.parse(args),
           );
           break;
         case "build_integration_boilerplate":
-           
           result = await CodeGenerationTools.buildIntegrationBoilerplate(
-            args as any,
+            IntegrationBoilerplateSchema.parse(args),
           );
           break;
 
         // Phase 2: Developer Workflow Tools
         case "integrate_with_git":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          result = await DeveloperWorkflowTools.integrateWithGit(args as any);
+          result = await DeveloperWorkflowTools.integrateWithGit(
+            GitIntegrationSchema.parse(args),
+          );
           break;
         case "setup_cicd_pipeline":
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          result = await DeveloperWorkflowTools.setupCICDPipeline(args as any);
+          result = await DeveloperWorkflowTools.setupCICDPipeline(
+            CICDPipelineSchema.parse(args),
+          );
           break;
         case "create_deployment_automation":
-           
           result = await DeveloperWorkflowTools.createDeploymentAutomation(
-            args as any,
+            DeploymentSchema.parse(args),
           );
           break;
         case "generate_code_quality_checks":
-           
           result = await DeveloperWorkflowTools.generateCodeQualityChecks(
-            args as any,
+            CodeQualitySchema.parse(args),
           );
           break;
         case "setup_environment_management":
-           
           result = await DeveloperWorkflowTools.setupEnvironmentManagement(
-            args as any,
+            EnvironmentSchema.parse(args),
           );
           break;
         case "create_monitoring_alerting":
-           
           result = await DeveloperWorkflowTools.createMonitoringAlerting(
-            args as any,
+            MonitoringSetupSchema.parse(args),
           );
           break;
         case "build_backup_recovery":
-           
           result = await DeveloperWorkflowTools.buildBackupRecovery(
-            args as any,
+            BackupStrategySchema.parse(args),
           );
           break;
         case "generate_api_testing_workflows":
-           
           result = await DeveloperWorkflowTools.generateAPITestingWorkflows(
-            args as any,
+            APITestingSchema.parse(args),
           );
           break;
         case "setup_infrastructure_as_code":
-           
           result = await DeveloperWorkflowTools.setupInfrastructureAsCode(
-            args as any,
+            InfrastructureSchema.parse(args),
           );
           break;
         case "create_workflow_orchestration":
-           
           result = await DeveloperWorkflowTools.createWorkflowOrchestration(
-            args as any,
+            WorkflowOrchestrationSchema.parse(args),
           );
           break;
 
         // Phase 3: Performance & Observability Tools
         case "analyze_workflow_performance":
-           
           result =
             await PerformanceObservabilityTools.analyzeWorkflowPerformance(
-              args as any,
+              WorkflowPerformanceSchema.parse(args),
             );
           break;
         case "monitor_system_metrics":
-           
           result = await PerformanceObservabilityTools.monitorSystemMetrics(
-            args as any,
+            SystemMetricsSchema.parse(args),
           );
           break;
         case "generate_optimization_recommendations":
-           
           result =
             await PerformanceObservabilityTools.generateOptimizationRecommendations(
-              args as any,
+              PerformanceOptimizationSchema.parse(args),
             );
           break;
         case "setup_alert_configuration":
-           
           result = await PerformanceObservabilityTools.setupAlertConfiguration(
-            args as any,
+            AlertConfigurationSchema.parse(args),
           );
           break;
         case "create_custom_dashboard":
-           
           result = await PerformanceObservabilityTools.createCustomDashboard(
-            args as any,
+            CustomDashboardSchema.parse(args),
           );
           break;
         case "perform_capacity_planning":
-           
           result = await PerformanceObservabilityTools.performCapacityPlanning(
-            args as any,
+            CapacityPlanningSchema.parse(args),
           );
           break;
         case "generate_health_checks":
-           
           result = await PerformanceObservabilityTools.generateHealthChecks(
-            args as any,
+            HealthCheckSchema.parse(args),
           );
           break;
         case "analyze_performance_trends":
-           
           result = await PerformanceObservabilityTools.analyzePerformanceTrends(
-            args as any,
+            PerformanceTrendSchema.parse(args),
           );
           break;
         case "monitor_resource_utilization":
-           
           result =
             await PerformanceObservabilityTools.monitorResourceUtilization(
-              args as any,
+              ResourceUtilizationSchema.parse(args),
             );
           break;
         case "setup_sla_monitoring":
-           
           result = await PerformanceObservabilityTools.setupSLAMonitoring(
-            args as any,
+            SLAMonitoringSchema.parse(args),
           );
           break;
         case "perform_log_analysis":
-           
           result = await PerformanceObservabilityTools.performLogAnalysis(
-            args as any,
+            LogAnalysisSchema.parse(args),
           );
           break;
         case "generate_cost_analysis":
-           
           result = await PerformanceObservabilityTools.generateCostAnalysis(
-            args as any,
+            CostAnalysisSchema.parse(args),
           );
           break;
 
@@ -839,7 +858,10 @@ export class N8NMCPTools {
       return normalizedNode;
     });
 
-    const workflowData: Omit<import("../n8n/api.js").N8NWorkflow, "id" | "active"> = {
+    const workflowData: Omit<
+      import("../n8n/api.js").N8NWorkflow,
+      "id" | "active"
+    > = {
       name: args.name,
       nodes: normalizedNodes,
       connections: args.connections,

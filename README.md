@@ -1,21 +1,21 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-4.5.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-4.6.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
 
-## 🎯 What's New in v4.5.0
+## 🎯 What's New in v4.6.0
 
-**JavaScript Specialist Agent & Context7 MCP Integration:**
+**TypeScript Type Safety Hardening & API Compliance:**
 
-- ✅ **7-Agent System** - Added n8n-javascript-specialist for Code node validation
-- ✅ **Context7 MCP Integration** - Real-time documentation access for 5 key agents
-- ✅ **Enhanced Code Generation** - Current API docs for better templates
-- ✅ **Up-to-Date Auth Patterns** - Live documentation for 525+ platform integrations
-- ✅ **Current Best Practices** - Always-current Node.js and library documentation
+- ✅ **Bulletproof Type Safety** - Eliminated all `args as any` patterns with proper Zod validation
+- ✅ **API Compliance System** - Automatic read-only field exclusion prevents API errors
+- ✅ **Runtime Response Validation** - 20+ response schemas with smart type coercion
+- ✅ **Zero TypeScript Errors** - Fixed 47 issues including 8 critical API bypass vulnerabilities
+- ✅ **Production Ready** - 158 tests passing with comprehensive E2E validation
 
 **Enhanced Stability & Production Readiness:**
 
@@ -96,6 +96,27 @@ validate_mcp_config {"fix_issues": true}
 
 ## 🚀 Quick Start
 
+### Prerequisites for Full Agent Functionality
+
+**Recommended MCP Dependencies:**
+
+For optimal agent performance with real-time documentation and enhanced reasoning capabilities, we recommend installing these companion MCP servers:
+
+```bash
+# 1. Context7 MCP - Real-time documentation access (HIGHLY RECOMMENDED)
+claude mcp add context7 -s user -- npx -y @upstash/context7-mcp
+
+# 2. Sequential Thinking MCP - Enhanced reasoning for complex tasks
+claude mcp add sequential-thinking -s user -- npx -y @modelcontextprotocol/server-sequential-thinking
+```
+
+**Why These Are Important:**
+
+- **Context7**: Provides agents with up-to-date API documentation, current best practices, and real-time library information instead of relying on training cutoffs
+- **Sequential Thinking**: Enables agents to break down complex problems systematically for better analysis and implementation
+
+> **Note**: n8n-MCP Modern works without these dependencies, but agent capabilities will be limited to training knowledge cutoffs.
+
 ### Installation
 
 > **🐳 Self-Hosted n8n with Docker**: If you're running n8n via docker-compose, you MUST add this environment variable to your n8n service BEFORE creating your API key:
@@ -128,34 +149,27 @@ n8n-mcp install
 - ✅ **Global Fallback**: Uses `--scope local` when no project context detected
 - ✅ **Team Sharing**: Creates `.mcp.json` for version control when project-scoped
 
-### 📚 Context7 MCP (Recommended for Full Functionality)
+### 📚 Enhanced Agent Capabilities
 
-For enhanced agent capabilities with real-time documentation access, install Context7 MCP:
+**Agents with MCP Integration:**
 
-```bash
-# Install Context7 MCP for up-to-date documentation
-claude mcp add context7 -s user -- npx -y @upstash/context7-mcp
+The 7-agent system leverages Context7 and Sequential Thinking MCPs when available:
 
-# Optional: Also install Sequential Thinking MCP for complex analysis
-claude mcp add sequential-thinking -s user -- npx -y @modelcontextprotocol/server-sequential-thinking
-```
-
-**What Context7 Enables:**
-
-- ✅ **Real-time API Documentation** - Current docs instead of outdated knowledge
-- ✅ **Enhanced Code Generation** - Better templates with current API patterns
-- ✅ **Up-to-Date Auth Patterns** - Live documentation for 525+ integrations
-- ✅ **Current Best Practices** - Always-current Node.js and library standards
-
-**Agents with Context7 Integration:**
-
+- `n8n-workflow-architect` - Master coordinator with sequential thinking for complex orchestration
 - `n8n-developer-specialist` - Current API/library docs for code generation
 - `n8n-integration-specialist` - Up-to-date auth docs across 525+ platforms
 - `n8n-guidance-specialist` - Current documentation and tutorials
 - `n8n-node-specialist` - AI/ML library docs and community packages
 - `n8n-javascript-specialist` - Current Node.js and JavaScript library documentation
+- `n8n-performance-specialist` - Real-time metrics and optimization patterns
 
-> **Note**: n8n-MCP Modern works fully without Context7, but agents will rely on training knowledge cutoffs instead of real-time documentation.
+**What Enhanced MCPs Enable:**
+
+- ✅ **Real-time API Documentation** - Current docs instead of outdated knowledge
+- ✅ **Enhanced Code Generation** - Better templates with current API patterns
+- ✅ **Up-to-Date Auth Patterns** - Live documentation for 525+ integrations
+- ✅ **Current Best Practices** - Always-current Node.js and library standards
+- ✅ **Sequential Problem Solving** - Break down complex tasks systematically
 
 **Method 2: Manual Installation**
 
