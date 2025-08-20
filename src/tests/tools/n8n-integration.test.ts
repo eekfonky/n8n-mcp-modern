@@ -17,7 +17,7 @@ skipIfNoN8N("N8N Live API Integration", () => {
   const apiKey = config.n8nApiKey;
 
   const headers = {
-    "X-N8N-API-KEY": apiKey!,
+    Authorization: `Bearer ${apiKey!}`,
     "Content-Type": "application/json",
   };
 
@@ -63,7 +63,7 @@ skipIfNoN8N("N8N Live API Integration", () => {
     it("should reject invalid API key", async () => {
       const response = await fetch(`${baseUrl}/workflows`, {
         headers: {
-          "X-N8N-API-KEY": "invalid-key",
+          Authorization: "Bearer invalid-key",
           "Content-Type": "application/json",
         },
       });

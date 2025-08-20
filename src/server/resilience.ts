@@ -472,7 +472,7 @@ export function initializeResilience(): void {
         const response = await fetch(`${config.n8nApiUrl}/workflows`, {
           method: "HEAD",
           headers: {
-            "X-N8N-API-KEY": config.n8nApiKey ?? "",
+            Authorization: `Bearer ${config.n8nApiKey ?? ""}`,
           },
         });
         return response.ok;

@@ -77,7 +77,7 @@ describe("Header Validation Fix", () => {
     expect(() => {
       new Headers({
         "Content-Type": "application/json",
-        "X-N8N-API-KEY": problematicJWT,
+        Authorization: `Bearer ${problematicJWT}`,
       });
     }).not.toThrow();
   });
