@@ -21,7 +21,7 @@ const VERSION_FILE = path.join(CLAUDE_AGENTS_DIR, ".n8n-mcp-version");
 const CONTENT_HASH_FILE = path.join(CLAUDE_AGENTS_DIR, ".n8n-mcp-content-hash");
 
 // Current package version - UPDATE THIS ON AGENT CHANGES
-const CURRENT_VERSION = "4.6.8";
+const CURRENT_VERSION = "4.6.9";
 const AGENT_CONTENT_VERSION = "1.0.0"; // Bump when agent content changes
 
 /**
