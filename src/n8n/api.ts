@@ -3,7 +3,7 @@
  * Handles communication with n8n REST API
  */
 
-import { fetch } from "undici";
+import { fetch, Headers } from "undici";
 import { z } from "zod";
 import { config } from "../server/config.js";
 import { logger } from "../server/logger.js";
@@ -214,14 +214,27 @@ export class N8NApiClient {
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
 
+    // Sanitize the API key to ensure it's valid for HTTP headers
+    const sanitizedApiKey = this.apiKey.trim().replace(/[\r\n\0]/g, "");
+
+    // Create headers object more carefully to avoid undici validation issues
+    const headers = new Headers({
+      "Content-Type": "application/json",
+      "X-N8N-API-KEY": sanitizedApiKey,
+    });
+
+    // Add any additional headers from options
+    if (options.headers) {
+      const additionalHeaders = options.headers as Record<string, string>;
+      for (const [key, value] of Object.entries(additionalHeaders)) {
+        headers.set(key, value);
+      }
+    }
+
     // Create a clean request options object to avoid type conflicts
     const requestOptions: Record<string, unknown> = {
       method: options.method ?? "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-N8N-API-KEY": this.apiKey,
-        ...(options.headers as Record<string, string>),
-      },
+      headers,
     };
 
     // Add body if present

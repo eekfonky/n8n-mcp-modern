@@ -3,8 +3,8 @@ import { z } from "zod";
 import type { Config } from "../types/index.js";
 import { ConfigSchema } from "../types/index.js";
 
-// Load environment variables
-dotenvConfig();
+// Load environment variables (quiet: true to maintain v16 behavior in v17)
+dotenvConfig({ quiet: true });
 
 // Environment variable parsing with validation
 const envSchema = z.object({
