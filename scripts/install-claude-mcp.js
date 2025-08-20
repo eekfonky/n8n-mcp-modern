@@ -20,9 +20,17 @@ const PACKAGE_AGENTS_DIR = path.join(__dirname, "..", "agents");
 const VERSION_FILE = path.join(CLAUDE_AGENTS_DIR, ".n8n-mcp-version");
 const CONTENT_HASH_FILE = path.join(CLAUDE_AGENTS_DIR, ".n8n-mcp-content-hash");
 
-// Current package version - UPDATE THIS ON AGENT CHANGES
-const CURRENT_VERSION = "4.6.9";
-const AGENT_CONTENT_VERSION = "1.0.0"; // Bump when agent content changes
+// Get version dynamically from package.json
+let CURRENT_VERSION = "4.7.4"; // Fallback version
+try {
+  const packageJson = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+  );
+  CURRENT_VERSION = packageJson.version;
+} catch (error) {
+  // Use fallback if can't read package.json
+}
+const AGENT_CONTENT_VERSION = "1.0.1"; // Bump when agent content changes
 
 /**
  * Ensure directory exists

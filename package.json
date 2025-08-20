@@ -1,6 +1,6 @@
 {
   "name": "@lexinet/n8n-mcp-modern",
-  "version": "4.7.4",
+  "version": "4.7.5",
   "description": "Modern n8n MCP server with Phase 2 orchestration - intelligent agent coordination, session management, and advanced workflow automation",
   "type": "module",
   "main": "dist/index.js",
@@ -81,7 +81,8 @@
   "files": [
     "dist/**/*",
     "data/nodes.db",
-    "agents/**/*",
+    "agents/*.md",
+    "!agents/README.md",
     "scripts/deploy.sh",
     "scripts/cleanup-sqlite.cjs",
     "scripts/install-claude-mcp.js",
