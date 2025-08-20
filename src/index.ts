@@ -4,6 +4,46 @@
  * Modern n8n MCP server built with official TypeScript SDK
  */
 
+// Handle install command BEFORE importing API modules to avoid warnings
+import { spawn } from "child_process";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import { existsSync } from "fs";
+
+const args = process.argv.slice(2);
+
+if (args.includes("install")) {
+  // Run the smart installer
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+
+  // Try multiple paths to find the script
+  const possiblePaths = [
+    join(__dirname, "..", "..", "scripts", "install-mcp.js"), // From dist/index.js
+    join(__dirname, "..", "scripts", "install-mcp.js"), // From src/index.js
+    join(process.cwd(), "scripts", "install-mcp.js"), // From package root
+  ];
+
+  const scriptPath = possiblePaths.find((p) => existsSync(p));
+
+  if (!scriptPath) {
+    process.stderr.write("Error: Could not find install script\n");
+    process.stderr.write("Please ensure the package is properly installed\n");
+    process.exit(1);
+  }
+
+  const installer = spawn("node", [scriptPath], {
+    stdio: "inherit",
+    env: process.env,
+  });
+
+  installer.on("close", (code) => {
+    process.exit(code ?? 0);
+  });
+
+  // Exit early - don't load the MCP server
+  process.exit(0);
+}
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -23,10 +63,6 @@ import {
 } from "./server/security.js";
 import { n8nApi } from "./n8n/api.js";
 import { N8NWorkflowNodeSchema, N8NConnectionsSchema } from "./types/index.js";
-import { spawn } from "child_process";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-import { existsSync } from "fs";
 
 /**
  * Main MCP Server Implementation
@@ -548,36 +584,7 @@ Documentation: https://github.com/eekfonky/n8n-mcp-modern
     return true;
   }
 
-  if (args.includes("install")) {
-    // Run the smart installer
-    const __dirname = dirname(fileURLToPath(import.meta.url));
-
-    // Try multiple paths to find the script
-    const possiblePaths = [
-      join(__dirname, "..", "..", "scripts", "install-mcp.js"), // From dist/index.js
-      join(__dirname, "..", "scripts", "install-mcp.js"), // From src/index.js
-      join(process.cwd(), "scripts", "install-mcp.js"), // From package root
-    ];
-
-    const scriptPath = possiblePaths.find((p) => existsSync(p));
-
-    if (!scriptPath) {
-      process.stderr.write("Error: Could not find install script\n");
-      process.stderr.write("Please ensure the package is properly installed\n");
-      process.exit(1);
-    }
-
-    const installer = spawn("node", [scriptPath], {
-      stdio: "inherit",
-      env: process.env,
-    });
-
-    installer.on("close", (code) => {
-      process.exit(code ?? 0);
-    });
-
-    return true;
-  }
+  // install command handled at top of file before imports
 
   return false;
 }
