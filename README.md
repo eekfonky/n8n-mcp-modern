@@ -1,14 +1,14 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-4.7.2-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-4.7.3-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![Technical Debt](https://img.shields.io/badge/Technical%20Debt-ZERO-brightgreen.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
 
-## 🎯 What's New in v4.7.2
+## 🎯 What's New in v4.7.3
 
 **ZERO TECHNICAL DEBT ACHIEVED:**
 
