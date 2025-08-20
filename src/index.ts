@@ -37,7 +37,7 @@ class N8NMcpServer {
   constructor() {
     this.server = new McpServer({
       name: "@lexinet/n8n-mcp-modern",
-      version: "4.6.6",
+      version: "4.6.8",
     });
 
     this.setupTools();
@@ -400,7 +400,11 @@ class N8NMcpServer {
   }
 
   /**
-   * Install Claude Code agents (async, non-blocking)
+   * Install Claude Code agents (smart update check)
+   * Only installs/updates when:
+   * - First time (no agents exist)
+   * - Version change detected
+   * - Agent content has changed
    */
   private async installClaudeAgents(): Promise<void> {
     try {
@@ -413,17 +417,32 @@ class N8NMcpServer {
         "install-claude-mcp.js",
       );
 
-      // Run installer in background
-      const child = spawn("node", [installerPath], {
+      // Run installer in silent mode with update check
+      const child = spawn("node", [installerPath, "--silent"], {
         stdio: "pipe",
         detached: true,
       });
 
+      // Capture output for logging
+      child.stdout?.on("data", (data) => {
+        const output = data.toString().trim();
+        if (
+          output.includes("Agents updated") ||
+          output.includes("Update needed")
+        ) {
+          logger.info(`Agent installer: ${output}`);
+        }
+      });
+
+      child.stderr?.on("data", (data) => {
+        logger.debug(`Agent installer error: ${data.toString().trim()}`);
+      });
+
       child.unref(); // Allow parent to exit independently
 
-      logger.info("Claude Code agent installation started (background)");
+      logger.debug("Claude Code agent installation check initiated");
     } catch (error) {
-      logger.debug("Agent installation skipped:", error);
+      logger.debug("Agent installation check skipped:", error);
     }
   }
 
@@ -502,13 +521,13 @@ function handleCliCommands(): boolean {
   const args = process.argv.slice(2);
 
   if (args.includes("--version") || args.includes("-v")) {
-    process.stdout.write("4.6.6\n");
+    process.stdout.write("4.6.8\n");
     return true;
   }
 
   if (args.includes("--help") || args.includes("-h")) {
     process.stdout.write(`
-n8n-MCP Modern v4.6.6 - 100 MCP Tools for n8n Automation
+n8n-MCP Modern v4.6.8 - 100 MCP Tools for n8n Automation
 
 Usage:
   npx @lexinet/n8n-mcp-modern              # Start MCP server (stdio mode)

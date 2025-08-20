@@ -10,6 +10,7 @@ import path from "path";
 import os from "os";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import crypto from "crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,9 +18,11 @@ const __dirname = dirname(__filename);
 const CLAUDE_AGENTS_DIR = path.join(process.cwd(), ".claude", "agents");
 const PACKAGE_AGENTS_DIR = path.join(__dirname, "..", "agents");
 const VERSION_FILE = path.join(CLAUDE_AGENTS_DIR, ".n8n-mcp-version");
+const CONTENT_HASH_FILE = path.join(CLAUDE_AGENTS_DIR, ".n8n-mcp-content-hash");
 
-// Current package version
-const CURRENT_VERSION = "4.3.2";
+// Current package version - UPDATE THIS ON AGENT CHANGES
+const CURRENT_VERSION = "4.6.8";
+const AGENT_CONTENT_VERSION = "1.0.0"; // Bump when agent content changes
 
 /**
  * Ensure directory exists
@@ -65,6 +68,82 @@ function copyAgents() {
 }
 
 /**
+ * Calculate hash of agent files to detect content changes
+ */
+function calculateAgentContentHash() {
+  const hash = crypto.createHash("sha256");
+  const agentFiles = fs.readdirSync(PACKAGE_AGENTS_DIR).sort();
+
+  agentFiles.forEach((file) => {
+    if (file.endsWith(".md") && file !== "README.md") {
+      const filePath = path.join(PACKAGE_AGENTS_DIR, file);
+      const content = fs.readFileSync(filePath, "utf8");
+      hash.update(file + content);
+    }
+  });
+
+  // Include agent content version in hash
+  hash.update(AGENT_CONTENT_VERSION);
+  return hash.digest("hex");
+}
+
+/**
+ * Check if agents need updating
+ */
+function needsUpdate() {
+  // Check if agents directory exists
+  if (!fs.existsSync(CLAUDE_AGENTS_DIR)) {
+    console.log("🔍 No agents directory found - installation needed");
+    return { needed: true, reason: "fresh_install" };
+  }
+
+  // Check version file
+  if (!fs.existsSync(VERSION_FILE)) {
+    console.log("🔍 No version file found - installation needed");
+    return { needed: true, reason: "missing_version" };
+  }
+
+  const installedVersion = fs.readFileSync(VERSION_FILE, "utf8").trim();
+
+  // Check if version has changed
+  if (installedVersion !== CURRENT_VERSION) {
+    console.log(
+      `🔍 Version change detected: ${installedVersion} → ${CURRENT_VERSION}`,
+    );
+    return {
+      needed: true,
+      reason: "version_change",
+      previousVersion: installedVersion,
+    };
+  }
+
+  // Check content hash for agent file changes
+  const currentHash = calculateAgentContentHash();
+
+  if (fs.existsSync(CONTENT_HASH_FILE)) {
+    const installedHash = fs.readFileSync(CONTENT_HASH_FILE, "utf8").trim();
+    if (installedHash !== currentHash) {
+      console.log("🔍 Agent content changes detected");
+      return {
+        needed: true,
+        reason: "content_change",
+        previousVersion: installedVersion,
+      };
+    }
+  } else {
+    console.log("🔍 No content hash found - installation needed");
+    return {
+      needed: true,
+      reason: "missing_hash",
+      previousVersion: installedVersion,
+    };
+  }
+
+  // Everything is up to date
+  return { needed: false, reason: "up_to_date", version: installedVersion };
+}
+
+/**
  * Check for existing installation and version
  */
 function checkExistingInstallation() {
@@ -76,11 +155,14 @@ function checkExistingInstallation() {
 }
 
 /**
- * Update version file
+ * Update version and content hash files
  */
 function updateVersionFile() {
   fs.writeFileSync(VERSION_FILE, CURRENT_VERSION);
+  const contentHash = calculateAgentContentHash();
+  fs.writeFileSync(CONTENT_HASH_FILE, contentHash);
   console.log(`📝 Updated version file: ${CURRENT_VERSION}`);
+  console.log(`📝 Updated content hash`);
 }
 
 /**
@@ -118,12 +200,28 @@ function showInstallInfo() {
 
 /**
  * Main installation function
+ * @param {boolean} silent - Run in silent mode (for auto-install)
+ * @returns {boolean} - True if installation/update occurred, false if already up to date
  */
-function main() {
-  console.log("🚀 n8n MCP Claude Integration Setup\n");
+function main(silent = false) {
+  if (!silent) {
+    console.log("🚀 n8n MCP Claude Integration Setup\n");
+  }
 
-  // Check if this is an upgrade
-  const previousVersion = checkExistingInstallation();
+  // Check if update is needed
+  const updateStatus = needsUpdate();
+
+  if (!updateStatus.needed) {
+    if (!silent) {
+      console.log("✅ Agents are already up to date");
+      console.log(`📦 Version: ${updateStatus.version}`);
+    }
+    return false;
+  }
+
+  if (!silent) {
+    console.log(`📋 Update needed: ${updateStatus.reason}`);
+  }
 
   try {
     // Copy agents
@@ -138,32 +236,44 @@ function main() {
     updateVersionFile();
 
     // Show appropriate completion message
-    if (previousVersion) {
-      showUpgradeInfo(previousVersion);
+    if (!silent) {
+      if (updateStatus.previousVersion) {
+        showUpgradeInfo(updateStatus.previousVersion);
+      } else {
+        showInstallInfo();
+      }
+
+      // Final instructions
+      console.log(`\n✨ Next Steps:`);
+      console.log(`   1. Restart Claude Code if running`);
+      console.log(
+        `   2. Use: claude mcp add n8n-mcp-modern --env N8N_API_URL=... --env N8N_API_KEY=...`,
+      );
+      console.log(`   3. Agents are automatically available in Claude Code!`);
+
+      console.log(`\n🔄 Upgrade Path:`);
+      console.log(`   • Run: npm install -g @lexinet/n8n-mcp-modern@latest`);
+      console.log(`   • Agents will auto-update on next MCP server start`);
     } else {
-      showInstallInfo();
+      console.log(`✅ Agents updated (${updateStatus.reason})`);
     }
 
-    // Final instructions
-    console.log(`\n✨ Next Steps:`);
-    console.log(`   1. Restart Claude Code if running`);
-    console.log(
-      `   2. Use: claude mcp add n8n-mcp-modern --env N8N_API_URL=... --env N8N_API_KEY=...`,
-    );
-    console.log(`   3. Agents are automatically available in Claude Code!`);
-
-    console.log(`\n🔄 Upgrade Path:`);
-    console.log(`   • Run: npm install -g @lexinet/n8n-mcp-modern@latest`);
-    console.log(`   • Agents will auto-update on next MCP server start`);
+    return true;
   } catch (error) {
     console.error("❌ Installation failed:", error.message);
-    process.exit(1);
+    if (!silent) {
+      process.exit(1);
+    }
+    return false;
   }
 }
 
 // Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
+  // Check for --silent flag
+  const silent =
+    process.argv.includes("--silent") || process.argv.includes("-s");
+  main(silent);
 }
 
-export { main, copyAgents, checkExistingInstallation };
+export { main, copyAgents, checkExistingInstallation, needsUpdate };
