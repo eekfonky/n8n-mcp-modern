@@ -1,7 +1,7 @@
 {
   "name": "@lexinet/n8n-mcp-modern",
-  "version": "4.3.5",
-  "description": "Modern n8n MCP server built with official TypeScript SDK - zero legacy, maximum performance",
+  "version": "5.1.0",
+  "description": "Modern n8n MCP server with Phase 2 orchestration - intelligent agent coordination, session management, and advanced workflow automation",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -11,6 +11,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc && chmod +x dist/index.js",
     "start": "node dist/index.js",
+    "postinstall": "node scripts/cleanup-sqlite.cjs",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
@@ -27,12 +28,14 @@
     "typecheck": "tsc --noEmit",
     "rebuild-db": "tsx src/scripts/rebuild-database.ts",
     "validate": "tsx src/scripts/validate-data.ts",
+    "validate-readme": "node scripts/validate-readme.cjs",
     "install-agents": "node scripts/install-claude-mcp.js",
-    "upgrade": "node scripts/upgrade.js",
+    "mcp:install": "node scripts/install-mcp.js",
+    "mcp:install-project": "echo 'Run: claude mcp add n8n-mcp-modern --scope project --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @lexinet/n8n-mcp-modern'",
+    "mcp:install-global": "echo 'Run: claude mcp add n8n-mcp-modern --scope local --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @lexinet/n8n-mcp-modern'",
     "sync-release": "./scripts/sync-release.sh",
-    "postinstall": "node scripts/install-claude-mcp.js",
     "ci": "npm run lint && npm run typecheck && npm run test:all",
-    "precommit": "npm run lint && npm run typecheck && npm run test:quick"
+    "precommit": "npm run lint && npm run typecheck && npm run test:quick && npm run validate-readme"
   },
   "keywords": [
     "n8n",
@@ -60,7 +63,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
     "better-sqlite3": "^12.2.0",
-    "dotenv": "^16.6.1",
+    "dotenv": "^17.2.1",
     "undici": "^7.0.0",
     "zod": "^3.25.76"
   },
@@ -77,9 +80,16 @@
   },
   "files": [
     "dist/**/*",
-    "data/**/*",
-    "agents/**/*",
-    "scripts/**/*",
+    "data/nodes.db",
+    "agents/*.md",
+    "!agents/README.md",
+    "scripts/deploy.sh",
+    "scripts/cleanup-sqlite.cjs",
+    "scripts/install-claude-mcp.js",
+    "scripts/install-mcp.js",
+    "scripts/sync-release.sh",
+    "scripts/test-runner.ts",
+    "scripts/validate-readme.cjs",
     "README.md",
     "LICENSE"
   ]
