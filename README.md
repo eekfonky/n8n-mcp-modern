@@ -1,20 +1,27 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-5.0.2-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-5.0.4-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![Technical Debt](https://img.shields.io/badge/Technical%20Debt-ZERO-brightgreen.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
 
-## 🎯 What's New in v5.0.2
+## 🎯 What's New in v5.0.4
 
-**Authentication Fix (CRITICAL):**
+**Community Node Discovery (CRITICAL):**
 
-- ✅ **Bearer Token Authentication** - Fixed 401 errors by switching from X-N8N-API-KEY to standard Bearer token format
+- ✅ **npm Registry Validation** - Community packages now validated via npm registry when n8n API unavailable
+- ✅ **Built-in Node Detection** - Correctly identifies `n8n-nodes-base.*` nodes as always available
+- ✅ **Package Information** - Returns version, description, npm URLs, and installation status
+- ✅ **TypeScript Safety** - All npm API responses properly typed with comprehensive error handling
+
+**Previous Release (v5.0.2) - Authentication Fix:**
+
+- ✅ **X-N8N-API-KEY Authentication** - Fixed 401 errors by using correct X-N8N-API-KEY header format
 - ✅ **n8n Compatibility** - Now works with all n8n hosting providers (cloud, self-hosted, Docker)
-- ✅ **API Standards Compliance** - Uses `Authorization: Bearer <JWT>` as per n8n API documentation
+- ✅ **API Standards Compliance** - Uses proper `X-N8N-API-KEY` header as per n8n API documentation
 - ✅ **Comprehensive Fix** - Updated API client, health checks, and all tests for consistency
 
 **Previous Release (v5.0.1):**
@@ -516,11 +523,154 @@ export MAX_CONCURRENT_REQUESTS="10"  # API rate limiting
 
 ### Docker Users (Self-Hosted n8n)
 
-If using docker-compose, ensure your n8n service includes:
+**Complete Production Docker Compose Setup:**
+
+For production self-hosted n8n with full community node support and MCP compatibility, use this complete docker-compose.yml configuration:
 
 ```yaml
-environment:
-  - N8N_API_ENDPOINT_REST=api/v1
+services:
+  traefik:
+    image: "traefik"
+    restart: always
+    command:
+      - "--api=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
+      - "--certificatesresolvers.mytlschallenge.acme.email=${SSL_EMAIL}"
+      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - traefik_data:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    restart: always
+    ports:
+      - "127.0.0.1:5678:5678"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.n8n.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
+      - traefik.http.routers.n8n.tls=true
+      - traefik.http.routers.n8n.entrypoints=web,websecure
+      - traefik.http.routers.n8n.tls.certresolver=mytlschallenge
+      - traefik.http.middlewares.n8n.headers.SSLRedirect=true
+      - traefik.http.middlewares.n8n.headers.STSSeconds=315360000
+      - traefik.http.middlewares.n8n.headers.browserXSSFilter=true
+      - traefik.http.middlewares.n8n.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.n8n.headers.forceSTSHeader=true
+      - traefik.http.middlewares.n8n.headers.SSLHost=${DOMAIN_NAME}
+      - traefik.http.middlewares.n8n.headers.STSIncludeSubdomains=true
+      - traefik.http.middlewares.n8n.headers.STSPreload=true
+      - traefik.http.routers.n8n.middlewares=n8n@docker
+    environment:
+      # Core n8n Settings
+      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+
+      # API Configuration (REQUIRED for MCP)
+      - N8N_API_ENDPOINT_REST=api/v1
+      - N8N_PUBLIC_API_ENABLED=true
+      - N8N_PUBLIC_API_SWAGGERUI_DISABLED=false
+
+      # Community Nodes (REQUIRED for community node discovery)
+      - N8N_COMMUNITY_PACKAGES_ENABLED=true
+      - N8N_VERIFIED_PACKAGES_ENABLED=true
+      - N8N_UNVERIFIED_PACKAGES_ENABLED=true
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+
+      # Additional API Features
+      - N8N_METRICS=true
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - /local-files:/files
+
+  watchtower:
+    image: containrrr/watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  traefik_data:
+    external: true
+  n8n_data:
+    external: true
+```
+
+**Environment File (.env):**
+
+Create a `.env` file in the same directory as your docker-compose.yml:
+
+```bash
+# Domain Configuration
+DOMAIN_NAME=yourdomain.com
+SUBDOMAIN=n8n
+SSL_EMAIL=your-email@yourdomain.com
+
+# Timezone
+GENERIC_TIMEZONE=Europe/Berlin
+```
+
+**Critical Environment Variables Explained:**
+
+- ✅ `N8N_PUBLIC_API_ENABLED=true` - Enables the REST API required by MCP
+- ✅ `N8N_COMMUNITY_PACKAGES_ENABLED=true` - Enables community node functionality
+- ✅ `N8N_VERIFIED_PACKAGES_ENABLED=true` - Allows verified community packages
+- ✅ `N8N_UNVERIFIED_PACKAGES_ENABLED=true` - Allows unverified community packages
+- ✅ `N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true` - Enables community package tools
+- ✅ `N8N_METRICS=true` - Enables metrics endpoint for monitoring
+- ✅ `N8N_PUBLIC_API_SWAGGERUI_DISABLED=false` - Enables API documentation UI
+
+**Deployment Steps:**
+
+1. Save the docker-compose.yml and .env files
+2. Create external volumes: `docker volume create traefik_data && docker volume create n8n_data`
+3. Deploy: `docker-compose up -d`
+4. Wait for services to start and SSL certificates to generate
+5. Access n8n at `https://your-subdomain.your-domain.com`
+6. Create your API key in Settings → API
+7. Configure the MCP with your API credentials
+
+**Without Traefik (Simple Setup):**
+
+For development or simple setups without SSL, use this minimal configuration:
+
+```yaml
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_API_ENDPOINT_REST=api/v1
+      - N8N_PUBLIC_API_ENABLED=true
+      - N8N_COMMUNITY_PACKAGES_ENABLED=true
+      - N8N_VERIFIED_PACKAGES_ENABLED=true
+      - N8N_UNVERIFIED_PACKAGES_ENABLED=true
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+      - N8N_METRICS=true
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:
 ```
 
 Then rebuild: `docker-compose up -d --build`

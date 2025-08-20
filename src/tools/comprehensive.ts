@@ -8,6 +8,9 @@ import { n8nApi, type N8NCredential, type N8NWorkflow } from "../n8n/api.js";
 import { logger } from "../server/logger.js";
 import { inputSanitizer } from "../server/security.js";
 
+// Node.js 18+ provides fetch globally
+/* global fetch */
+
 // ============== CORE DISCOVERY TOOLS (8 tools) ==============
 
 export const coreDiscoveryTools = [
@@ -129,14 +132,15 @@ export const coreDiscoveryTools = [
   {
     name: "validate_node_availability",
     description:
-      "Check if specific nodes are available in the current n8n instance",
+      "Check if specific nodes are available - validates built-in nodes and community packages via npm registry",
     inputSchema: {
       type: "object" as const,
       properties: {
         nodeTypes: {
           type: "array",
           items: { type: "string" },
-          description: "Array of node type names to check",
+          description:
+            "Array of node type names to check (e.g., 'n8n-nodes-base.httpRequest', '@n8n/n8n-nodes-scrapeninja')",
         },
       },
       required: ["nodeTypes"],
@@ -862,6 +866,34 @@ export const workflowManagementTools = [
 // ============== TOOL IMPLEMENTATIONS ==============
 
 /**
+ * NPM Registry response type definition
+ */
+interface NpmRegistryResponse {
+  name: string;
+  description?: string;
+  keywords?: string[];
+  "dist-tags"?: {
+    latest?: string;
+    [tag: string]: string | undefined;
+  };
+  versions?: {
+    [version: string]: {
+      name: string;
+      version: string;
+      description?: string;
+      keywords?: string[];
+      [key: string]: unknown;
+    };
+  };
+  time?: {
+    [version: string]: string;
+    modified?: string;
+    created?: string;
+  };
+  [key: string]: unknown;
+}
+
+/**
  * Tool execution handler following MCP TypeScript SDK patterns
  */
 export class ComprehensiveMCPTools {
@@ -1207,20 +1239,146 @@ export class ComprehensiveMCPTools {
   private static async validateNodeAvailability(
     args: Record<string, unknown>,
   ): Promise<Array<Record<string, unknown>>> {
-    if (!n8nApi) throw new Error("n8n API not available");
+    const nodeTypes = args.nodeTypes as string[];
+    const results: Array<Record<string, unknown>> = [];
 
-    const availableNodes = await n8nApi.getNodeTypes();
-    const availableNodeNames = availableNodes.map((node) => node.name);
+    for (const nodeType of nodeTypes) {
+      try {
+        // Check if it's a built-in node (starts with n8n-nodes-base)
+        if (nodeType.startsWith("n8n-nodes-base.")) {
+          results.push({
+            nodeType,
+            available: true,
+            type: "built-in",
+            status: "Built-in n8n node - always available",
+          });
+          continue;
+        }
 
-    return (args.nodeTypes as string[]).map((nodeType: string) => ({
-      nodeType,
-      available: availableNodeNames.includes(nodeType),
-      alternativeName: availableNodeNames.find(
-        (name) =>
-          name.toLowerCase().includes(nodeType.toLowerCase()) ||
-          nodeType.toLowerCase().includes(name.toLowerCase()),
-      ),
-    }));
+        // Check if it's a community package
+        if (nodeType.includes("n8n-nodes-")) {
+          const packageName = nodeType.split(".")[0] ?? nodeType;
+          const npmResult = await this.checkNpmPackage(packageName);
+
+          results.push({
+            nodeType,
+            available: npmResult.exists,
+            type: "community",
+            packageName,
+            status: npmResult.exists
+              ? `Community package available on npm: ${npmResult.version}`
+              : "Community package not found on public npm registry (may be installed locally, private, or from git)",
+            npmUrl: npmResult.exists
+              ? `https://www.npmjs.com/package/${packageName}`
+              : null,
+            description: npmResult.description,
+            keywords: npmResult.keywords,
+            lastModified: npmResult.lastModified,
+          });
+          continue;
+        }
+
+        // For other node types, try to determine what they might be
+        results.push({
+          nodeType,
+          available: false,
+          type: "unknown",
+          status:
+            "Node type format not recognized. Expected format: 'n8n-nodes-base.nodeName' or '@scope/n8n-nodes-package.nodeName'",
+          suggestion:
+            "Check if this is a built-in node (prefix with 'n8n-nodes-base.') or a community node package",
+        });
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        results.push({
+          nodeType,
+          available: false,
+          type: "error",
+          status: `Error checking node: ${errorMessage}`,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Check if an npm package exists and get its metadata
+   */
+  private static async checkNpmPackage(packageName: string): Promise<{
+    exists: boolean;
+    version?: string;
+    description?: string;
+    keywords?: string[];
+    lastModified?: string;
+  }> {
+    try {
+      const response = await fetch(
+        `https://registry.npmjs.org/${packageName}`,
+        {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "n8n-mcp-modern/5.0.3",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        return { exists: false };
+      }
+
+      const rawData = (await response.json()) as unknown;
+
+      // Type guard to validate the response structure
+      if (!rawData || typeof rawData !== "object") {
+        logger.warn(
+          `Invalid npm registry response for package ${packageName}: not an object`,
+        );
+        return { exists: false };
+      }
+
+      const data = rawData as NpmRegistryResponse;
+      const latestVersion = data["dist-tags"]?.latest;
+      const versionData = latestVersion
+        ? data.versions?.[latestVersion]
+        : undefined;
+
+      const result: {
+        exists: boolean;
+        version?: string;
+        description?: string;
+        keywords?: string[];
+        lastModified?: string;
+      } = {
+        exists: true,
+        keywords: versionData?.keywords ?? data.keywords ?? [],
+      };
+
+      if (latestVersion) {
+        result.version = latestVersion;
+      }
+
+      if (data.description) {
+        result.description = data.description;
+      }
+
+      const lastModified =
+        (latestVersion ? data.time?.[latestVersion] : undefined) ??
+        data.time?.modified;
+      if (lastModified) {
+        result.lastModified = lastModified;
+      }
+
+      return result;
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      logger.error(
+        `Error checking npm package ${packageName}: ${errorMessage}`,
+      );
+      return { exists: false };
+    }
   }
 
   // ============== CREDENTIAL MANAGEMENT IMPLEMENTATIONS ==============

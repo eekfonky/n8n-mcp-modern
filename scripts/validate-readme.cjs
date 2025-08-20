@@ -96,8 +96,9 @@ if (warnings.length > 0) {
 }
 
 console.log("\n💡 Tips:");
+console.log("  • Auto-sync version badge: npm run sync-version");
 console.log(
-  '  • Update version badge: search for "version-X.X.X-blue" and replace with current version',
+  '  • Manual update: search for "version-X.X.X-blue" and replace with current version',
 );
 console.log('  • Check "What\'s New" section reflects latest changes');
 console.log("  • Ensure installation commands are current");
