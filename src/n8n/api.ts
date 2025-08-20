@@ -1088,12 +1088,39 @@ export class N8NApiClient {
 }
 
 /**
+ * Check if we should suppress API configuration warnings
+ * Suppresses warnings during npm install/postinstall scripts
+ */
+function shouldSuppressApiWarnings(): boolean {
+  const argv1 = process.argv[1] ?? "";
+
+  // Suppress during npm install/postinstall contexts
+  return (
+    argv1.includes("postinstall") ||
+    argv1.includes("cleanup") ||
+    argv1.includes("install-") ||
+    argv1.includes("validate-") ||
+    argv1.includes("scripts/") ||
+    process.argv.includes("--silent") ||
+    process.argv.includes("--version") ||
+    process.argv.includes("--help")
+  );
+}
+
+/**
  * Create n8n API client instance
  */
 export function createN8NApiClient(): N8NApiClient | null {
   try {
     return new N8NApiClient();
   } catch (error) {
+    // Suppress warnings during npm install/postinstall contexts
+    if (shouldSuppressApiWarnings()) {
+      logger.debug("n8n API client not configured (install/script context)");
+      return null;
+    }
+
+    // For MCP server and CLI contexts, show appropriate warning
     logger.warn("n8n API client not available:", (error as Error).message);
     return null;
   }
