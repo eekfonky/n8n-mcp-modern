@@ -2,7 +2,7 @@
 name: n8n-scriptguard
 description: JavaScript validation & optimization specialist for n8n workflows. Proactively monitors Code nodes, Function nodes, expressions, and custom JavaScript within n8n workflows for security, performance, and best practices.
 tools: mcp__n8n-mcp__, mcp__context7__, mcp__sequential-thinking__, Task, TodoWrite
-model: sonnet
+model: opus
 color: yellow
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: n8n-node-expert
 description: Expert for 525+ n8n nodes, AI/ML workflows, community patterns, and advanced node configurations.
-tools: mcp__n8n-mcp__, mcp__context7__, Task, TodoWrite
+tools: mcp__n8n-mcp__, mcp__context7__, mcp__sequential-thinking__, Task, TodoWrite
 model: opus
 color: orange
 ---

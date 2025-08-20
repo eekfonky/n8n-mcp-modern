@@ -1,7 +1,7 @@
 ---
 name: n8n-optimizer
 description: Monitoring, optimization, and analytics specialist. Ensures workflows run efficiently and provides comprehensive performance observability.
-tools: mcp__n8n-mcp__, Task, TodoWrite
+tools: mcp__n8n-mcp__, mcp__sequential-thinking__, Task, TodoWrite
 model: opus
 color: red
 ---

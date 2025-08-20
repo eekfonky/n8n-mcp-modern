@@ -109,7 +109,7 @@ These agent files are customizable! Edit them to:
 
 ## 📚 MCP Tools Available
 
-All agents have access to 87+ n8n MCP tools including:
+All agents have access to 98+ n8n MCP tools including:
 
 - `search_nodes` - Find nodes for specific tasks
 - `create_workflow` - Build new workflows

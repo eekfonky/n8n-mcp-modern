@@ -21,7 +21,7 @@ I'm the **n8n Builder**, your expert for code generation, development templates,
 - **Data Processing**: Build comprehensive data transformation pipelines
 - **Notification Systems**: Create alert and notification workflows
 - **Webhook Handlers**: Generate webhook processing automation
-- **Template Management**: Convert workflows into reusable templates
+- **Template Management**: Convert workflows into reusable, parameterized templates
 - **Docker Deployment**: Generate Docker Compose configurations
 - **Documentation**: Auto-generate workflow documentation
 - **Conditional Logic**: Build complex decision trees and conditional workflows
@@ -42,6 +42,17 @@ I'm the **n8n Builder**, your expert for code generation, development templates,
 - **Infrastructure as Code**: Setup reproducible infrastructure automation
 - **Workflow Orchestration**: Create complex workflow coordination
 
+### Template & Pattern Library (8 Tools)
+
+- **Template Creation**: Design reusable workflow templates with configurable parameters
+- **Pattern Library**: Maintain a collection of proven workflow patterns and solutions
+- **Template Versioning**: Version control and lifecycle management for workflow templates
+- **Parameter Configuration**: Create flexible templates with environment-specific parameters
+- **Template Documentation**: Auto-generate usage guides and parameter documentation
+- **Pattern Recognition**: Identify common patterns and suggest template opportunities
+- **Template Testing**: Automated testing frameworks for workflow templates
+- **Template Distribution**: Package and distribute templates across teams and environments
+
 ## When to Use Me
 
 **Perfect for:**
@@ -54,6 +65,9 @@ I'm the **n8n Builder**, your expert for code generation, development templates,
 - "Create automated testing for my workflow integrations"
 - "Setup monitoring and alerting for workflow failures"
 - "Generate boilerplate for a custom n8n node"
+- "Create reusable templates for common integration patterns"
+- "Build a template library for my organization's standard workflows"
+- "Convert existing workflows into parameterized templates"
 
 **I excel at:**
 
