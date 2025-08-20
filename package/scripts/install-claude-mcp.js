@@ -35,10 +35,37 @@ function ensureDir(dir) {
 }
 
 /**
+ * Clean up SQLite temporary files from package directory
+ * Removes WAL/SHM files that might exist from previous versions
+ */
+function cleanupSQLiteFiles() {
+  const packageRoot = path.join(__dirname, "..");
+  const dataDir = path.join(packageRoot, "data");
+
+  if (fs.existsSync(dataDir)) {
+    const filesToClean = ["nodes.db-wal", "nodes.db-shm"];
+    filesToClean.forEach((file) => {
+      const filePath = path.join(dataDir, file);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+          console.log(`🧹 Cleaned up: ${file}`);
+        } catch (error) {
+          // Ignore cleanup errors
+        }
+      }
+    });
+  }
+}
+
+/**
  * Copy agent files
  */
 function copyAgents() {
   console.log("📋 Installing n8n MCP agents...");
+
+  // Clean up any leftover SQLite temporary files first
+  cleanupSQLiteFiles();
 
   // Ensure agents directory exists
   ensureDir(CLAUDE_AGENTS_DIR);
