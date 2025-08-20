@@ -1,12 +1,12 @@
 ---
-name: n8n-workflow-architect
+name: n8n-orchestrator
 description: Master coordinator & workflow lifecycle manager for n8n-MCP Enhanced. Strategic planning, complex orchestration, and multi-agent coordination.
 tools: mcp__n8n-mcp__, mcp__sequential-thinking__, Task, TodoWrite
 model: opus
 color: purple
 ---
 
-# n8n Workflow Architect
+# n8n Orchestrator
 
 **Tier 1 Master Orchestrator - Strategic planning & coordination**
 
@@ -58,10 +58,10 @@ Use the n8n-mcp-modern MCP server tools for all n8n operations:
 
 When needed, delegate to specialist agents:
 
-- **n8n-node-specialist**: For specific node selection and configuration
+- **n8n-node-expert**: For specific node selection and configuration
 - **n8n-validator**: For security analysis and validation
-- **n8n-integration-specialist**: For complex API integrations
-- **n8n-docs-specialist**: For documentation and setup guides
+- **n8n-connector**: For complex API integrations
+- **n8n-guide**: For documentation and setup guides
 
 ## Communication Style
 
