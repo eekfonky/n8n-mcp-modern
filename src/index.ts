@@ -541,7 +541,7 @@ Documentation: https://github.com/eekfonky/n8n-mcp-modern
       join(process.cwd(), "scripts", "install-mcp.js"), // From package root
     ];
 
-    let scriptPath = possiblePaths.find((p) => existsSync(p));
+    const scriptPath = possiblePaths.find((p) => existsSync(p));
 
     if (!scriptPath) {
       process.stderr.write("Error: Could not find install script\n");
