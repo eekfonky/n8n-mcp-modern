@@ -8,7 +8,7 @@
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 
 const args = process.argv.slice(2);
 
@@ -65,6 +65,24 @@ import { n8nApi } from "./n8n/api.js";
 import { N8NWorkflowNodeSchema, N8NConnectionsSchema } from "./types/index.js";
 
 /**
+ * Get package version dynamically from package.json
+ */
+function getPackageVersion(): string {
+  try {
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const packageJsonPath = join(__dirname, "..", "package.json");
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+    return packageJson.version;
+  } catch {
+    // Fallback version if package.json can't be read
+    return "4.7.4";
+  }
+}
+
+// Cache the version at startup
+const PACKAGE_VERSION = getPackageVersion();
+
+/**
  * Main MCP Server Implementation
  */
 class N8NMcpServer {
@@ -73,7 +91,7 @@ class N8NMcpServer {
   constructor() {
     this.server = new McpServer({
       name: "@lexinet/n8n-mcp-modern",
-      version: "4.6.9",
+      version: PACKAGE_VERSION,
     });
 
     this.setupTools();
@@ -557,13 +575,13 @@ function handleCliCommands(): boolean {
   const args = process.argv.slice(2);
 
   if (args.includes("--version") || args.includes("-v")) {
-    process.stdout.write("4.6.9\n");
+    process.stdout.write(`${PACKAGE_VERSION}\n`);
     return true;
   }
 
   if (args.includes("--help") || args.includes("-h")) {
     process.stdout.write(`
-n8n-MCP Modern v4.6.9 - 100 MCP Tools for n8n Automation
+n8n-MCP Modern v${PACKAGE_VERSION} - 100 MCP Tools for n8n Automation
 
 Usage:
   npx @lexinet/n8n-mcp-modern              # Start MCP server (stdio mode)
