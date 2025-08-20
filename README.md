@@ -1,14 +1,23 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-5.0.1-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-5.0.2-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![Technical Debt](https://img.shields.io/badge/Technical%20Debt-ZERO-brightgreen.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
 
-## 🎯 What's New in v5.0.1
+## 🎯 What's New in v5.0.2
+
+**Authentication Fix (CRITICAL):**
+
+- ✅ **Bearer Token Authentication** - Fixed 401 errors by switching from X-N8N-API-KEY to standard Bearer token format
+- ✅ **n8n Compatibility** - Now works with all n8n hosting providers (cloud, self-hosted, Docker)
+- ✅ **API Standards Compliance** - Uses `Authorization: Bearer <JWT>` as per n8n API documentation
+- ✅ **Comprehensive Fix** - Updated API client, health checks, and all tests for consistency
+
+**Previous Release (v5.0.1):**
 
 **Modern Dependencies & Security:**
 
