@@ -55,37 +55,51 @@ function validateEnvironment() {
   const isInstalled = checkExistingInstallation();
 
   if (isInstalled) {
-    console.log("✅ Detected existing n8n-MCP Modern installation");
-    console.log("💡 For upgrades, use: npx @lexinet/n8n-mcp-modern upgrade");
+    console.log("🔄 Detected existing n8n-MCP Modern installation");
+    console.log(
+      "📦 Performing smart upgrade (preserving your configuration)...",
+    );
     console.log("");
-    console.log("Proceeding with reinstallation...");
-    console.log("Note: Existing configuration will be preserved");
     return true; // Allow proceed with existing config
   }
 
-  // For fresh installs, require environment variables
+  // For fresh installs, warn about environment variables but allow installation
   if (
     N8N_API_URL === "https://your-n8n-instance.com" ||
     N8N_API_KEY === "your-api-key"
   ) {
-    console.error(
-      "❌ Please set N8N_API_URL and N8N_API_KEY environment variables",
+    console.log(
+      "⚠️  N8N_API_URL and N8N_API_KEY environment variables not configured",
     );
-    console.error("");
-    console.error("Example:");
-    console.error('export N8N_API_URL="https://your-n8n-instance.com"');
-    console.error('export N8N_API_KEY="your-jwt-token"');
-    console.error("");
-    console.error("Or run with:");
-    console.error(
+    console.log("");
+    console.log(
+      "The MCP server will install successfully but will run in offline mode.",
+    );
+    console.log(
+      "To enable n8n API integration, set these environment variables:",
+    );
+    console.log("");
+    console.log("Example:");
+    console.log('export N8N_API_URL="https://your-n8n-instance.com"');
+    console.log('export N8N_API_KEY="your-jwt-token"');
+    console.log("");
+    console.log("Or run with:");
+    console.log(
       'N8N_API_URL="https://..." N8N_API_KEY="..." npx @lexinet/n8n-mcp-modern install',
     );
-    process.exit(1);
+    console.log("");
+    console.log("Proceeding with fresh installation in offline mode...");
+    console.log("");
+    return false; // Fresh install without env vars
   }
+
+  console.log("✅ Environment configured - proceeding with fresh installation");
+  console.log("");
+  return false; // Fresh install with env vars
 }
 
 function main() {
-  console.log("🚀 n8n-MCP Modern - Smart Installation");
+  console.log("🚀 n8n-MCP Modern - Smart Install/Upgrade");
   console.log("");
 
   const isUpgrade = validateEnvironment();
@@ -110,7 +124,12 @@ function main() {
   try {
     execSync(command, { stdio: "inherit" });
     console.log("");
-    console.log("✅ Installation completed successfully!");
+    if (isUpgrade) {
+      console.log("✅ Upgrade completed successfully!");
+      console.log("🎉 Your n8n-MCP Modern installation is now up to date");
+    } else {
+      console.log("✅ Installation completed successfully!");
+    }
 
     if (scope === "project") {
       console.log(

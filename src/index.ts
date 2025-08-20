@@ -228,7 +228,7 @@ class N8NMcpServer {
       {
         title: "List Available Tools",
         description:
-          "Get comprehensive list of all 98 available tools with categories",
+          "Get comprehensive list of all 100 available tools with categories",
         inputSchema: {
           category: z
             .string()
@@ -508,14 +508,13 @@ function handleCliCommands(): boolean {
 
   if (args.includes("--help") || args.includes("-h")) {
     process.stdout.write(`
-n8n-MCP Modern v4.6.3 - 108 MCP Tools for n8n Automation
+n8n-MCP Modern v4.6.3 - 100 MCP Tools for n8n Automation
 
 Usage:
   npx @lexinet/n8n-mcp-modern              # Start MCP server (stdio mode)
   npx @lexinet/n8n-mcp-modern --version    # Show version
   npx @lexinet/n8n-mcp-modern --help       # Show this help
-  npx @lexinet/n8n-mcp-modern install      # Smart MCP installation (auto-detects scope)
-  npx @lexinet/n8n-mcp-modern upgrade      # Smart upgrade (preserves config)
+  npx @lexinet/n8n-mcp-modern install      # Smart install/upgrade (auto-detects and preserves config)
 
 Environment Variables:
   N8N_API_URL       # Your n8n instance URL
@@ -555,36 +554,6 @@ Documentation: https://github.com/eekfonky/n8n-mcp-modern
     });
 
     installer.on("close", (code) => {
-      process.exit(code ?? 0);
-    });
-
-    return true;
-  }
-  if (args.includes("upgrade")) {
-    // Run the smart upgrade script
-    const __dirname = dirname(fileURLToPath(import.meta.url));
-
-    // Try multiple paths to find the upgrade script
-    const possiblePaths = [
-      join(__dirname, "..", "..", "scripts", "upgrade.js"), // From dist/index.js
-      join(__dirname, "..", "scripts", "upgrade.js"), // From src/index.js
-      join(process.cwd(), "scripts", "upgrade.js"), // From package root
-    ];
-
-    const scriptPath = possiblePaths.find((p) => existsSync(p));
-
-    if (!scriptPath) {
-      process.stderr.write("Error: Could not find upgrade script\n");
-      process.stderr.write("Please ensure the package is properly installed\n");
-      process.exit(1);
-    }
-
-    const upgrader = spawn("node", [scriptPath], {
-      stdio: "inherit",
-      env: process.env,
-    });
-
-    upgrader.on("close", (code) => {
       process.exit(code ?? 0);
     });
 

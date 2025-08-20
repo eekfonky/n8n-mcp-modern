@@ -309,7 +309,7 @@ class UpgradeManager {
 
       return {
         success: true,
-        toolCount: 108, // Our known tool count
+        toolCount: 100, // Our known tool count
         agentCount: agentCount,
       };
     } catch (error) {
@@ -348,23 +348,28 @@ async function main() {
     console.log(
       "\n🎉 Upgrade complete! Your n8n MCP Modern installation is now up to date.",
     );
-    console.log("\n📝 What's new in v4.3.4:");
-    console.log("  • Complete implementation of all 108 MCP tools");
+    console.log("\n📝 What's new in v4.6.3:");
+    console.log("  • Complete implementation of all 100 MCP tools");
+    console.log("  • Phase 2 intelligent agent coordination");
+    console.log("  • Enhanced security and validation features");
+    console.log("  • Improved workflow automation capabilities");
     console.log(
-      '  • Fixed comprehensive tool routing (no more "Unknown tool" errors)',
+      "  • Modern TypeScript architecture with zero legacy dependencies",
     );
-    console.log("  • Enhanced user & system management capabilities");
-    console.log("  • Improved workflow import/export and templates");
-    console.log("  • Full validation engine for workflow analysis");
     console.log("\n🚀 Ready to use! No restart required.");
   } catch (error) {
     console.error("\n❌ Upgrade failed:", error.message);
-    console.log("\n🔧 Manual upgrade steps:");
-    console.log("  1. Run: claude mcp remove @lexinet/n8n-mcp-modern");
+    console.log("\n🔧 Manual recovery steps:");
+    console.log("  1. Run: claude mcp remove n8n-mcp-modern");
     console.log(
-      "  2. Remove agents from ~/.claude/config.json (n8n-* entries)",
+      "  2. Clear any n8n-* agent entries from ~/.claude/config.json",
     );
-    console.log("  3. Run: claude mcp add @lexinet/n8n-mcp-modern");
+    console.log("  3. Install fresh: npx @lexinet/n8n-mcp-modern install");
+    console.log("\n💡 Or try the manual Claude MCP commands:");
+    console.log("  1. claude mcp remove n8n-mcp-modern");
+    console.log(
+      "  2. claude mcp add n8n-mcp-modern --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @lexinet/n8n-mcp-modern",
+    );
     process.exit(1);
   }
 }
