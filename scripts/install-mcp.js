@@ -41,7 +41,29 @@ function detectInstallationScope() {
   return "local";
 }
 
+function checkExistingInstallation() {
+  try {
+    const result = execSync("claude mcp list", { encoding: "utf8" });
+    return result.includes("n8n-mcp-modern");
+  } catch {
+    return false;
+  }
+}
+
 function validateEnvironment() {
+  // Check if already installed (might be an upgrade)
+  const isInstalled = checkExistingInstallation();
+
+  if (isInstalled) {
+    console.log("✅ Detected existing n8n-MCP Modern installation");
+    console.log("💡 For upgrades, use: npx @lexinet/n8n-mcp-modern upgrade");
+    console.log("");
+    console.log("Proceeding with reinstallation...");
+    console.log("Note: Existing configuration will be preserved");
+    return true; // Allow proceed with existing config
+  }
+
+  // For fresh installs, require environment variables
   if (
     N8N_API_URL === "https://your-n8n-instance.com" ||
     N8N_API_KEY === "your-api-key"
@@ -56,7 +78,7 @@ function validateEnvironment() {
     console.error("");
     console.error("Or run with:");
     console.error(
-      'N8N_API_URL="https://..." N8N_API_KEY="..." npm run mcp:install',
+      'N8N_API_URL="https://..." N8N_API_KEY="..." npx @lexinet/n8n-mcp-modern install',
     );
     process.exit(1);
   }
@@ -66,17 +88,20 @@ function main() {
   console.log("🚀 n8n-MCP Modern - Smart Installation");
   console.log("");
 
-  validateEnvironment();
-
+  const isUpgrade = validateEnvironment();
   const scope = detectInstallationScope();
 
-  const command = [
-    "claude mcp add n8n-mcp-modern",
-    `--scope ${scope}`,
-    `--env N8N_API_URL="${N8N_API_URL}"`,
-    `--env N8N_API_KEY="${N8N_API_KEY}"`,
-    "-- npx -y @lexinet/n8n-mcp-modern",
-  ].join(" ");
+  // Build command - don't add env vars if it's an upgrade (they're already configured)
+  const commandParts = ["claude mcp add n8n-mcp-modern", `--scope ${scope}`];
+
+  // Only add env vars if they're properly configured (not for upgrades)
+  if (!isUpgrade && N8N_API_URL !== "https://your-n8n-instance.com") {
+    commandParts.push(`--env N8N_API_URL="${N8N_API_URL}"`);
+    commandParts.push(`--env N8N_API_KEY="${N8N_API_KEY}"`);
+  }
+
+  commandParts.push("-- npx -y @lexinet/n8n-mcp-modern");
+  const command = commandParts.join(" ");
 
   console.log("📋 Running command:");
   console.log(`   ${command}`);
