@@ -1,20 +1,20 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-4.6.3-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-4.6.11-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
 
-## 🎯 What's New in v4.6.0
+## 🎯 What's New in v4.6.11
 
-**TypeScript Type Safety Hardening & API Compliance:**
+**Smart Installation & Optimization:**
 
-- ✅ **Bulletproof Type Safety** - Eliminated all `args as any` patterns with proper Zod validation
-- ✅ **API Compliance System** - Automatic read-only field exclusion prevents API errors
-- ✅ **Runtime Response Validation** - 20+ response schemas with smart type coercion
-- ✅ **Zero TypeScript Errors** - Fixed 47 issues including 8 critical API bypass vulnerabilities
+- ✅ **75% Smaller Package** - Reduced from 5.4MB to 1.3MB for lightning-fast installs
+- ✅ **Smart Agent Updates** - Only install/update when needed, not every server start
+- ✅ **Upgrade Safety** - Automatic cleanup of legacy files during updates
+- ✅ **Content Hash Tracking** - Detects actual agent changes for precise updates
 - ✅ **Production Ready** - 158 tests passing with comprehensive E2E validation
 
 **Enhanced Stability & Production Readiness:**
