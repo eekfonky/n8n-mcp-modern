@@ -6,7 +6,7 @@
  */
 
 import { execSync } from "child_process";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 
 const N8N_API_URL = process.env.N8N_API_URL || "https://your-n8n-instance.com";
@@ -43,11 +43,29 @@ function detectInstallationScope() {
 
 function checkExistingInstallation() {
   try {
+    // Check global Claude MCP config
     const result = execSync("claude mcp list", { encoding: "utf8" });
-    return result.includes("n8n-mcp-modern");
+    if (result.includes("n8n-mcp-modern")) {
+      return true;
+    }
   } catch {
-    return false;
+    // Claude MCP command failed, continue checking
   }
+
+  // Check for project-level .mcp.json
+  try {
+    const mcpJsonPath = join(process.cwd(), ".mcp.json");
+    if (existsSync(mcpJsonPath)) {
+      const mcpConfig = JSON.parse(readFileSync(mcpJsonPath, "utf8"));
+      if (mcpConfig.mcpServers && mcpConfig.mcpServers["n8n-mcp-modern"]) {
+        return true;
+      }
+    }
+  } catch {
+    // .mcp.json doesn't exist or is invalid, continue
+  }
+
+  return false;
 }
 
 function validateEnvironment() {
