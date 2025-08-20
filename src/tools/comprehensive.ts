@@ -4,9 +4,7 @@
  */
 
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import { z as _z } from "zod";
 import { n8nApi, type N8NCredential, type N8NWorkflow } from "../n8n/api.js";
-import { database as _database } from "../database/index.js";
 import { logger } from "../server/logger.js";
 import { inputSanitizer } from "../server/security.js";
 

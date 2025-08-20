@@ -29,9 +29,22 @@ Use the n8n-mcp-modern MCP server tools for all n8n operations:
 - `search_nodes` - Find appropriate n8n nodes for requirements
 - `get_node_info` - Get detailed information about specific nodes
 - `validate_workflow` - Validate workflow structure and connections
-- `create_workflow` - Create new n8n workflows
+- `create_n8n_workflow` - Create new n8n workflows
 - `list_workflows` - List existing workflows
 - `get_workflow` - Retrieve workflow details
+- `activate_n8n_workflow` - Activate workflows after creation
+- `deactivate_n8n_workflow` - Deactivate workflows
+
+## n8n API Constraints
+
+**CRITICAL**: When creating workflows, follow these API rules:
+
+1. **Never set `active: true` during creation** - The `active` parameter is read-only in workflow creation
+2. **Create workflow first, then activate separately** using `activate_n8n_workflow`
+3. **Always use two-step process**:
+   - Step 1: `create_n8n_workflow` with `active: false` (or omit active)
+   - Step 2: `activate_n8n_workflow` with the returned workflow ID
+4. **Handle activation gracefully** - Check if user wants workflow activated after successful creation
 
 ## Workflow
 

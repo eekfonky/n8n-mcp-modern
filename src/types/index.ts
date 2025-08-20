@@ -94,7 +94,12 @@ export interface N8NNodeProperty {
 }
 
 export interface N8NCredential {
+  id?: string;
   name: string;
+  type: string;
+  data?: Record<string, unknown>;
+  ownedBy?: string;
+  sharedWith?: string[];
   required?: boolean;
   displayOptions?: {
     show?: Record<string, unknown[]>;
@@ -349,6 +354,25 @@ export type CreateWorkflowArgs = z.infer<typeof CreateWorkflowArgsSchema>;
 export type ExecuteWorkflowArgs = z.infer<typeof ExecuteWorkflowArgsSchema>;
 export type GetExecutionsArgs = z.infer<typeof GetExecutionsArgsSchema>;
 export type RouteToAgentArgs = z.infer<typeof RouteToAgentArgsSchema>;
+
+// Additional N8N API types to avoid circular dependencies
+export interface N8NUser {
+  id?: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  isOwner?: boolean;
+  isPending?: boolean;
+  settings?: Record<string, unknown>;
+}
+
+export interface N8NSettings {
+  timezone: string;
+  saveDataErrorExecution: string;
+  saveDataSuccessExecution: string;
+  saveManualExecutions: boolean;
+  callerPolicyDefaultOption: string;
+}
 
 // Tool response types for better type safety
 export interface ToolExecutionResult {

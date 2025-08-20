@@ -69,3 +69,8 @@ jest.config.*
 .claude-flow/
 .swarm/
 .bmad-*/
+
+# Backup files
+*.backup
+*.bak
+*~

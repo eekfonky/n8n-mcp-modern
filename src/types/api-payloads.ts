@@ -6,13 +6,14 @@
  * by automatically stripping server-managed read-only fields from payloads.
  */
 
+// Import shared types to avoid circular dependencies
 import type {
   N8NWorkflow,
   N8NWorkflowNode,
   N8NCredential,
   N8NUser,
   N8NSettings,
-} from "../n8n/api.js";
+} from "./index.js";
 
 // ============================================================================
 // UTILITY TYPES FOR READ-ONLY FIELD EXCLUSION
