@@ -68,6 +68,44 @@ function checkExistingInstallation() {
   return false;
 }
 
+/**
+ * Extract existing environment variables from MCP configuration
+ * This preserves user's n8n API credentials during upgrades
+ */
+function extractExistingEnvVars() {
+  const envVars = {};
+
+  // Try to read from project-level .mcp.json first
+  try {
+    const mcpJsonPath = join(process.cwd(), ".mcp.json");
+    if (existsSync(mcpJsonPath)) {
+      const mcpConfig = JSON.parse(readFileSync(mcpJsonPath, "utf8"));
+      const n8nServer = mcpConfig.mcpServers?.["n8n-mcp-modern"];
+      if (n8nServer?.env) {
+        Object.assign(envVars, n8nServer.env);
+      }
+    }
+  } catch (error) {
+    // Continue - try global config
+  }
+
+  // If no project config found, try global config via claude mcp list
+  if (Object.keys(envVars).length === 0) {
+    try {
+      const result = execSync("claude mcp list --json", { encoding: "utf8" });
+      const config = JSON.parse(result);
+      const n8nServer = config.servers?.["n8n-mcp-modern"];
+      if (n8nServer?.env) {
+        Object.assign(envVars, n8nServer.env);
+      }
+    } catch (error) {
+      // Global config extraction failed, continue with empty env
+    }
+  }
+
+  return envVars;
+}
+
 function validateEnvironment() {
   // Check if already installed (might be an upgrade)
   const isInstalled = checkExistingInstallation();
@@ -123,14 +161,28 @@ function main() {
   const isUpgrade = validateEnvironment();
   const scope = detectInstallationScope();
 
-  // Build command - don't add env vars if it's an upgrade (they're already configured)
+  // Build command with preserved environment variables
   const commandParts = ["claude mcp add n8n-mcp-modern", `--scope ${scope}`];
 
-  // Only add env vars if they're properly configured (not for upgrades)
-  if (!isUpgrade && N8N_API_URL !== "https://your-n8n-instance.com") {
-    commandParts.push(`--env N8N_API_URL="${N8N_API_URL}"`);
-    commandParts.push(`--env N8N_API_KEY="${N8N_API_KEY}"`);
+  // For upgrades, extract and preserve existing environment variables
+  let envVarsToAdd = {};
+  if (isUpgrade) {
+    envVarsToAdd = extractExistingEnvVars();
+    console.log("🔐 Preserving existing API credentials from configuration");
+  } else if (N8N_API_URL !== "https://your-n8n-instance.com") {
+    // For fresh installs, use environment variables if available
+    envVarsToAdd = {
+      N8N_API_URL,
+      N8N_API_KEY,
+    };
   }
+
+  // Add environment variables to command
+  Object.entries(envVarsToAdd).forEach(([key, value]) => {
+    if (value && value.trim() !== "") {
+      commandParts.push(`--env ${key}="${value}"`);
+    }
+  });
 
   commandParts.push("-- npx -y @lexinet/n8n-mcp-modern");
   const command = commandParts.join(" ");
@@ -179,14 +231,30 @@ function main() {
         );
 
         try {
+          // Extract environment variables before removal
+          const preservedEnvVars = extractExistingEnvVars();
+
           // Remove existing installation
           execSync(`claude mcp remove n8n-mcp-modern --scope ${scope}`, {
             stdio: "pipe",
           });
           console.log("✅ Removed existing installation");
 
-          // Add new installation
-          execSync(command, { stdio: "inherit" });
+          // Build new command with preserved environment variables
+          const newCommandParts = [
+            "claude mcp add n8n-mcp-modern",
+            `--scope ${scope}`,
+          ];
+          Object.entries(preservedEnvVars).forEach(([key, value]) => {
+            if (value && value.trim() !== "") {
+              newCommandParts.push(`--env ${key}="${value}"`);
+            }
+          });
+          newCommandParts.push("-- npx -y @lexinet/n8n-mcp-modern");
+          const newCommand = newCommandParts.join(" ");
+
+          // Add new installation with preserved environment variables
+          execSync(newCommand, { stdio: "inherit" });
           console.log("");
           console.log("✅ Upgrade completed successfully!");
           console.log("🎉 Your n8n-MCP Modern installation is now up to date");
