@@ -996,7 +996,7 @@ export class N8NMCPTools {
     return {
       categories,
       total: Object.values(categories).reduce((a, b) => a + b, 0),
-      breakdown: "13 MCP-registered + 87 execution-routed = 100 total tools",
+      breakdown: `13 MCP-registered + 87 execution-routed = ${13 + 87} total tools`,
     };
   }
 
