@@ -143,9 +143,17 @@ function main() {
     console.log("🔍 Verify installation with: claude mcp list");
   } catch (error) {
     const errorMessage = error.message;
+    console.log("🐛 Debug - Error message:", errorMessage);
 
     // Handle case where server already exists - for upgrades, remove and re-add
-    if (errorMessage.includes("already exists")) {
+    const isServerExistsError =
+      errorMessage.includes("already exists") ||
+      errorMessage.includes("MCP server") ||
+      (errorMessage.includes("server") && errorMessage.includes("exists")) ||
+      (errorMessage.includes("claude mcp add") &&
+        errorMessage.includes("Command failed"));
+
+    if (isServerExistsError) {
       if (isUpgrade) {
         console.log("");
         console.log(
