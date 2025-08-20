@@ -431,7 +431,7 @@ All hooks stored in `.claude/hooks/` for project isolation. See `.claude/hooks/R
 **Issue: MCP server hangs during installation**
 
 ```bash
-# v4.3.2 includes 30-second timeout protection
+# v4.6.11 includes 30-second timeout protection
 # If hanging occurs, use diagnostic tools:
 validate_mcp_config {"fix_issues": true}
 ```
@@ -462,7 +462,7 @@ list_available_tools {"category": "core"}
 **Issue: TypeScript compilation errors**
 
 ```bash
-# All TypeScript issues were fixed in v4.3.2
+# All TypeScript issues were fixed in v4.6.11
 npm run typecheck  # Should show zero errors
 npm run lint       # Should show zero warnings
 ```
