@@ -220,7 +220,7 @@ export class N8NApiClient {
     // Create headers object more carefully to avoid undici validation issues
     const headers = new Headers({
       "Content-Type": "application/json",
-      Authorization: `Bearer ${sanitizedApiKey}`,
+      "X-N8N-API-KEY": sanitizedApiKey,
     });
 
     // Add any additional headers from options
