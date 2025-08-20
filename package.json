@@ -1,6 +1,6 @@
 {
   "name": "@lexinet/n8n-mcp-modern",
-  "version": "4.6.7",
+  "version": "4.6.8",
   "description": "Modern n8n MCP server with Phase 2 orchestration - intelligent agent coordination, session management, and advanced workflow automation",
   "type": "module",
   "main": "dist/index.js",
