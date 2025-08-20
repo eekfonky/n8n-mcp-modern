@@ -1,16 +1,17 @@
 # 🚀 n8n MCP Modern - Upgrade Guide
 
-## 🎯 Smart Upgrade (Recommended)
+## 🎯 Smart Install/Upgrade (Recommended)
 
-For users who installed via `claude mcp add`, we now provide a **smart upgrade path** that preserves your configuration and seamlessly updates all components.
+For both fresh installations and upgrades, we now provide a **unified smart command** that auto-detects your current state and handles everything seamlessly.
 
-### Quick Upgrade
+### Quick Install/Upgrade
 
 ```bash
-npx @lexinet/n8n-mcp-modern upgrade
+# Same command for fresh installs AND upgrades!
+npx @lexinet/n8n-mcp-modern install
 ```
 
-That's it! The smart upgrade will:
+That's it! The smart install/upgrade will:
 
 ✅ **Automatically detect** your current installation  
 ✅ **Backup** your configuration safely  
@@ -40,7 +41,7 @@ That's it! The smart upgrade will:
 
 ## 📋 Manual Upgrade (Fallback)
 
-If the smart upgrade fails or you prefer manual control:
+If the smart install fails or you prefer manual control:
 
 ### Step 1: Remove Current Installation
 
@@ -80,8 +81,8 @@ Your Claude configuration should now include:
 ### Upgrade Fails
 
 ```bash
-# Check the upgrade logs
-npx @lexinet/n8n-mcp-modern upgrade --verbose
+# Try the install command again
+npx @lexinet/n8n-mcp-modern install
 
 # If it fails, use manual upgrade path
 claude mcp remove @lexinet/n8n-mcp-modern
@@ -164,4 +165,4 @@ npx @lexinet/n8n-mcp-modern --health-check
 
 ---
 
-**🚀 Ready to upgrade?** Run `npx @lexinet/n8n-mcp-modern upgrade` and get all 108 tools working in seconds!
+**🚀 Ready to install or upgrade?** Run `npx @lexinet/n8n-mcp-modern install` and get all 100 tools working in seconds!

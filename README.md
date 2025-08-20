@@ -1,7 +1,7 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-4.6.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-4.6.3-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
@@ -28,7 +28,7 @@
 
 **Complete Tool & Agent Ecosystem:**
 
-- ✅ **108 Total Tools** - Comprehensive n8n automation coverage
+- ✅ **100 Total Tools** - Comprehensive n8n automation coverage
 - ✅ **7-Agent Hierarchy** - Optimized for Claude Code workflows
 - ✅ **Code Generation** - AI-powered workflow creation (12 tools)
 - ✅ **DevOps Integration** - CI/CD & deployment automation (10 tools)
@@ -67,7 +67,7 @@
 src/
 ├── server/           # MCP server implementation
 ├── database/         # SQLite with clean schemas
-├── tools/           # 108 MCP tools (modern patterns)
+├── tools/           # 100 MCP tools (modern patterns)
 ├── agents/          # 6-agent hierarchical system
 ├── validation/      # Zod-based validation engine
 ├── n8n/            # Minimal n8n integration layer
@@ -191,25 +191,29 @@ claude mcp add n8n-mcp-modern --scope local \
 
 ### 🔄 Upgrading
 
-**Smart Upgrade (Recommended)**
+**Smart Install/Upgrade (Recommended)**
 
 ```bash
-npx @lexinet/n8n-mcp-modern upgrade
+# Same command for both fresh installs and upgrades!
+N8N_API_URL="https://your-n8n-instance.com" \
+N8N_API_KEY="your-api-key" \
+npx @lexinet/n8n-mcp-modern install
 ```
 
-✅ **Preserves** your configuration & environment variables  
-✅ **Updates** all 6 agents to latest capabilities  
-✅ **Fixes** comprehensive tool routing (108 tools now functional)  
-✅ **Rollback** protection with automatic verification
+✅ **Auto-detects** existing installations and preserves configuration  
+✅ **Updates** all 7 agents to latest capabilities  
+✅ **Preserves** your environment variables and settings  
+✅ **Smart routing** for all 100 tools
 
 **Manual Upgrade (Fallback)**
 
 ```bash
-claude mcp remove @lexinet/n8n-mcp-modern
-claude mcp add @lexinet/n8n-mcp-modern
+claude mcp remove n8n-mcp-modern
+claude mcp add n8n-mcp-modern \
+  --env N8N_API_URL="https://your-n8n-instance.com" \
+  --env N8N_API_KEY="your-api-key" \
+  -- npx -y @lexinet/n8n-mcp-modern
 ```
-
-> See [UPGRADE.md](./UPGRADE.md) for detailed upgrade documentation and troubleshooting.
 
 **Alternative: Direct Claude MCP Integration**
 
@@ -264,13 +268,13 @@ TIER 3: SUPPORT SPECIALIST
 
 **Clean Separation of Concerns:**
 
-1. **🔧 MCP Server** (`@lexinet/n8n-mcp-modern`): Provides 108 n8n-specific tools
+1. **🔧 MCP Server** (`@lexinet/n8n-mcp-modern`): Provides 100 n8n-specific tools
 2. **🤖 Claude Code Agents** (`agents/*.md`): 7 specialized agents using MCP tools
 3. **⚡ User Experience**: Claude Code Task tool → Agent → MCP tools → n8n API
 
 This architecture leverages Claude Code's built-in agent system while providing deep n8n integration through MCP tools.
 
-## 🛠️ 108 MCP Tools
+## 🛠️ 100 MCP Tools
 
 **🔧 Code Generation (12 tools):**
 
@@ -366,7 +370,7 @@ The package automatically handles URL formatting:
 
 **From n8n-mcp-enhanced v3.x:**
 
-1. **Same MCP Interface** - All 108 tools work identically
+1. **Same MCP Interface** - All 100 tools work identically
 2. **Agent System Preserved** - Same hierarchical structure
 3. **Performance Gains** - 10x faster, 95% smaller
 4. **Zero Breaking Changes** - Drop-in replacement
