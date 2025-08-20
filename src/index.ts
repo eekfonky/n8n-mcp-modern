@@ -26,6 +26,7 @@ import { N8NWorkflowNodeSchema, N8NConnectionsSchema } from "./types/index.js";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { existsSync } from "fs";
 
 /**
  * Main MCP Server Implementation
@@ -36,7 +37,7 @@ class N8NMcpServer {
   constructor() {
     this.server = new McpServer({
       name: "@lexinet/n8n-mcp-modern",
-      version: "4.4.0",
+      version: "4.6.2",
     });
 
     this.setupTools();
@@ -501,13 +502,13 @@ function handleCliCommands(): boolean {
   const args = process.argv.slice(2);
 
   if (args.includes("--version") || args.includes("-v")) {
-    process.stdout.write("4.4.0\n");
+    process.stdout.write("4.6.2\n");
     return true;
   }
 
   if (args.includes("--help") || args.includes("-h")) {
     process.stdout.write(`
-n8n-MCP Modern v4.4.0 - 108 MCP Tools for n8n Automation
+n8n-MCP Modern v4.6.2 - 108 MCP Tools for n8n Automation
 
 Usage:
   npx @lexinet/n8n-mcp-modern              # Start MCP server (stdio mode)
@@ -532,9 +533,23 @@ Documentation: https://github.com/eekfonky/n8n-mcp-modern
   if (args.includes("install")) {
     // Run the smart installer
     const __dirname = dirname(fileURLToPath(import.meta.url));
-    const installerPath = join(__dirname, "..", "scripts", "install-mcp.js");
 
-    const installer = spawn("node", [installerPath], {
+    // Try multiple paths to find the script
+    const possiblePaths = [
+      join(__dirname, "..", "..", "scripts", "install-mcp.js"), // From dist/index.js
+      join(__dirname, "..", "scripts", "install-mcp.js"), // From src/index.js
+      join(process.cwd(), "scripts", "install-mcp.js"), // From package root
+    ];
+
+    let scriptPath = possiblePaths.find((p) => existsSync(p));
+
+    if (!scriptPath) {
+      process.stderr.write("Error: Could not find install script\n");
+      process.stderr.write("Please ensure the package is properly installed\n");
+      process.exit(1);
+    }
+
+    const installer = spawn("node", [scriptPath], {
       stdio: "inherit",
       env: process.env,
     });
