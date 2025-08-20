@@ -1,7 +1,7 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-4.7.4-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-5.0.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![Technical Debt](https://img.shields.io/badge/Technical%20Debt-ZERO-brightgreen.svg)](https://github.com/eekfonky/n8n-mcp-modern)
@@ -87,7 +87,7 @@ src/
 ├── server/           # MCP server implementation
 ├── database/         # SQLite with clean schemas
 ├── tools/           # 100 MCP tools (modern patterns)
-├── agents/          # 6-agent hierarchical system
+├── agents/          # 7-agent hierarchical system
 ├── validation/      # Zod-based validation engine
 ├── n8n/            # Minimal n8n integration layer
 └── types/          # Full TypeScript definitions
@@ -262,7 +262,7 @@ npm run rebuild-db    # Rebuild node database
 
 ## 🤖 Claude Code Agent System
 
-**6 Optimized Claude Code Agents for n8n Automation:**
+**7 Specialized Claude Code Agents for n8n Automation:**
 
 This package includes Claude Code agents that work with the MCP server:
 

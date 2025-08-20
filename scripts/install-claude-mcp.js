@@ -209,7 +209,7 @@ function showUpgradeInfo(previousVersion) {
   console.log(`   Current:  v${CURRENT_VERSION}`);
   console.log(`\n📊 New in v${CURRENT_VERSION}:`);
   console.log(`   • 98 total tools (up from 87+)`);
-  console.log(`   • 6 optimized agents (streamlined from 7)`);
+  console.log(`   • 7 specialized agents with streamlined naming`);
   console.log(`   • Code generation tools (12 new)`);
   console.log(`   • DevOps integration tools (10 new)`);
   console.log(`   • Performance monitoring tools (12 new)`);
@@ -222,15 +222,16 @@ function showUpgradeInfo(previousVersion) {
 function showInstallInfo() {
   console.log(`\n🎉 n8n MCP Agents Installation Complete!`);
   console.log(`\n📍 Installed to: ${CLAUDE_AGENTS_DIR}`);
-  console.log(`📊 Agent Count: 6 specialized agents`);
+  console.log(`📊 Agent Count: 7 specialized agents`);
   console.log(`🔧 Tool Count: 98 MCP tools`);
   console.log(`\n🤖 Available Agents:`);
-  console.log(`   • n8n-workflow-architect (Master Orchestrator)`);
-  console.log(`   • n8n-developer-specialist (Code & DevOps)`);
-  console.log(`   • n8n-integration-specialist (Authentication)`);
-  console.log(`   • n8n-node-specialist (525+ Nodes + AI/ML)`);
-  console.log(`   • n8n-performance-specialist (Monitoring)`);
-  console.log(`   • n8n-guidance-specialist (Documentation & Support)`);
+  console.log(`   • n8n-orchestrator (Master Coordinator)`);
+  console.log(`   • n8n-builder (Code & DevOps)`);
+  console.log(`   • n8n-connector (Authentication & APIs)`);
+  console.log(`   • n8n-node-expert (525+ Nodes)`);
+  console.log(`   • n8n-optimizer (Performance & Monitoring)`);
+  console.log(`   • n8n-scriptguard (JavaScript Security)`);
+  console.log(`   • n8n-guide (Documentation & Support)`);
 }
 
 /**

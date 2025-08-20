@@ -289,8 +289,8 @@ export class WorkflowArchitect implements Agent {
   }
 
   shouldEscalate(
-    toolName: string,
-    context?: AgentContext,
+    _toolName: string,
+    _context?: AgentContext,
     reason?: EscalationReason,
   ): boolean {
     // Only escalate for critical resource or external system issues
@@ -499,8 +499,8 @@ export class DeveloperSpecialist implements Agent {
   }
 
   shouldEscalate(
-    toolName: string,
-    context?: AgentContext,
+    _toolName: string,
+    _context?: AgentContext,
     reason?: EscalationReason,
   ): boolean {
     return (
@@ -661,7 +661,7 @@ export class IntegrationSpecialist implements Agent {
     );
   }
 
-  getPriority(toolName: string, context?: AgentContext): number {
+  getPriority(_toolName: string, context?: AgentContext): number {
     if (context?.requiresAuthentication === true) return 9;
     if (context?.connectivity === true) return 8;
     return 7;
@@ -678,8 +678,8 @@ export class IntegrationSpecialist implements Agent {
   }
 
   shouldEscalate(
-    toolName: string,
-    context?: AgentContext,
+    _toolName: string,
+    _context?: AgentContext,
     reason?: EscalationReason,
   ): boolean {
     return (
@@ -881,8 +881,8 @@ export class NodeSpecialist implements Agent {
   }
 
   shouldEscalate(
-    toolName: string,
-    context?: AgentContext,
+    _toolName: string,
+    _context?: AgentContext,
     reason?: EscalationReason,
   ): boolean {
     return (
@@ -1093,8 +1093,8 @@ export class PerformanceSpecialist implements Agent {
   }
 
   shouldEscalate(
-    toolName: string,
-    context?: AgentContext,
+    _toolName: string,
+    _context?: AgentContext,
     reason?: EscalationReason,
   ): boolean {
     return (
@@ -1356,8 +1356,8 @@ export class JavaScriptSpecialist implements Agent {
   }
 
   shouldEscalate(
-    toolName: string,
-    context?: AgentContext,
+    _toolName: string,
+    _context?: AgentContext,
     reason?: EscalationReason,
   ): boolean {
     return (
@@ -1499,7 +1499,7 @@ export class GuidanceSpecialist implements Agent {
     );
   }
 
-  getPriority(toolName: string, context?: AgentContext): number {
+  getPriority(_toolName: string, context?: AgentContext): number {
     if (context?.documentation === true) return 7;
     if (context?.setupGuide === true) return 7;
     if (context?.userManagement === true) return 7;
@@ -1524,8 +1524,8 @@ export class GuidanceSpecialist implements Agent {
   }
 
   shouldEscalate(
-    toolName: string,
-    context?: AgentContext,
+    _toolName: string,
+    _context?: AgentContext,
     reason?: EscalationReason,
   ): boolean {
     // Support specialist escalates most specialist knowledge requests
@@ -2038,7 +2038,7 @@ export class MCPOrchestrator {
   }
 
   private determineCoordinationType(
-    request: EscalationRequest,
+    _request: EscalationRequest,
     patterns: EscalationPattern[],
   ): string {
     if (patterns.length === 0) return "exploratory";
@@ -2598,7 +2598,7 @@ export class AgentRouter {
    */
   async coordinateWorkflow(
     toolName: string,
-    context: AgentContext,
+    _context: AgentContext,
     requiredCapabilities: AgentCapability[],
   ): Promise<{
     coordinator: Agent;
