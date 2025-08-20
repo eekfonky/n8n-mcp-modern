@@ -78,7 +78,7 @@
   },
   "files": [
     "dist/**/*",
-    "data/**/*",
+    "data/nodes.db",
     "agents/**/*",
     "scripts/deploy.sh",
     "scripts/install-claude-mcp.js",

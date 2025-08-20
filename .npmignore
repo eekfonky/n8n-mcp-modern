@@ -56,3 +56,9 @@ NODE_UPGRADE_PATH.md
 build/
 tmp/
 temp/
+
+# SQLite temporary files (exclude from npm package)
+*.db-shm
+*.db-wal
+data/*.db-shm  
+data/*.db-wal
