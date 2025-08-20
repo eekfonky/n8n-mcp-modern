@@ -37,7 +37,7 @@ class N8NMcpServer {
   constructor() {
     this.server = new McpServer({
       name: "@lexinet/n8n-mcp-modern",
-      version: "4.6.2",
+      version: "4.6.3",
     });
 
     this.setupTools();
@@ -502,13 +502,13 @@ function handleCliCommands(): boolean {
   const args = process.argv.slice(2);
 
   if (args.includes("--version") || args.includes("-v")) {
-    process.stdout.write("4.6.2\n");
+    process.stdout.write("4.6.3\n");
     return true;
   }
 
   if (args.includes("--help") || args.includes("-h")) {
     process.stdout.write(`
-n8n-MCP Modern v4.6.2 - 108 MCP Tools for n8n Automation
+n8n-MCP Modern v4.6.3 - 108 MCP Tools for n8n Automation
 
 Usage:
   npx @lexinet/n8n-mcp-modern              # Start MCP server (stdio mode)
@@ -561,11 +561,33 @@ Documentation: https://github.com/eekfonky/n8n-mcp-modern
     return true;
   }
   if (args.includes("upgrade")) {
-    process.stdout.write("🔄 Starting n8n MCP Modern upgrade...\n");
-    process.stdout.write("Please run: npx @lexinet/n8n-mcp-modern upgrade\n");
-    process.stdout.write(
-      "This will preserve your configuration and update all agents.\n",
-    );
+    // Run the smart upgrade script
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+
+    // Try multiple paths to find the upgrade script
+    const possiblePaths = [
+      join(__dirname, "..", "..", "scripts", "upgrade.js"), // From dist/index.js
+      join(__dirname, "..", "scripts", "upgrade.js"), // From src/index.js
+      join(process.cwd(), "scripts", "upgrade.js"), // From package root
+    ];
+
+    const scriptPath = possiblePaths.find((p) => existsSync(p));
+
+    if (!scriptPath) {
+      process.stderr.write("Error: Could not find upgrade script\n");
+      process.stderr.write("Please ensure the package is properly installed\n");
+      process.exit(1);
+    }
+
+    const upgrader = spawn("node", [scriptPath], {
+      stdio: "inherit",
+      env: process.env,
+    });
+
+    upgrader.on("close", (code) => {
+      process.exit(code ?? 0);
+    });
+
     return true;
   }
 
