@@ -37,7 +37,7 @@ class N8NMcpServer {
   constructor() {
     this.server = new McpServer({
       name: "@lexinet/n8n-mcp-modern",
-      version: "4.6.4",
+      version: "4.6.5",
     });
 
     this.setupTools();
@@ -502,13 +502,13 @@ function handleCliCommands(): boolean {
   const args = process.argv.slice(2);
 
   if (args.includes("--version") || args.includes("-v")) {
-    process.stdout.write("4.6.4\n");
+    process.stdout.write("4.6.5\n");
     return true;
   }
 
   if (args.includes("--help") || args.includes("-h")) {
     process.stdout.write(`
-n8n-MCP Modern v4.6.4 - 100 MCP Tools for n8n Automation
+n8n-MCP Modern v4.6.5 - 100 MCP Tools for n8n Automation
 
 Usage:
   npx @lexinet/n8n-mcp-modern              # Start MCP server (stdio mode)

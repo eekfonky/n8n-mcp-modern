@@ -144,17 +144,55 @@ function main() {
   } catch (error) {
     const errorMessage = error.message;
 
-    // Handle case where server already exists
+    // Handle case where server already exists - for upgrades, remove and re-add
     if (errorMessage.includes("already exists")) {
-      console.log("");
-      console.log("ℹ️  MCP server already configured!");
-      console.log("");
-      console.log("To update configuration:");
-      console.log(`   claude mcp remove n8n-mcp-modern -s ${scope}`);
-      console.log(`   ${command}`);
-      console.log("");
-      console.log("🔍 Current status: claude mcp list");
-      return;
+      if (isUpgrade) {
+        console.log("");
+        console.log(
+          "🔄 Performing seamless upgrade (removing old, adding new)...",
+        );
+
+        try {
+          // Remove existing installation
+          execSync(`claude mcp remove n8n-mcp-modern --scope ${scope}`, {
+            stdio: "pipe",
+          });
+          console.log("✅ Removed existing installation");
+
+          // Add new installation
+          execSync(command, { stdio: "inherit" });
+          console.log("");
+          console.log("✅ Upgrade completed successfully!");
+          console.log("🎉 Your n8n-MCP Modern installation is now up to date");
+
+          if (scope === "project") {
+            console.log("📄 MCP server updated in .mcp.json");
+          } else {
+            console.log("🔧 MCP server updated in global configuration");
+          }
+
+          console.log("");
+          console.log("🔍 Verify upgrade with: claude mcp list");
+          return;
+        } catch (upgradeError) {
+          console.error("❌ Seamless upgrade failed:", upgradeError.message);
+          console.error("");
+          console.error("🔧 Manual upgrade steps:");
+          console.error(`   claude mcp remove n8n-mcp-modern --scope ${scope}`);
+          console.error(`   ${command}`);
+          process.exit(1);
+        }
+      } else {
+        console.log("");
+        console.log("ℹ️  MCP server already configured!");
+        console.log("");
+        console.log("To update configuration:");
+        console.log(`   claude mcp remove n8n-mcp-modern --scope ${scope}`);
+        console.log(`   ${command}`);
+        console.log("");
+        console.log("🔍 Current status: claude mcp list");
+        return;
+      }
     }
 
     console.error("❌ Installation failed:", errorMessage);
