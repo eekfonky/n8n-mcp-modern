@@ -369,6 +369,44 @@ export class N8NMCPTools {
         },
       },
       {
+        name: "n8n_copy_workflow",
+        description: "Copy/duplicate an existing n8n workflow",
+        inputSchema: {
+          type: "object" as const,
+          properties: {
+            id: {
+              type: "string",
+              description: "Workflow ID to copy",
+            },
+            newName: {
+              type: "string",
+              description: "Name for the copied workflow",
+            },
+            activate: {
+              type: "boolean",
+              description: "Whether to activate the copied workflow",
+              default: false,
+            },
+          },
+          required: ["id", "newName"],
+        },
+      },
+      {
+        name: "n8n_bulk_delete_workflows",
+        description: "Delete multiple n8n workflows by IDs",
+        inputSchema: {
+          type: "object" as const,
+          properties: {
+            ids: {
+              type: "array",
+              description: "Array of workflow IDs to delete",
+              items: { type: "string" },
+            },
+          },
+          required: ["ids"],
+        },
+      },
+      {
         name: "get_tool_usage_stats",
         description: "Get usage statistics for MCP tools",
         inputSchema: {
@@ -574,6 +612,14 @@ export class N8NMCPTools {
 
         case "n8n_delete_workflow":
           result = await this.deleteWorkflow(args);
+          break;
+
+        case "n8n_copy_workflow":
+          result = await this.copyWorkflow(args);
+          break;
+
+        case "n8n_bulk_delete_workflows":
+          result = await this.bulkDeleteWorkflows(args);
           break;
 
         // Phase 1: Code Generation Tools
@@ -1139,6 +1185,83 @@ export class N8NMCPTools {
       success: true,
       message: `Workflow ${args.id} deleted successfully`,
       workflowId: args.id,
+    };
+  }
+
+  /**
+   * Copy workflow
+   */
+  private static async copyWorkflow(
+    args: Record<string, unknown>,
+  ): Promise<unknown> {
+    if (!n8nApi) {
+      throw new Error(
+        "n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.",
+      );
+    }
+
+    // Get the original workflow
+    const originalWorkflow = await n8nApi.getWorkflow(args.id as string);
+
+    // Create a copy with the new name
+    const copiedWorkflow = await n8nApi.createWorkflow({
+      name: args.newName as string,
+      nodes: originalWorkflow.nodes,
+      connections: originalWorkflow.connections,
+      active: (args.activate as boolean) || false,
+      settings: originalWorkflow.settings,
+      staticData: originalWorkflow.staticData,
+      tags: originalWorkflow.tags,
+    });
+
+    return {
+      success: true,
+      message: `Workflow copied successfully`,
+      originalId: args.id,
+      newId: copiedWorkflow.id,
+      newName: args.newName,
+      workflow: copiedWorkflow,
+    };
+  }
+
+  /**
+   * Bulk delete workflows
+   */
+  private static async bulkDeleteWorkflows(
+    args: Record<string, unknown>,
+  ): Promise<unknown> {
+    if (!n8nApi) {
+      throw new Error(
+        "n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.",
+      );
+    }
+
+    const ids = args.ids as string[];
+    const results = [];
+
+    for (const id of ids) {
+      try {
+        await n8nApi.deleteWorkflow(id);
+        results.push({ id, success: true, message: "Deleted successfully" });
+      } catch (error) {
+        results.push({
+          id,
+          success: false,
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+    const failureCount = results.filter((r) => !r.success).length;
+
+    return {
+      success: failureCount === 0,
+      message: `Deleted ${successCount}/${ids.length} workflows successfully`,
+      totalRequested: ids.length,
+      successCount,
+      failureCount,
+      results,
     };
   }
 
