@@ -52,6 +52,8 @@ import { logger } from "./server/logger.js";
 import { database } from "./database/index.js";
 import { N8NMCPTools } from "./tools/index.js";
 import { agentRouter, AgentContextBuilder } from "./agents/index.js";
+import { initializeAgentTools } from "./tools/agent-tool-handler.js";
+import { initializeAgentIntegration } from "./agent-integration.js";
 import { initializeResilience } from "./server/resilience.js";
 import {
   initializeSecurity,
@@ -538,6 +540,14 @@ class N8NMcpServer {
     // Initialize resilience features
     initializeResilience();
     logger.info("Resilience features initialized");
+
+    // Initialize agent tools bridge
+    initializeAgentTools();
+    logger.info("Agent tool bridge initialized");
+
+    // Initialize agent integration
+    initializeAgentIntegration();
+    logger.info("Agent MCP integration initialized");
 
     // Initialize security module
     initializeSecurity();
