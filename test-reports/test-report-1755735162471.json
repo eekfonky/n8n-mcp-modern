@@ -1,0 +1,49 @@
+{
+  "timestamp": "2025-08-21T00:12:42.471Z",
+  "duration": 46634,
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "criticalFailed": 0
+  },
+  "suites": [
+    {
+      "suite": "Unit Tests",
+      "passed": true,
+      "duration": 2488,
+      "output": "\n RUN  v3.2.4 /home/chris/Code/n8n-mcp-modern\n\nstdout | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration\nTesting against n8n instance: https://n8n.srv925321.hstgr.cloud/api/v1\n\n ✓ src/tests/security.test.ts (19 tests) 21ms\n ✓ src/tests/tools/header-validation.test.ts (4 tests) 6ms\n ✓ src/tests/tools/workflow-tools.test.ts (15 tests) 23ms\n ✓ src/tests/tool-execution.test.ts (12 tests) 260ms\n ✓ src/tests/tools/n8n-integration.test.ts (17 tests) 944ms\n\n Test Files  5 passed (5)\n      Tests  67 passed (67)\n   Start at  01:12:02\n   Duration  1.58s (transform 698ms, setup 0ms, collect 1.74s, tests 1.25s, environment 1ms, prepare 692ms)\n\n",
+      "error": "stderr | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration > Workflow Operations > should activate and deactivate workflow\nWorkflow activation not possible (no trigger nodes) - this is expected for test workflow\n\nstderr | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration > Credentials Operations > should list credentials\nCredentials endpoint not available with GET method\n\nstderr | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration > Credentials Operations > should get credential types\nCredential types endpoint not available\n\nstderr | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration > User and Settings > should get current user info\nUser endpoint not accessible with API key (expected for API-only access)\n\n"
+    },
+    {
+      "suite": "Integration Tests",
+      "passed": true,
+      "duration": 2344,
+      "output": "\n RUN  v3.2.4 /home/chris/Code/n8n-mcp-modern\n\n ✓ src/tests/agent-routing.test.ts (19 tests) 13ms\n ✓ src/tests/agents/agent-system.test.ts (29 tests) 22ms\n ✓ src/tests/mcp-integration.test.ts (16 tests) 42ms\n\n Test Files  3 passed (3)\n      Tests  64 passed (64)\n   Start at  01:12:05\n   Duration  1.56s (transform 704ms, setup 0ms, collect 1.63s, tests 77ms, environment 1ms, prepare 535ms)\n\n"
+    },
+    {
+      "suite": "Live N8N Tests",
+      "passed": true,
+      "duration": 2318,
+      "output": "\n RUN  v3.2.4 /home/chris/Code/n8n-mcp-modern\n\nstdout | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration\nTesting against n8n instance: https://n8n.srv925321.hstgr.cloud/api/v1\n\n ✓ src/tests/tools/n8n-integration.test.ts (17 tests) 1023ms\n\n Test Files  1 passed (1)\n      Tests  17 passed (17)\n   Start at  01:12:07\n   Duration  1.52s (transform 95ms, setup 0ms, collect 125ms, tests 1.02s, environment 0ms, prepare 94ms)\n\n",
+      "error": "stderr | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration > Workflow Operations > should activate and deactivate workflow\nWorkflow activation not possible (no trigger nodes) - this is expected for test workflow\n\nstderr | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration > Credentials Operations > should list credentials\nCredentials endpoint not available with GET method\n\nstderr | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration > Credentials Operations > should get credential types\nCredential types endpoint not available\n\nstderr | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration > User and Settings > should get current user info\nUser endpoint not accessible with API key (expected for API-only access)\n\n"
+    },
+    {
+      "suite": "E2E Tests",
+      "passed": true,
+      "duration": 15299,
+      "output": "\n RUN  v3.2.4 /home/chris/Code/n8n-mcp-modern\n\n ✓ src/tests/e2e/mcp-server.e2e.test.ts (19 tests | 1 skipped) 14068ms\n   ✓ MCP Server E2E Tests > Server Lifecycle > should handle STDIO protocol  503ms\n   ✓ MCP Server E2E Tests > Tool Registration > should register all 87+ tools  1004ms\n   ✓ MCP Server E2E Tests > Tool Registration > should have proper tool schemas  1004ms\n   ✓ MCP Server E2E Tests > Error Handling > should handle invalid JSON-RPC messages  502ms\n   ✓ MCP Server E2E Tests > Error Handling > should handle unknown methods  502ms\n   ✓ MCP Server E2E Tests > Error Handling > should validate tool arguments  1002ms\n   ✓ MCP Server E2E Tests > Error Handling > should accept valid tool parameters  1001ms\n   ✓ MCP Server E2E Tests > Performance > should handle concurrent requests  2006ms\n   ✓ MCP Server E2E Tests > Security > should sanitize input data  504ms\n   ✓ MCP Server E2E Tests > Database Operations > should access node database  1002ms\n   ✓ MCP Server E2E Tests > Database Operations > should handle database errors gracefully  1002ms\n   ✓ MCP Server E2E Tests > Graceful Shutdown > should handle SIGTERM gracefully  1002ms\n\n Test Files  1 passed (1)\n      Tests  18 passed | 1 skipped (19)\n   Start at  01:12:09\n   Duration  14.49s (transform 69ms, setup 0ms, collect 68ms, tests 14.07s, environment 0ms, prepare 80ms)\n\n"
+    },
+    {
+      "suite": "Performance Benchmarks",
+      "passed": true,
+      "duration": 1635,
+      "output": "\n RUN  v3.2.4 /home/chris/Code/n8n-mcp-modern\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Initialization Performance > should initialize server quickly\nServer initialization: avg=0.41ms, max=0.46ms\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Initialization Performance > should load database efficiently\nDatabase not available for performance testing, skipping\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Tool Execution Performance > should execute tools quickly\nTool searchWorkflows: avg=0.00ms, p95=0.01ms\nTool searchNodes: avg=0.00ms, p95=0.01ms\nTool validateWorkflow: avg=0.00ms, p95=0.00ms\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Tool Execution Performance > should handle concurrent tool executions\nConcurrent execution: 50 requests in 0.08ms\nThroughput: 624500.40 req/s\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Agent Routing Performance > should route queries efficiently\nAgent routing: avg=0.03ms, max=0.16ms\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Agent Routing Performance > should scale with number of agents\nAgent lookup (7 agents): avg=0.0014ms\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Validation Performance > should validate schemas quickly\nSchema validation: avg=0.14ms\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Validation Performance > should sanitize input efficiently\nInput sanitization: avg=0.00ms, max=0.10ms\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Memory Performance > should maintain stable memory usage\nMemory growth: 7.06MB\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Memory Performance > should handle memory pressure gracefully\nOperations under pressure: 228182.03 ops/s\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Database Performance > should handle complex queries efficiently\nDatabase not available for complex query testing, skipping\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Database Performance > should handle concurrent database access\nDatabase not available for concurrent access testing, skipping\n\nstdout | src/tests/performance/benchmark.test.ts > Performance Benchmarks > Comparison with Legacy Version > should demonstrate performance improvements\nPerformance Improvements vs Legacy v3.x:\n- Initialization: 93.3% faster\n- Bundle Size: 98.6% smaller\n- Dependencies: 99.5% fewer\n- Tool Execution: 80.0% faster\n\n ✓ src/tests/performance/benchmark.test.ts (13 tests) 63ms\n\n Test Files  1 passed (1)\n      Tests  13 passed (13)\n   Start at  01:12:25\n   Duration  912ms (transform 323ms, setup 0ms, collect 525ms, tests 63ms, environment 0ms, prepare 78ms)\n\n"
+    }
+  ],
+  "environment": {
+    "nodeVersion": "v22.17.0",
+    "platform": "linux",
+    "hasN8NCredentials": false
+  }
+}

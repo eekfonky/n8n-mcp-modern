@@ -1,0 +1,36 @@
+{
+  "timestamp": "2025-08-21T00:11:37.516Z",
+  "duration": 41812,
+  "summary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "criticalFailed": 0
+  },
+  "suites": [
+    {
+      "suite": "Unit Tests",
+      "passed": true,
+      "duration": 2267,
+      "output": "\n RUN  v3.2.4 /home/chris/Code/n8n-mcp-modern\n\nstdout | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration\nTesting against n8n instance: https://n8n.srv925321.hstgr.cloud/api/v1\n\n ✓ src/tests/security.test.ts (19 tests) 19ms\n ✓ src/tests/tools/header-validation.test.ts (4 tests) 8ms\n ✓ src/tests/tools/workflow-tools.test.ts (15 tests) 22ms\n ✓ src/tests/tool-execution.test.ts (12 tests) 241ms\n ✓ src/tests/tools/n8n-integration.test.ts (17 tests) 905ms\n\n Test Files  5 passed (5)\n      Tests  67 passed (67)\n   Start at  01:11:02\n   Duration  1.54s (transform 746ms, setup 0ms, collect 1.82s, tests 1.20s, environment 1ms, prepare 690ms)\n\n",
+      "error": "stderr | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration > Workflow Operations > should activate and deactivate workflow\nWorkflow activation not possible (no trigger nodes) - this is expected for test workflow\n\nstderr | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration > Credentials Operations > should list credentials\nCredentials endpoint not available with GET method\n\nstderr | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration > Credentials Operations > should get credential types\nCredential types endpoint not available\n\nstderr | src/tests/tools/n8n-integration.test.ts > N8N Live API Integration > User and Settings > should get current user info\nUser endpoint not accessible with API key (expected for API-only access)\n\n"
+    },
+    {
+      "suite": "Integration Tests",
+      "passed": true,
+      "duration": 1660,
+      "output": "\n RUN  v3.2.4 /home/chris/Code/n8n-mcp-modern\n\n ✓ src/tests/agent-routing.test.ts (19 tests) 14ms\n ✓ src/tests/agents/agent-system.test.ts (29 tests) 18ms\n ✓ src/tests/mcp-integration.test.ts (16 tests) 23ms\n\n Test Files  3 passed (3)\n      Tests  64 passed (64)\n   Start at  01:11:04\n   Duration  943ms (transform 501ms, setup 0ms, collect 1.05s, tests 55ms, environment 1ms, prepare 352ms)\n\n"
+    },
+    {
+      "suite": "E2E Tests",
+      "passed": true,
+      "duration": 15280,
+      "output": "\n RUN  v3.2.4 /home/chris/Code/n8n-mcp-modern\n\n ✓ src/tests/e2e/mcp-server.e2e.test.ts (19 tests | 1 skipped) 14076ms\n   ✓ MCP Server E2E Tests > Server Lifecycle > should handle STDIO protocol  505ms\n   ✓ MCP Server E2E Tests > Tool Registration > should register all 87+ tools  1005ms\n   ✓ MCP Server E2E Tests > Tool Registration > should have proper tool schemas  1001ms\n   ✓ MCP Server E2E Tests > Error Handling > should handle invalid JSON-RPC messages  503ms\n   ✓ MCP Server E2E Tests > Error Handling > should handle unknown methods  502ms\n   ✓ MCP Server E2E Tests > Error Handling > should validate tool arguments  1003ms\n   ✓ MCP Server E2E Tests > Error Handling > should accept valid tool parameters  1003ms\n   ✓ MCP Server E2E Tests > Performance > should handle concurrent requests  2004ms\n   ✓ MCP Server E2E Tests > Security > should sanitize input data  502ms\n   ✓ MCP Server E2E Tests > Database Operations > should access node database  1001ms\n   ✓ MCP Server E2E Tests > Database Operations > should handle database errors gracefully  1002ms\n   ✓ MCP Server E2E Tests > Graceful Shutdown > should handle SIGTERM gracefully  1002ms\n\n Test Files  1 passed (1)\n      Tests  18 passed | 1 skipped (19)\n   Start at  01:11:06\n   Duration  14.50s (transform 67ms, setup 0ms, collect 64ms, tests 14.08s, environment 0ms, prepare 94ms)\n\n"
+    }
+  ],
+  "environment": {
+    "nodeVersion": "v22.17.0",
+    "platform": "linux",
+    "hasN8NCredentials": false
+  }
+}
