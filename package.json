@@ -1,5 +1,5 @@
 {
-  "name": "@lexinet/n8n-mcp-modern",
+  "name": "@eekfonky/n8n-mcp-modern",
   "version": "5.1.3",
   "description": "Modern n8n MCP server with Phase 2 orchestration - intelligent agent coordination, session management, and advanced workflow automation",
   "type": "module",
@@ -58,6 +58,9 @@
     "url": "https://github.com/eekfonky/n8n-mcp-modern/issues"
   },
   "homepage": "https://github.com/eekfonky/n8n-mcp-modern#readme",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "engines": {
     "node": ">=22.0.0"
   },
