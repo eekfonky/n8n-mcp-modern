@@ -108,7 +108,7 @@
 src/
 ├── server/           # MCP server implementation
 ├── database/         # SQLite with clean schemas
-├── tools/           # 100 MCP tools (modern patterns)
+├── tools/           # 126 MCP tools (modern patterns)
 ├── agents/          # 7-agent hierarchical system
 ├── validation/      # Zod-based validation engine
 ├── n8n/            # Minimal n8n integration layer
@@ -244,7 +244,7 @@ npx @eekfonky/n8n-mcp-modern install
 ✅ **Auto-detects** existing installations and preserves configuration  
 ✅ **Updates** all 7 agents to latest capabilities  
 ✅ **Preserves** your environment variables and settings  
-✅ **Smart routing** for all 100 tools
+✅ **Smart routing** for all 126 tools
 
 **Manual Upgrade (Fallback)**
 
@@ -315,7 +315,7 @@ TIER 3: SUPPORT SPECIALIST
 
 This architecture leverages Claude Code's built-in agent system while providing deep n8n integration through MCP tools.
 
-## 🛠️ 100 MCP Tools
+## 🛠️ 126 MCP Tools
 
 **🔧 Code Generation (12 tools):**
 

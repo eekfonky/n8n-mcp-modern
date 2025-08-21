@@ -21,7 +21,7 @@ if git rev-parse "v$PACKAGE_VERSION" >/dev/null 2>&1; then
     echo -e "🏷️  Git tag v$PACKAGE_VERSION already exists"
 else
     echo -e "${YELLOW}🏷️  Creating git tag v$PACKAGE_VERSION${NC}"
-    git tag -a "v$PACKAGE_VERSION" -m "Release v$PACKAGE_VERSION - Complete 108 MCP tools implementation"
+    git tag -a "v$PACKAGE_VERSION" -m "Release v$PACKAGE_VERSION - Complete 126 MCP tools implementation"
     git push origin "v$PACKAGE_VERSION"
 fi
 

@@ -349,7 +349,7 @@ async function main() {
       "\n🎉 Upgrade complete! Your n8n MCP Modern installation is now up to date.",
     );
     console.log("\n📝 What's new in v4.6.3:");
-    console.log("  • Complete implementation of all 100 MCP tools");
+    console.log("  • Complete implementation of all 126 MCP tools");
     console.log("  • Phase 2 intelligent agent coordination");
     console.log("  • Enhanced security and validation features");
     console.log("  • Improved workflow automation capabilities");

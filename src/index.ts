@@ -94,7 +94,7 @@ function getToolCount(): {
   try {
     // These will be available after imports
     const registeredTools = 13; // Base MCP-registered tools (counted from setupTools)
-    const comprehensiveTools = 87; // From getAllComprehensiveTools().length
+    const comprehensiveTools = 113; // Total tools via routing: 77 comprehensive + 16 code-gen + 14 dev-workflow + 19 perf-obs - 13 overlap = 113
     return {
       total: registeredTools + comprehensiveTools,
       registered: registeredTools,
@@ -102,7 +102,7 @@ function getToolCount(): {
     };
   } catch {
     // Fallback if imports not available
-    return { total: 100, registered: 13, comprehensive: 87 };
+    return { total: 126, registered: 13, comprehensive: 113 };
   }
 }
 
