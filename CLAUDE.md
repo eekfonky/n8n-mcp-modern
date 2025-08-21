@@ -147,7 +147,7 @@ const result = ValidationProfileSchema.parse(input);
 
 ## Publishing & Distribution
 
-**NPM Package:** `@lexinet/n8n-mcp-modern`
+**GitHub Package:** `@eekfonky/n8n-mcp-modern` (GitHub Packages Registry)
 **Binary:** `n8n-mcp` (via dist/index.js with shebang)
 **Files:** dist/, data/, agents/, README.md, LICENSE
 **Engine Requirement:** Node.js >=22.0.0

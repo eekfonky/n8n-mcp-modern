@@ -189,7 +189,7 @@ jobs:
             
             ## Installation
             ```bash
-            npm install -g @lexinet/n8n-mcp-modern
+            npm install -g @eekfonky/n8n-mcp-modern
             ```
             
             ## Docker

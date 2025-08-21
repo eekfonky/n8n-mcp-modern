@@ -288,7 +288,7 @@ function main(silent = false) {
       console.log(`   3. Agents are automatically available in Claude Code!`);
 
       console.log(`\n🔄 Upgrade Path:`);
-      console.log(`   • Run: npm install -g @lexinet/n8n-mcp-modern@latest`);
+      console.log(`   • Run: npm install -g @eekfonky/n8n-mcp-modern@latest`);
       console.log(`   • Agents will auto-update on next MCP server start`);
     } else {
       console.log(`✅ Agents updated (${updateStatus.reason})`);

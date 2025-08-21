@@ -26,7 +26,7 @@ else
 fi
 
 # Check NPM published version
-NPM_VERSION=$(npm view @lexinet/n8n-mcp-modern version 2>/dev/null || echo "not-published")
+NPM_VERSION=$(npm view @eekfonky/n8n-mcp-modern version 2>/dev/null || echo "not-published")
 echo -e "🌐 NPM version: ${YELLOW}$NPM_VERSION${NC}"
 
 # Verify sync status

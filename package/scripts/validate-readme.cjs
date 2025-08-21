@@ -34,7 +34,7 @@ if (!versionMatch) {
 }
 
 // 2. Check installation commands have current version references
-const npmCommands = readmeContent.match(/npx -y @lexinet\/n8n-mcp-modern/g);
+const npmCommands = readmeContent.match(/npx -y @eekfonky\/n8n-mcp-modern/g);
 if (!npmCommands || npmCommands.length === 0) {
   warnings.push("⚠️ No npm installation commands found");
 }

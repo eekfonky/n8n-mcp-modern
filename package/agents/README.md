@@ -26,7 +26,7 @@ TIER 3: RESEARCH SPECIALISTS
 claude mcp add n8n-mcp-modern \
   --env N8N_API_URL="https://your-n8n-instance.com" \
   --env N8N_API_KEY="your-api-key" \
-  -- npx -y @lexinet/n8n-mcp-modern
+  -- npx -y @eekfonky/n8n-mcp-modern
 ```
 
 ### Step 2: Agents Auto-Install ✨

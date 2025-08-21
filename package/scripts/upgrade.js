@@ -20,7 +20,7 @@ const AGENT_DIR = join(__dirname, "..", "agents");
 class UpgradeManager {
   constructor() {
     this.claudeConfig = null;
-    this.serverName = "@lexinet/n8n-mcp-modern";
+    this.serverName = "@eekfonky/n8n-mcp-modern";
     this.agentPrefix = "n8n-";
   }
 
@@ -360,11 +360,11 @@ async function main() {
   } catch (error) {
     console.error("\n❌ Upgrade failed:", error.message);
     console.log("\n🔧 Manual upgrade steps:");
-    console.log("  1. Run: claude mcp remove @lexinet/n8n-mcp-modern");
+    console.log("  1. Run: claude mcp remove @eekfonky/n8n-mcp-modern");
     console.log(
       "  2. Remove agents from ~/.claude/config.json (n8n-* entries)",
     );
-    console.log("  3. Run: claude mcp add @lexinet/n8n-mcp-modern");
+    console.log("  3. Run: claude mcp add @eekfonky/n8n-mcp-modern");
     process.exit(1);
   }
 }

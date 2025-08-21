@@ -5,7 +5,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@lexinet/n8n-mcp-modern"
+        "@eekfonky/n8n-mcp-modern"
       ],
       "env": {
         "N8N_API_URL": "https://n8n.srv925321.hstgr.cloud",

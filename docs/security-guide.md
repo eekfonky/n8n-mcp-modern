@@ -271,7 +271,7 @@ npm update
 
 - [OWASP Security Practices](https://owasp.org/www-project-top-ten/)
 - [Node.js Security Best Practices](https://nodejs.org/en/docs/guides/security/)
-- [npm Security Best Practices](https://docs.npmjs.com/packages-and-modules/securing-your-code)
+- [GitHub Packages Security](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry)
 - [Docker Security](https://docs.docker.com/engine/security/)
 
 ---

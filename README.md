@@ -175,10 +175,10 @@ claude mcp add sequential-thinking -s user -- npx -y @modelcontextprotocol/serve
 # Direct installation with smart auto-detection
 N8N_API_URL="https://your-n8n-instance.com" \
 N8N_API_KEY="your-api-key" \
-npx @lexinet/n8n-mcp-modern install
+npx @eekfonky/n8n-mcp-modern install
 
 # Alternative: Install globally first, then configure
-npm install -g @lexinet/n8n-mcp-modern
+npm install -g @eekfonky/n8n-mcp-modern
 N8N_API_URL="https://your-n8n-instance.com" \
 N8N_API_KEY="your-api-key" \
 n8n-mcp install
@@ -219,13 +219,13 @@ The 7-agent system leverages Context7 and Sequential Thinking MCPs when availabl
 claude mcp add n8n-mcp-modern --scope project \
   --env N8N_API_URL="https://your-n8n-instance.com" \
   --env N8N_API_KEY="your-api-key" \
-  -- npx -y @lexinet/n8n-mcp-modern
+  -- npx -y @eekfonky/n8n-mcp-modern
 
 # Global installation
 claude mcp add n8n-mcp-modern --scope local \
   --env N8N_API_URL="https://your-n8n-instance.com" \
   --env N8N_API_KEY="your-api-key" \
-  -- npx -y @lexinet/n8n-mcp-modern
+  -- npx -y @eekfonky/n8n-mcp-modern
 ```
 
 > **⚠️ Important**: For full n8n workflow automation capabilities, you MUST provide your n8n API credentials via environment variables as shown above.
@@ -238,7 +238,7 @@ claude mcp add n8n-mcp-modern --scope local \
 # Same command for both fresh installs and upgrades!
 N8N_API_URL="https://your-n8n-instance.com" \
 N8N_API_KEY="your-api-key" \
-npx @lexinet/n8n-mcp-modern install
+npx @eekfonky/n8n-mcp-modern install
 ```
 
 ✅ **Auto-detects** existing installations and preserves configuration  
@@ -253,7 +253,7 @@ claude mcp remove n8n-mcp-modern
 claude mcp add n8n-mcp-modern \
   --env N8N_API_URL="https://your-n8n-instance.com" \
   --env N8N_API_KEY="your-api-key" \
-  -- npx -y @lexinet/n8n-mcp-modern
+  -- npx -y @eekfonky/n8n-mcp-modern
 ```
 
 **Alternative: Direct Claude MCP Integration**
@@ -263,7 +263,7 @@ claude mcp add n8n-mcp-modern \
 claud mcp add n8n-mcp-modern \
   --env N8N_API_URL="https://your-n8n-instance.com" \
   --env N8N_API_KEY="your-api-key" \
-  -- npx -y @lexinet/n8n-mcp-modern
+  -- npx -y @eekfonky/n8n-mcp-modern
 ```
 
 ### Development
@@ -309,7 +309,7 @@ TIER 3: SUPPORT SPECIALIST
 
 **Clean Separation of Concerns:**
 
-1. **🔧 MCP Server** (`@lexinet/n8n-mcp-modern`): Provides 100 n8n-specific tools
+1. **🔧 MCP Server** (`@eekfonky/n8n-mcp-modern`): Provides 100 n8n-specific tools
 2. **🤖 Claude Code Agents** (`agents/*.md`): 7 specialized agents using MCP tools
 3. **⚡ User Experience**: Claude Code Task tool → Agent → MCP tools → n8n API
 
@@ -396,7 +396,7 @@ To use the full functionality, you need to obtain API credentials from your n8n 
    claude mcp add n8n-mcp-modern \
      --env N8N_API_URL="https://your-n8n-instance.com" \
      --env N8N_API_KEY="your-api-key" \
-     -- npx -y @lexinet/n8n-mcp-modern
+     -- npx -y @eekfonky/n8n-mcp-modern
    ```
 
 ### URL Auto-Normalization
@@ -423,7 +423,7 @@ The package automatically handles URL formatting:
 claude mcp remove n8n-mcp-enhanced
 
 # Add modern version
-claude mcp add n8n-mcp-modern -- npx -y @lexinet/n8n-mcp-modern
+claude mcp add n8n-mcp-modern -- npx -y @eekfonky/n8n-mcp-modern
 ```
 
 ## 🧪 Testing

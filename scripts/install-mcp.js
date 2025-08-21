@@ -141,7 +141,7 @@ function validateEnvironment() {
     console.log("");
     console.log("Or run with:");
     console.log(
-      'N8N_API_URL="https://..." N8N_API_KEY="..." npx @lexinet/n8n-mcp-modern install',
+      'N8N_API_URL="https://..." N8N_API_KEY="..." npx @eekfonky/n8n-mcp-modern install',
     );
     console.log("");
     console.log("Proceeding with fresh installation in offline mode...");
@@ -184,7 +184,7 @@ function main() {
     }
   });
 
-  commandParts.push("-- npx -y @lexinet/n8n-mcp-modern");
+  commandParts.push("-- npx -y @eekfonky/n8n-mcp-modern");
   const command = commandParts.join(" ");
 
   console.log("📋 Running command:");
@@ -250,7 +250,7 @@ function main() {
               newCommandParts.push(`--env ${key}="${value}"`);
             }
           });
-          newCommandParts.push("-- npx -y @lexinet/n8n-mcp-modern");
+          newCommandParts.push("-- npx -y @eekfonky/n8n-mcp-modern");
           const newCommand = newCommandParts.join(" ");
 
           // Add new installation with preserved environment variables

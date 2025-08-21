@@ -117,7 +117,7 @@ class N8NMcpServer {
 
   constructor() {
     this.server = new McpServer({
-      name: "@lexinet/n8n-mcp-modern",
+      name: "@eekfonky/n8n-mcp-modern",
       version: PACKAGE_VERSION,
     });
 
@@ -610,10 +610,10 @@ function handleCliCommands(): boolean {
 n8n-MCP Modern v${PACKAGE_VERSION} - ${TOTAL_TOOLS.total} MCP Tools for n8n Automation
 
 Usage:
-  npx @lexinet/n8n-mcp-modern              # Start MCP server (stdio mode)
-  npx @lexinet/n8n-mcp-modern --version    # Show version
-  npx @lexinet/n8n-mcp-modern --help       # Show this help
-  npx @lexinet/n8n-mcp-modern install      # Smart install/upgrade (auto-detects and preserves config)
+  npx @eekfonky/n8n-mcp-modern              # Start MCP server (stdio mode)
+  npx @eekfonky/n8n-mcp-modern --version    # Show version
+  npx @eekfonky/n8n-mcp-modern --help       # Show this help
+  npx @eekfonky/n8n-mcp-modern install      # Smart install/upgrade (auto-detects and preserves config)
 
 Environment Variables:
   N8N_API_URL       # Your n8n instance URL
@@ -621,7 +621,7 @@ Environment Variables:
   LOG_LEVEL         # debug, info, warn, error (default: info)
 
 For Claude Code integration:
-  claude mcp add n8n-mcp-modern -- npx -y @lexinet/n8n-mcp-modern
+  claude mcp add n8n-mcp-modern -- npx -y @eekfonky/n8n-mcp-modern
 
 Documentation: https://github.com/eekfonky/n8n-mcp-modern
 `);

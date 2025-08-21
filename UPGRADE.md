@@ -8,7 +8,7 @@ For both fresh installations and upgrades, we now provide a **unified smart comm
 
 ```bash
 # Same command for fresh installs AND upgrades!
-npx @lexinet/n8n-mcp-modern install
+npx @eekfonky/n8n-mcp-modern install
 ```
 
 That's it! The smart install/upgrade will:
@@ -46,7 +46,7 @@ If the smart install fails or you prefer manual control:
 ### Step 1: Remove Current Installation
 
 ```bash
-claude mcp remove @lexinet/n8n-mcp-modern
+claude mcp remove @eekfonky/n8n-mcp-modern
 ```
 
 ### Step 2: Clean Agent Configuration
@@ -56,7 +56,7 @@ Edit `~/.claude/config.json` and remove all `n8n-*` entries from the `agents` se
 ### Step 3: Fresh Installation
 
 ```bash
-claude mcp add @lexinet/n8n-mcp-modern
+claude mcp add @eekfonky/n8n-mcp-modern
 ```
 
 ## 🔍 Upgrade Verification
@@ -65,7 +65,7 @@ After upgrading, verify everything is working:
 
 ```bash
 # Check tool count (should show 108 tools)
-npx @lexinet/n8n-mcp-modern --version
+npx @eekfonky/n8n-mcp-modern --version
 
 # Verify agents are installed
 ls ~/.claude/config.json
@@ -73,7 +73,7 @@ ls ~/.claude/config.json
 
 Your Claude configuration should now include:
 
-- ✅ `@lexinet/n8n-mcp-modern` server
+- ✅ `@eekfonky/n8n-mcp-modern` server
 - ✅ 6 n8n-\* agents with latest capabilities
 
 ## 🆘 Troubleshooting
@@ -82,11 +82,11 @@ Your Claude configuration should now include:
 
 ```bash
 # Try the install command again
-npx @lexinet/n8n-mcp-modern install
+npx @eekfonky/n8n-mcp-modern install
 
 # If it fails, use manual upgrade path
-claude mcp remove @lexinet/n8n-mcp-modern
-claude mcp add @lexinet/n8n-mcp-modern
+claude mcp remove @eekfonky/n8n-mcp-modern
+claude mcp add @eekfonky/n8n-mcp-modern
 ```
 
 ### Configuration Issues
@@ -95,14 +95,14 @@ claude mcp add @lexinet/n8n-mcp-modern
 # Backup and reset Claude config
 cp ~/.claude/config.json ~/.claude/config.json.backup
 # Edit ~/.claude/config.json to remove n8n entries
-# Then re-run: claude mcp add @lexinet/n8n-mcp-modern
+# Then re-run: claude mcp add @eekfonky/n8n-mcp-modern
 ```
 
 ### Tool Count Mismatch
 
 ```bash
 # Verify your installation
-npx @lexinet/n8n-mcp-modern --health-check
+npx @eekfonky/n8n-mcp-modern --health-check
 
 # Should report:
 # ✅ 108 tools available
@@ -158,11 +158,11 @@ npx @lexinet/n8n-mcp-modern --health-check
 
 ### Common Issues
 
-1. **"Command not found"** - Run `npm install -g @lexinet/n8n-mcp-modern` first
+1. **"Command not found"** - Run `npm install -g @eekfonky/n8n-mcp-modern` first
 2. **"Permission denied"** - Use `sudo` for global installation or use `npx`
 3. **"Claude config not found"** - Ensure Claude Code is properly installed
 4. **"Agents missing"** - Run the upgrade script again or use manual installation
 
 ---
 
-**🚀 Ready to install or upgrade?** Run `npx @lexinet/n8n-mcp-modern install` and get all 100 tools working in seconds!
+**🚀 Ready to install or upgrade?** Run `npx @eekfonky/n8n-mcp-modern install` and get all 100 tools working in seconds!

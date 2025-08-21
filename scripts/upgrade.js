@@ -20,7 +20,7 @@ const AGENT_DIR = join(__dirname, "..", "agents");
 class UpgradeManager {
   constructor() {
     this.claudeConfig = null;
-    this.serverName = "@lexinet/n8n-mcp-modern";
+    this.serverName = "@eekfonky/n8n-mcp-modern";
     this.agentPrefix = "n8n-";
   }
 
@@ -364,11 +364,11 @@ async function main() {
     console.log(
       "  2. Clear any n8n-* agent entries from ~/.claude/config.json",
     );
-    console.log("  3. Install fresh: npx @lexinet/n8n-mcp-modern install");
+    console.log("  3. Install fresh: npx @eekfonky/n8n-mcp-modern install");
     console.log("\n💡 Or try the manual Claude MCP commands:");
     console.log("  1. claude mcp remove n8n-mcp-modern");
     console.log(
-      "  2. claude mcp add n8n-mcp-modern --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @lexinet/n8n-mcp-modern",
+      "  2. claude mcp add n8n-mcp-modern --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern",
     );
     process.exit(1);
   }

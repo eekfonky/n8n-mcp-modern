@@ -90,7 +90,7 @@ n8n-mcp-modern/
 **Rollback Procedures:**
 - **NPM Package:** Version rollback via `npm deprecate` and new patch release
 - **Git Repository:** Standard git revert and hotfix procedures
-- **Local Installation:** `npm install @lexinet/n8n-mcp-modern@previous-version`
+- **Local Installation:** `npm install @eekfonky/n8n-mcp-modern@previous-version`
 
 ## Network Architecture
 
