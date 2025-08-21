@@ -91,3 +91,24 @@ temp/
 
 # BMAD package directories
 .bmad-*/
+
+# Prevent technical debt accumulation
+# Debug/test files at root level
+debug-*.ts
+test-*.ts
+simple-*.ts
+check-*.ts
+validate-*.ts
+
+# Test reports and generated documentation
+test-reports/
+TEST-RESULTS.md
+*-RESULTS.md
+
+# Temporary documentation and planning files
+*_UPDATE.md
+*_PATH.md
+ARCHITECTURE_*.md
+
+# Package directory (avoid duplicate structures)
+/package/

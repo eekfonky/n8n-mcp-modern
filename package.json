@@ -26,8 +26,6 @@
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "typecheck": "tsc --noEmit",
-    "rebuild-db": "tsx src/scripts/rebuild-database.ts",
-    "validate": "tsx src/scripts/validate-data.ts",
     "validate-readme": "node scripts/validate-readme.cjs",
     "sync-version": "node scripts/sync-version.cjs",
     "install-agents": "node scripts/install-claude-mcp.js",
