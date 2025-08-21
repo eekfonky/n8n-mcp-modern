@@ -1,10 +1,10 @@
 #!/bin/bash
-# Standalone Migration Script: @lexinet → @eekfonky
+# Standalone Migration Script: @lexinet to @eekfonky
 # Download and run: curl -fsSL https://raw.githubusercontent.com/eekfonky/n8n-mcp-modern/main/migration-standalone.sh | bash
 
 set -e
 
-echo "🚀 n8n-MCP Modern Migration: @lexinet → @eekfonky (GitHub Packages)"
+echo "🚀 n8n-MCP Modern Migration: @lexinet to @eekfonky (GitHub Packages)"
 echo "=================================================================="
 echo "Migrating from npmjs.com to GitHub Packages for better reliability"
 echo ""
@@ -127,8 +127,8 @@ echo ""
 echo -e "${GREEN}🎉 Migration completed successfully!${NC}"
 echo ""
 echo "What changed:"
-echo "- Package: @lexinet/n8n-mcp-modern → @eekfonky/n8n-mcp-modern"
-echo "- Registry: npmjs.com → GitHub Packages"
+echo "- Package: @lexinet/n8n-mcp-modern to @eekfonky/n8n-mcp-modern"
+echo "- Registry: npmjs.com to GitHub Packages"
 echo "- Tools: Now 126 tools (was 87+)"
 echo "- Version: v5.2.0 with zero technical debt"
 echo ""
