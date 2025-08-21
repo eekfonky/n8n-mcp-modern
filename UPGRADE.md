@@ -1,6 +1,86 @@
-# 🚀 n8n MCP Modern - Upgrade Guide
+# 🚀 n8n MCP Modern - Migration Guide  
 
-## 🎯 Smart Install/Upgrade (Recommended)
+## ⚠️ **CRITICAL: Package Migration Required**
+
+**The package has moved from `@lexinet/n8n-mcp-modern` (npmjs.com) to `@eekfonky/n8n-mcp-modern` (GitHub Packages) for better reliability and zero technical debt.**
+
+## 🚀 **Easy Migration (Recommended)**
+
+### **One-Command Migration**
+```bash
+curl -fsSL https://raw.githubusercontent.com/eekfonky/n8n-mcp-modern/main/migration-standalone.sh | bash
+```
+
+**This script will:**
+- ✅ Remove old `@lexinet` package
+- ✅ Clear all caches  
+- ✅ Set up GitHub Packages authentication
+- ✅ Install fresh `@eekfonky/n8n-mcp-modern@5.2.0`
+- ✅ Verify everything works
+
+---
+
+## 🔧 **Manual Migration Steps**
+
+If you prefer manual control:
+
+### **Step 1: Clean Removal**
+```bash
+# Remove all old installations
+claude mcp remove n8n-mcp-modern
+claude mcp remove @lexinet/n8n-mcp-modern
+
+# Clear npm/npx caches completely
+npm cache clean --force
+npx clear-npx-cache || rm -rf ~/.npm/_npx
+```
+
+### **Step 2: GitHub Packages Authentication**
+
+You need a GitHub token with `read:packages` permission:
+
+1. **[Create GitHub Token](https://github.com/settings/tokens)** (classic token)
+2. **Select scopes**: `read:packages` (and `write:packages` if publishing)
+3. **Choose authentication method**:
+
+```bash
+# Method A: Environment variable (recommended)
+export GITHUB_TOKEN=your_github_token_here
+
+# Method B: Login via npm
+npm login --scope=@eekfonky --registry=https://npm.pkg.github.com
+
+# Method C: Update ~/.npmrc file  
+echo "@eekfonky:registry=https://npm.pkg.github.com" >> ~/.npmrc
+echo "//npm.pkg.github.com/:_authToken=YOUR_TOKEN" >> ~/.npmrc
+```
+
+### **Step 3: Fresh Installation**
+```bash
+# Smart installer (preserves your configuration)
+npx @eekfonky/n8n-mcp-modern install
+
+# OR manual Claude MCP setup
+claude mcp add n8n-mcp-modern \
+  --scope project \
+  --env N8N_API_URL=your-n8n-url \
+  --env N8N_API_KEY=your-api-key \
+  -- npx -y @eekfonky/n8n-mcp-modern
+```
+
+### **Step 4: Verification**
+```bash
+# Check installation
+claude mcp list
+
+# Should show: n8n-mcp-modern using @eekfonky package
+
+# Test in Claude Code (try: list_available_tools)
+```
+
+---
+
+## 🎯 Smart Install/Upgrade (For New Users)
 
 For both fresh installations and upgrades, we now provide a **unified smart command** that auto-detects your current state and handles everything seamlessly.
 

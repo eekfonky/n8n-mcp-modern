@@ -158,7 +158,38 @@ claude mcp add sequential-thinking -s user -- npx -y @modelcontextprotocol/serve
 
 > **Note**: n8n-MCP Modern works without these dependencies, but agent capabilities will be limited to training knowledge cutoffs.
 
-### Installation
+## 🔄 **MIGRATION from @lexinet to @eekfonky**
+
+**⚠️ IMPORTANT: If you're upgrading from `@lexinet/n8n-mcp-modern`**
+
+### 🚀 **Easy Migration (One Command)**
+```bash
+# Download and run migration script
+curl -fsSL https://raw.githubusercontent.com/eekfonky/n8n-mcp-modern/main/migration-standalone.sh | bash
+```
+
+### 🔧 **Manual Migration Steps**
+```bash
+# 1. Remove old package
+claude mcp remove n8n-mcp-modern
+claude mcp remove @lexinet/n8n-mcp-modern
+
+# 2. Clear caches  
+npm cache clean --force
+
+# 3. Set up GitHub Packages authentication (choose one):
+export GITHUB_TOKEN=your_github_token_here
+# OR: npm login --scope=@eekfonky --registry=https://npm.pkg.github.com
+
+# 4. Fresh install
+npx @eekfonky/n8n-mcp-modern install
+```
+
+**[Create GitHub Token](https://github.com/settings/tokens)** (needs `read:packages` scope)
+
+---
+
+### Fresh Installation
 
 > **🐳 Self-Hosted n8n with Docker**: If you're running n8n via docker-compose, you MUST add this environment variable to your n8n service BEFORE creating your API key:
 >
