@@ -12,11 +12,11 @@
 
 **Proper NPM Registry Publishing (SOLUTION):**
 
-- ✅ **Published to NPM Registry** - Now available as `@eekfonky/n8n-mcp-modern` on npmjs.org
+- ✅ **Published to NPM Registry** - Now available as `n8n-mcp-modern` on npmjs.org
 - ✅ **Restored postinstall script** - SQLite cleanup works as intended with `|| true` fallback
 - ✅ **Fixed root cause** - No more git install issues, use standard npm install
 - ✅ **Preserved all functionality** - Database, scripts, and dependencies all work properly
-- ✅ **Simple installation** - Just `npm install -g @eekfonky/n8n-mcp-modern`
+- ✅ **Simple installation** - Just `npm install -g n8n-mcp-modern`
 
 ## 🎯 What's New in v5.2.7
 
@@ -243,7 +243,7 @@ npx @eekfonky/n8n-mcp-modern install
 
 ```bash
 # Install directly from npm registry (most reliable)
-npm install -g @eekfonky/n8n-mcp-modern
+npm install -g n8n-mcp-modern
 
 # Configure and install
 N8N_API_URL="https://your-n8n-instance.com" \

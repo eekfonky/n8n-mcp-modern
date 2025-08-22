@@ -1,5 +1,5 @@
 {
-  "name": "@eekfonky/n8n-mcp-modern",
+  "name": "n8n-mcp-modern",
   "version": "5.2.8",
   "description": "Modern n8n MCP server with Phase 2 orchestration - intelligent agent coordination, session management, and advanced workflow automation",
   "type": "module",
