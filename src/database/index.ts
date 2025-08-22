@@ -53,28 +53,21 @@ export interface AgentRoute {
  * Database row types for type safety
  */
 export interface DatabaseNodeRow {
-  id: string;
-  type: string;
+  name: string; // PRIMARY KEY - matches actual schema
   display_name: string;
-  name: string;
-  package: string;
-  version: number; // Changed from string to number
-  group: string;
   description: string;
+  version: number;
+  category: string;
+  icon?: string;
+  inputs?: string; // JSON string
+  outputs?: string; // JSON string
   properties?: string; // JSON string
   credentials?: string; // JSON string
   webhooks?: number; // SQLite boolean as integer
   polling?: number; // SQLite boolean as integer
-  inputs?: string; // JSON string
-  outputs?: string; // JSON string
-  icon?: string;
-  codex?: string; // JSON string
-  is_ai_tool?: number; // SQLite boolean as integer
-  category: string;
-  development_style?: string;
-  created_at?: string;
-  updated_at?: string;
-  last_updated?: string; // Made required since it's used in the mapping
+  last_updated?: string;
+  // Removed unused fields that don't exist in actual schema:
+  // id, type, package, group, codex, is_ai_tool, category, development_style, created_at, updated_at
 }
 
 export interface ToolUsageRow {
