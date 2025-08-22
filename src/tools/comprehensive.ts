@@ -146,6 +146,27 @@ export const coreDiscoveryTools = [
       required: ["nodeTypes"],
     },
   },
+  {
+    name: "validate_mcp_installation",
+    description:
+      "Comprehensive validation test for MCP installation - checks connectivity, node discovery, and core functionality",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        includeNodeSample: {
+          type: "boolean",
+          default: true,
+          description: "Include sample of discovered nodes in output",
+        },
+        testWorkflowNodes: {
+          type: "array",
+          items: { type: "string" },
+          default: ["supabase", "anthropic", "scrapeninja", "webhook", "code"],
+          description: "Node types to specifically test for",
+        },
+      },
+    },
+  },
 ];
 
 // ============== VALIDATION ENGINE TOOLS (6 tools) ==============
@@ -932,6 +953,8 @@ export class ComprehensiveMCPTools {
           return await this.searchNodeProperties(sanitizedArgs);
         case "validate_node_availability":
           return await this.validateNodeAvailability(sanitizedArgs);
+        case "validate_mcp_installation":
+          return await this.validateMcpInstallation(sanitizedArgs);
 
         // Validation Engine Tools
         case "validate_workflow_structure":
@@ -1379,6 +1402,223 @@ export class ComprehensiveMCPTools {
       );
       return { exists: false };
     }
+  }
+
+  /**
+   * Comprehensive MCP installation validation
+   */
+  private static async validateMcpInstallation(
+    args: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const results: Record<string, unknown> = {
+      timestamp: new Date().toISOString(),
+      mcpVersion: "5.2.1",
+      status: "unknown",
+      checks: [],
+      summary: {},
+      recommendations: [],
+    };
+
+    const checks: Array<Record<string, unknown>> = [];
+    let totalChecks = 0;
+    let passedChecks = 0;
+
+    // Check 1: n8n API Connectivity
+    totalChecks++;
+    try {
+      if (!n8nApi) {
+        checks.push({
+          name: "n8n API Connection",
+          status: "FAIL",
+          message: "n8n API not initialized - check N8N_API_URL and N8N_API_KEY environment variables",
+          critical: true,
+        });
+      } else {
+        const health = await n8nApi.getHealthStatus();
+        checks.push({
+          name: "n8n API Connection",
+          status: "PASS",
+          message: `Successfully connected to n8n instance`,
+          details: health,
+        });
+        passedChecks++;
+      }
+    } catch (error) {
+      checks.push({
+        name: "n8n API Connection",
+        status: "FAIL",
+        message: `n8n API connection failed: ${error instanceof Error ? error.message : String(error)}`,
+        critical: true,
+      });
+    }
+
+    // Check 2: Node Discovery System
+    totalChecks++;
+    try {
+      if (!n8nApi) {
+        checks.push({
+          name: "Node Discovery",
+          status: "FAIL",
+          message: "Cannot test node discovery - n8n API not available",
+          critical: true,
+        });
+      } else {
+        const nodes = await n8nApi.getNodeTypes();
+        const nodeCount = nodes.length;
+        
+        if (nodeCount >= 100) {
+          checks.push({
+            name: "Node Discovery",
+            status: "PASS",
+            message: `Successfully discovered ${nodeCount} nodes from n8n instance`,
+            details: { nodeCount, sampleNodes: nodes.slice(0, 5).map(n => n.name) },
+          });
+          passedChecks++;
+        } else if (nodeCount >= 10) {
+          checks.push({
+            name: "Node Discovery",
+            status: "WARN",
+            message: `Only discovered ${nodeCount} nodes - this may indicate a limited n8n installation`,
+            details: { nodeCount },
+          });
+          passedChecks += 0.5;
+        } else {
+          checks.push({
+            name: "Node Discovery",
+            status: "FAIL",
+            message: `Only discovered ${nodeCount} nodes - node discovery system may not be working correctly`,
+            critical: true,
+          });
+        }
+      }
+    } catch (error) {
+      checks.push({
+        name: "Node Discovery",
+        status: "FAIL",
+        message: `Node discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+        critical: true,
+      });
+    }
+
+    // Check 3: Specific Node Types (for workflow compatibility)
+    if (args.testWorkflowNodes && Array.isArray(args.testWorkflowNodes)) {
+      totalChecks++;
+      const testNodes = args.testWorkflowNodes as string[];
+      const nodeResults: Record<string, unknown>[] = [];
+      let foundNodes = 0;
+
+      if (n8nApi) {
+        for (const testNode of testNodes) {
+          try {
+            const searchResults = await n8nApi.searchNodeTypes(testNode);
+            if (searchResults.length > 0) {
+              foundNodes++;
+              nodeResults.push({
+                nodeType: testNode,
+                found: true,
+                matches: searchResults.length,
+                examples: searchResults.slice(0, 2).map(n => n.name),
+              });
+            } else {
+              nodeResults.push({
+                nodeType: testNode,
+                found: false,
+                message: "No matching nodes found",
+              });
+            }
+          } catch (error) {
+            nodeResults.push({
+              nodeType: testNode,
+              found: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+
+        const successRate = foundNodes / testNodes.length;
+        if (successRate >= 0.8) {
+          checks.push({
+            name: "Workflow Node Compatibility",
+            status: "PASS",
+            message: `Found ${foundNodes}/${testNodes.length} expected node types`,
+            details: nodeResults,
+          });
+          passedChecks++;
+        } else if (successRate >= 0.5) {
+          checks.push({
+            name: "Workflow Node Compatibility",
+            status: "WARN",
+            message: `Found ${foundNodes}/${testNodes.length} expected node types - some nodes may be missing`,
+            details: nodeResults,
+          });
+          passedChecks += 0.5;
+        } else {
+          checks.push({
+            name: "Workflow Node Compatibility",
+            status: "FAIL",
+            message: `Only found ${foundNodes}/${testNodes.length} expected node types`,
+            details: nodeResults,
+          });
+        }
+      } else {
+        checks.push({
+          name: "Workflow Node Compatibility",
+          status: "FAIL",
+          message: "Cannot test node compatibility - n8n API not available",
+        });
+      }
+    }
+
+    // Calculate overall status
+    const successRate = passedChecks / totalChecks;
+    let status = "FAIL";
+    if (successRate >= 0.9) {
+      status = "PASS";
+    } else if (successRate >= 0.7) {
+      status = "WARN";
+    }
+
+    // Add sample nodes if requested
+    if (args.includeNodeSample && n8nApi) {
+      try {
+        const sampleNodes = await n8nApi.getNodeTypes();
+        (results as any).sampleNodes = sampleNodes.slice(0, 10).map(node => ({
+          name: node.name,
+          displayName: node.displayName,
+          description: node.description,
+          group: node.group,
+        }));
+      } catch (error) {
+        // Non-critical error
+      }
+    }
+
+    // Generate recommendations
+    const recommendations: string[] = [];
+    if (!n8nApi) {
+      recommendations.push("Configure N8N_API_URL and N8N_API_KEY environment variables");
+      recommendations.push("Ensure your n8n instance is accessible from this environment");
+    }
+    if (passedChecks < totalChecks) {
+      recommendations.push("Check the failing tests above and resolve any critical issues");
+      recommendations.push("Verify your n8n instance has the required nodes installed");
+    }
+    if (status === "PASS") {
+      recommendations.push("✅ MCP installation is working correctly!");
+      recommendations.push("You can now import and validate workflows with confidence");
+    }
+
+    results.status = status;
+    results.checks = checks;
+    results.summary = {
+      totalChecks,
+      passedChecks: Math.floor(passedChecks),
+      successRate: `${Math.round(successRate * 100)}%`,
+      overallStatus: status,
+    };
+    results.recommendations = recommendations;
+
+    return results;
   }
 
   // ============== CREDENTIAL MANAGEMENT IMPLEMENTATIONS ==============
