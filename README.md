@@ -1,12 +1,22 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-5.2.7-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-5.2.8-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![Technical Debt](https://img.shields.io/badge/Technical%20Debt-ZERO-brightgreen.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
+
+## 🎯 What's New in v5.2.8
+
+**Proper NPM Registry Publishing (SOLUTION):**
+
+- ✅ **Published to NPM Registry** - Now available as `@eekfonky/n8n-mcp-modern` on npmjs.org
+- ✅ **Restored postinstall script** - SQLite cleanup works as intended with `|| true` fallback
+- ✅ **Fixed root cause** - No more git install issues, use standard npm install
+- ✅ **Preserved all functionality** - Database, scripts, and dependencies all work properly
+- ✅ **Simple installation** - Just `npm install -g @eekfonky/n8n-mcp-modern`
 
 ## 🎯 What's New in v5.2.7
 
@@ -229,11 +239,11 @@ npx @eekfonky/n8n-mcp-modern install
 >
 > Run `docker-compose up -d --build` to rebuild your container, then create your API key. This enables the REST API endpoints required by the MCP server.
 
-**Method 1: Direct Git Installation (Recommended - Latest v5.2.7)**
+**Method 1: NPM Registry Installation (Recommended - Latest v5.2.8)**
 
 ```bash
-# Install directly from GitHub (latest features) - skip problematic scripts
-npm install -g git+https://github.com/eekfonky/n8n-mcp-modern.git --ignore-scripts
+# Install directly from npm registry (most reliable)
+npm install -g @eekfonky/n8n-mcp-modern
 
 # Configure and install
 N8N_API_URL="https://your-n8n-instance.com" \
