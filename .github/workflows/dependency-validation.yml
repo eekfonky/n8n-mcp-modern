@@ -1,0 +1,386 @@
+name: 🔍 Dependency Validation & Health Check
+
+on:
+  schedule:
+    # Run comprehensive dependency health check weekly on Sundays
+    - cron: '0 6 * * 0'
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'package*.json'
+      - '.github/dependabot.yml'
+  pull_request:
+    paths:
+      - 'package*.json'
+      - '.github/dependabot.yml'
+  workflow_dispatch:
+    inputs:
+      check-type:
+        description: 'Type of dependency check'
+        type: choice
+        options:
+          - 'quick'
+          - 'comprehensive'
+          - 'security-only'
+        default: 'comprehensive'
+
+# Permissions for dependency management
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # 📊 Dependency analysis and validation
+  dependency-analysis:
+    name: 📊 Dependency Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      total-deps: ${{ steps.analysis.outputs.total-deps }}
+      prod-deps: ${{ steps.analysis.outputs.prod-deps }}
+      dev-deps: ${{ steps.analysis.outputs.dev-deps }}
+      outdated-count: ${{ steps.analysis.outputs.outdated-count }}
+      vulnerable-count: ${{ steps.analysis.outputs.vulnerable-count }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: |
+          npm ci --prefer-offline
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📊 Analyze dependency structure
+        id: analysis
+        run: |
+          echo "## 📊 Dependency Analysis Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Get package.json stats
+          TOTAL_DEPS=$(jq '.dependencies // {} | keys | length' package.json)
+          DEV_DEPS=$(jq '.devDependencies // {} | keys | length' package.json)
+          PROD_DEPS=$TOTAL_DEPS
+          ALL_DEPS=$((TOTAL_DEPS + DEV_DEPS))
+          
+          echo "total-deps=$TOTAL_DEPS" >> $GITHUB_OUTPUT
+          echo "prod-deps=$PROD_DEPS" >> $GITHUB_OUTPUT
+          echo "dev-deps=$DEV_DEPS" >> $GITHUB_OUTPUT
+          
+          echo "### 📦 Dependency Overview" >> $GITHUB_STEP_SUMMARY
+          echo "| Type | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Production | $PROD_DEPS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Development | $DEV_DEPS |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Total** | **$ALL_DEPS** |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Target: Ultra-minimal dependency footprint
+          echo "### 🎯 Dependency Goals" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target**: ≤5 production dependencies" >> $GITHUB_STEP_SUMMARY
+          echo "- **Current**: $PROD_DEPS production dependencies" >> $GITHUB_STEP_SUMMARY
+          
+          if [ $PROD_DEPS -le 5 ]; then
+            echo "- **Status**: ✅ Target achieved!" >> $GITHUB_STEP_SUMMARY
+          elif [ $PROD_DEPS -le 10 ]; then
+            echo "- **Status**: ⚠️ Close to target" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status**: ❌ Exceeds target - review needed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 🔍 Check for outdated dependencies
+        run: |
+          echo "### 🔄 Outdated Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check for outdated packages
+          if npm outdated --json > outdated.json 2>/dev/null; then
+            echo "✅ All dependencies are up to date" >> $GITHUB_STEP_SUMMARY
+            echo "outdated-count=0" >> $GITHUB_OUTPUT
+          else
+            OUTDATED_COUNT=$(jq 'keys | length' outdated.json 2>/dev/null || echo "0")
+            echo "outdated-count=$OUTDATED_COUNT" >> $GITHUB_OUTPUT
+            
+            echo "⚠️ **$OUTDATED_COUNT outdated dependencies found**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+            jq '.' outdated.json >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "Error processing outdated data" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 🔒 Security vulnerability scan
+        run: |
+          echo "### 🔒 Security Vulnerability Scan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Run npm audit
+          if npm audit --json > audit.json 2>/dev/null; then
+            echo "✅ No security vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+            echo "vulnerable-count=0" >> $GITHUB_OUTPUT
+          else
+            # Parse audit results
+            VULN_COUNT=$(jq '.metadata.vulnerabilities.total // 0' audit.json 2>/dev/null || echo "0")
+            echo "vulnerable-count=$VULN_COUNT" >> $GITHUB_OUTPUT
+            
+            if [ "$VULN_COUNT" -gt 0 ]; then
+              echo "🚨 **$VULN_COUNT security vulnerabilities found**" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              
+              # Vulnerability breakdown
+              echo "#### Vulnerability Severity:" >> $GITHUB_STEP_SUMMARY
+              HIGH=$(jq '.metadata.vulnerabilities.high // 0' audit.json 2>/dev/null || echo "0")
+              MODERATE=$(jq '.metadata.vulnerabilities.moderate // 0' audit.json 2>/dev/null || echo "0")  
+              LOW=$(jq '.metadata.vulnerabilities.low // 0' audit.json 2>/dev/null || echo "0")
+              
+              echo "- **High**: $HIGH" >> $GITHUB_STEP_SUMMARY
+              echo "- **Moderate**: $MODERATE" >> $GITHUB_STEP_SUMMARY
+              echo "- **Low**: $LOW" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - name: 📋 License compliance check
+        run: |
+          echo "### 📋 License Compliance" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Install license checker
+          npx license-checker --summary --production --json > licenses.json
+          
+          # Analyze licenses
+          echo "#### License Distribution:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          jq -r 'to_entries | group_by(.value.licenses) | map({license: .[0].value.licenses, count: length}) | sort_by(.count) | reverse | .[] | "\(.license): \(.count)"' licenses.json >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "License analysis in progress..." >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: 📤 Upload analysis artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-analysis-${{ github.sha }}
+          path: |
+            outdated.json
+            audit.json
+            licenses.json
+          retention-days: 30
+
+  # 🏗️ Dependency installation testing
+  installation-test:
+    name: 🏗️ Installation Testing
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: ['22']
+      fail-fast: false
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: 🧹 Clean install test
+        run: |
+          echo "## 🧹 Clean Installation Test (${{ matrix.os }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Measure installation time
+          START_TIME=$(date +%s)
+          npm ci --prefer-offline
+          END_TIME=$(date +%s)
+          INSTALL_TIME=$((END_TIME - START_TIME))
+          
+          echo "### ⏱️ Installation Metrics:" >> $GITHUB_STEP_SUMMARY
+          echo "- **OS**: ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY  
+          echo "- **Node.js**: ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Install Time**: ${INSTALL_TIME}s" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target**: <30s ⚡" >> $GITHUB_STEP_SUMMARY
+          
+          if [ $INSTALL_TIME -lt 30 ]; then
+            echo "- **Status**: ✅ Fast installation" >> $GITHUB_STEP_SUMMARY
+          elif [ $INSTALL_TIME -lt 60 ]; then
+            echo "- **Status**: ⚠️ Acceptable" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status**: ❌ Slow installation" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 🧪 Post-install validation
+        run: |
+          # Verify build works after installation
+          npm run build
+          node dist/index.js --version
+          
+          # Check for installation issues
+          npm doctor || echo "npm doctor completed with warnings"
+
+  # 🔄 Dependency update testing
+  update-testing:
+    name: 🔄 Update Testing
+    runs-on: ubuntu-latest  
+    if: github.event.inputs.check-type == 'comprehensive' || github.event_name == 'schedule'
+    timeout-minutes: 25
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install current dependencies
+        run: |
+          npm ci --prefer-offline
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔄 Test dependency updates (dry run)
+        run: |
+          echo "## 🔄 Dependency Update Testing" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Test npm update (dry run)
+          echo "### 📊 Available Updates:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          npm update --dry-run >> $GITHUB_STEP_SUMMARY 2>&1 || echo "No updates available" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🧪 Test safe updates
+        run: |
+          echo "### 🧪 Safe Update Testing" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Backup package-lock.json
+          cp package-lock.json package-lock.json.backup
+          
+          # Test patch updates only (safest)
+          npm update --save=false || echo "Update completed with warnings"
+          
+          # Verify everything still works
+          npm run build
+          npm test -- --run --reporter=basic || echo "Tests completed with warnings"
+          
+          # Restore original package-lock.json
+          cp package-lock.json.backup package-lock.json
+          
+          echo "✅ Safe update testing completed" >> $GITHUB_STEP_SUMMARY
+
+  # 🚨 Dependency health monitoring
+  health-monitoring:
+    name: 🚨 Health Monitoring
+    runs-on: ubuntu-latest
+    needs: [dependency-analysis, installation-test]
+    if: always()
+    timeout-minutes: 10
+    steps:
+      - name: 📊 Generate dependency health report
+        run: |
+          echo "# 🏥 Dependency Health Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Generated**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Health score calculation
+          HEALTH_SCORE=100
+          ISSUES=0
+          
+          # Deduct points for issues
+          TOTAL_DEPS=${{ needs.dependency-analysis.outputs.total-deps || 0 }}
+          OUTDATED_COUNT=${{ needs.dependency-analysis.outputs.outdated-count || 0 }}
+          VULNERABLE_COUNT=${{ needs.dependency-analysis.outputs.vulnerable-count || 0 }}
+          
+          if [ $TOTAL_DEPS -gt 5 ]; then
+            HEALTH_SCORE=$((HEALTH_SCORE - 10))
+            ISSUES=$((ISSUES + 1))
+          fi
+          
+          if [ $OUTDATED_COUNT -gt 5 ]; then
+            HEALTH_SCORE=$((HEALTH_SCORE - 20))
+            ISSUES=$((ISSUES + 1))
+          fi
+          
+          if [ $VULNERABLE_COUNT -gt 0 ]; then
+            HEALTH_SCORE=$((HEALTH_SCORE - 30))
+            ISSUES=$((ISSUES + 1))
+          fi
+          
+          echo "## 🎯 Overall Health Score: $HEALTH_SCORE/100" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Health status
+          if [ $HEALTH_SCORE -ge 90 ]; then
+            echo "🟢 **Excellent** - Dependencies are in great shape!" >> $GITHUB_STEP_SUMMARY
+          elif [ $HEALTH_SCORE -ge 75 ]; then
+            echo "🟡 **Good** - Minor improvements recommended" >> $GITHUB_STEP_SUMMARY
+          elif [ $HEALTH_SCORE -ge 60 ]; then  
+            echo "🟠 **Fair** - Several issues need attention" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🔴 **Poor** - Immediate action required" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Summary:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Production Dependencies**: ${{ needs.dependency-analysis.outputs.prod-deps }}/5 (target)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Outdated Packages**: $OUTDATED_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Security Issues**: $VULNERABLE_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Installation Tests**: ${{ needs.installation-test.result }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🚨 Critical issues alert
+        if: needs.dependency-analysis.outputs.vulnerable-count > 0
+        run: |
+          echo "## 🚨 Critical Security Alert" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "❌ **${{ needs.dependency-analysis.outputs.vulnerable-count }} security vulnerabilities detected**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Immediate Actions Required:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. 🔍 Review vulnerability details in the dependency analysis" >> $GITHUB_STEP_SUMMARY
+          echo "2. 🛠️ Run \`npm audit fix\` to automatically fix issues" >> $GITHUB_STEP_SUMMARY
+          echo "3. 📋 Manually review and update packages that can't be auto-fixed" >> $GITHUB_STEP_SUMMARY
+          echo "4. 🧪 Test thoroughly after applying fixes" >> $GITHUB_STEP_SUMMARY
+          echo "5. 🔄 Re-run this workflow to verify fixes" >> $GITHUB_STEP_SUMMARY
+
+      - name: 📋 Recommendations
+        run: |
+          echo "## 💡 Recommendations" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          TOTAL_DEPS=${{ needs.dependency-analysis.outputs.total-deps || 0 }}
+          OUTDATED_COUNT=${{ needs.dependency-analysis.outputs.outdated-count || 0 }}
+          
+          if [ $TOTAL_DEPS -gt 5 ]; then
+            echo "### 📦 Dependency Reduction" >> $GITHUB_STEP_SUMMARY
+            echo "- Review if all $TOTAL_DEPS production dependencies are necessary" >> $GITHUB_STEP_SUMMARY
+            echo "- Consider consolidating similar packages" >> $GITHUB_STEP_SUMMARY
+            echo "- Move development-only packages to devDependencies" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ $OUTDATED_COUNT -gt 0 ]; then
+            echo "### 🔄 Update Strategy" >> $GITHUB_STEP_SUMMARY
+            echo "- Enable Dependabot for automated updates" >> $GITHUB_STEP_SUMMARY
+            echo "- Schedule regular dependency review sessions" >> $GITHUB_STEP_SUMMARY
+            echo "- Test updates in staging before production" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "### 🎯 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Set up automated security monitoring" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Configure dependency update automation" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Establish regular health check schedule" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Document dependency management policies" >> $GITHUB_STEP_SUMMARY

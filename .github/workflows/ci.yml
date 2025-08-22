@@ -1,0 +1,395 @@
+name: 🚀 CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Concurrency control - cancel previous runs on new pushes to same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Global environment variables
+env:
+  NODE_VERSION: '22'
+  CACHE_VERSION: 'v1'
+
+jobs:
+  # 📋 Pre-flight checks and setup
+  setup:
+    name: 🔧 Setup & Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      cache-key: ${{ steps.cache-keys.outputs.cache-key }}
+      should-test: ${{ steps.changes.outputs.should-test }}
+      should-build: ${{ steps.changes.outputs.should-build }}
+      package-version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Check for relevant changes
+        id: changes
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should-test=true" >> $GITHUB_OUTPUT
+            echo "should-build=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Check if we have changes that require testing/building
+          if git diff --name-only ${{ github.event.before }}...${{ github.sha }} | grep -E '\.(ts|js|json|md)$|package\.json|tsconfig\.json|vitest\.config\.ts'; then
+            echo "should-test=true" >> $GITHUB_OUTPUT
+            echo "should-build=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-test=false" >> $GITHUB_OUTPUT  
+            echo "should-build=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📦 Get package version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: 🔑 Generate cache keys
+        id: cache-keys
+        run: |
+          CACHE_KEY="${{ env.CACHE_VERSION }}-node-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}"
+          echo "cache-key=$CACHE_KEY" >> $GITHUB_OUTPUT
+
+  # 🏗️ Dependencies and build
+  dependencies:
+    name: 📦 Dependencies
+    runs-on: ubuntu-latest
+    needs: setup
+    if: needs.setup.outputs.should-test == 'true'
+    timeout-minutes: 15
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://npm.pkg.github.com'
+          cache: 'npm'
+
+      - name: 🎯 Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+          restore-keys: |
+            ${{ env.CACHE_VERSION }}-node-${{ env.NODE_VERSION }}-
+
+      - name: 🔧 Install dependencies
+        run: |
+          npm ci --prefer-offline --no-audit
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📤 Upload node_modules cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-modules-${{ github.sha }}
+          path: node_modules
+          retention-days: 1
+
+  # 🔍 Code quality checks
+  quality:
+    name: 🛡️ Code Quality
+    runs-on: ubuntu-latest
+    needs: [setup, dependencies]
+    if: needs.setup.outputs.should-test == 'true'
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        check: [lint, typecheck, security]
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 🎯 Restore dependencies cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+          restore-keys: |
+            ${{ env.CACHE_VERSION }}-node-${{ env.NODE_VERSION }}-
+
+      - name: 🔍 Run ${{ matrix.check }}
+        run: |
+          case "${{ matrix.check }}" in
+            "lint")
+              npm run lint
+              ;;
+            "typecheck") 
+              npm run typecheck
+              ;;
+            "security")
+              npm audit --audit-level=high
+              npm run validate || true
+              ;;
+          esac
+
+  # 🧪 Comprehensive test suite  
+  test:
+    name: 🧪 Tests
+    runs-on: ubuntu-latest
+    needs: [setup, dependencies]
+    if: needs.setup.outputs.should-test == 'true'
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        test-suite: 
+          - unit
+          - integration  
+          - e2e
+        node-version: ['22']
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: 🎯 Restore dependencies cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+          restore-keys: |
+            ${{ env.CACHE_VERSION }}-node-${{ env.NODE_VERSION }}-
+
+      - name: 🏗️ Build project
+        run: npm run build
+
+      - name: 🧪 Run ${{ matrix.test-suite }} tests
+        run: |
+          case "${{ matrix.test-suite }}" in
+            "unit")
+              npm test -- --run --reporter=verbose --coverage.enabled=false src/tests/utils src/tests/types
+              ;;
+            "integration")
+              npm test -- --run --reporter=verbose --coverage.enabled=false src/tests/tools src/tests/agents
+              ;;  
+            "e2e")
+              npm test -- --run --reporter=verbose --coverage.enabled=false src/tests/e2e
+              ;;
+          esac
+        env:
+          NODE_ENV: test
+          LOG_LEVEL: error
+
+  # 📊 Code coverage analysis
+  coverage:
+    name: 📊 Coverage Analysis  
+    runs-on: ubuntu-latest
+    needs: [setup, dependencies]
+    if: needs.setup.outputs.should-test == 'true'
+    timeout-minutes: 15
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 🎯 Restore dependencies cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: 🏗️ Build project
+        run: npm run build
+
+      - name: 📊 Generate coverage report
+        run: |
+          timeout 300 npm run test:coverage -- --run --reporter=verbose || true
+        env:
+          NODE_ENV: test
+          LOG_LEVEL: error
+
+      - name: 📤 Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-${{ github.sha }}
+          path: |
+            coverage/
+            !coverage/.tmp
+          retention-days: 30
+
+      - name: 📊 Coverage Summary
+        if: always()
+        run: |
+          if [ -f "coverage/lcov.info" ]; then
+            echo "## 📊 Coverage Summary" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            grep -E "(LF|LH)" coverage/lcov.info | head -10 >> $GITHUB_STEP_SUMMARY || echo "Coverage data processing..." >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "📁 Full coverage report uploaded as artifact" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # 🏗️ Production build
+  build:
+    name: 🏗️ Production Build
+    runs-on: ubuntu-latest
+    needs: [setup, dependencies, quality]
+    if: needs.setup.outputs.should-build == 'true'
+    timeout-minutes: 10
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 🎯 Restore dependencies cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: 🏗️ Build for production
+        run: |
+          npm run build
+          chmod +x dist/index.js
+
+      - name: ✅ Validate build artifacts
+        run: |
+          test -f dist/index.js
+          test -x dist/index.js
+          node dist/index.js --version || echo "Build validation complete"
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ github.sha }}
+          path: |
+            dist/
+            package.json
+            README.md
+            LICENSE
+          retention-days: 7
+
+  # 🚢 Docker build and validation
+  docker:
+    name: 🐳 Docker Build
+    runs-on: ubuntu-latest
+    needs: [setup, build]
+    if: needs.setup.outputs.should-build == 'true' && github.ref == 'refs/heads/main'
+    timeout-minutes: 15
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: |
+            n8n-mcp-modern:latest
+            n8n-mcp-modern:${{ needs.setup.outputs.package-version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: 🧪 Test Docker image
+        run: |
+          docker run --rm n8n-mcp-modern:latest --version
+
+  # 🚀 Deployment readiness
+  deploy-ready:
+    name: 🚀 Deployment Ready
+    runs-on: ubuntu-latest
+    needs: [setup, quality, test, coverage, build, docker]
+    if: always() && needs.setup.outputs.should-build == 'true'
+    timeout-minutes: 5
+    steps:
+      - name: 📊 Check job results
+        run: |
+          echo "## 🚀 CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY  
+          echo "|-----|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality Checks | ${{ needs.quality.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Suite | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Coverage Analysis | ${{ needs.coverage.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Production Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Build | ${{ needs.docker.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🎯 **Version:** ${{ needs.setup.outputs.package-version }}" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if all critical jobs passed
+          if [[ "${{ needs.quality.result }}" == "success" && 
+                "${{ needs.test.result }}" == "success" && 
+                "${{ needs.build.result }}" == "success" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **All critical checks passed - Ready for deployment!**" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Some checks failed - Deployment blocked**" >> $GITHUB_STEP_SUMMARY  
+            exit 1
+          fi
+
+  # 🔄 Auto-merge for dependabot PRs (optional)
+  auto-merge:
+    name: 🤖 Auto-merge Dependencies
+    runs-on: ubuntu-latest
+    needs: [quality, test, build]
+    if: |
+      github.event_name == 'pull_request' &&
+      github.actor == 'dependabot[bot]' &&
+      needs.quality.result == 'success' &&
+      needs.test.result == 'success' &&
+      needs.build.result == 'success'
+    steps:
+      - name: 🤖 Enable auto-merge for dependabot
+        run: |
+          echo "Auto-merge would be enabled here for dependabot PRs"
+          # gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

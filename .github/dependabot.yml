@@ -1,0 +1,204 @@
+# 🤖 Dependabot Configuration
+# Automated dependency updates with intelligent grouping and scheduling
+
+version: 2
+updates:
+  # 📦 NPM Dependencies - Production
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "UTC"
+    target-branch: "develop"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "@eekfonky"
+    assignees:
+      - "@eekfonky"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    
+    # 🎯 Intelligent dependency grouping
+    groups:
+      # TypeScript ecosystem updates
+      typescript-ecosystem:
+        patterns:
+          - "typescript"
+          - "@types/*"
+          - "ts-*"
+          - "tsx"
+        update-types:
+          - "minor"
+          - "patch"
+      
+      # Testing framework updates  
+      testing-framework:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "jsdom"
+          - "happy-dom"
+        update-types:
+          - "minor"
+          - "patch"
+      
+      # Build and development tools
+      build-tools:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "eslint-*"
+          - "prettier"
+          - "@prettier/*"
+        update-types:
+          - "minor"  
+          - "patch"
+      
+      # Core runtime dependencies
+      core-dependencies:
+        patterns:
+          - "@modelcontextprotocol/*"
+          - "zod"
+          - "undici"
+        update-types:
+          - "minor"
+          - "patch"
+
+    # 🚫 Dependencies to ignore (for security or compatibility reasons)
+    ignore:
+      # Pin specific versions for stability
+      - dependency-name: "node"
+        # We're targeting Node 22 LTS specifically
+      - dependency-name: "@types/node"
+        versions: [">=23.0.0"]
+        # Stay compatible with Node 22
+      
+      # Ignore major version updates for critical dependencies
+      - dependency-name: "@modelcontextprotocol/*"
+        update-types: ["version-update:semver-major"]
+        # Review major MCP updates manually
+      
+      - dependency-name: "undici"
+        update-types: ["version-update:semver-major"]
+        # Review major HTTP client changes manually
+
+    # 📋 Pull request labels and configuration
+    labels:
+      - "dependencies"
+      - "automated-pr"
+    
+    # 🔒 Security updates - separate configuration for faster response
+    insecure-external-code-execution: "deny"
+    
+  # 📦 NPM Dependencies - Development (more frequent updates)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "02:00"
+      timezone: "UTC"
+    target-branch: "develop"
+    open-pull-requests-limit: 3
+    
+    # Focus only on development dependencies for daily updates
+    allow:
+      - dependency-type: "development"
+    
+    reviewers:
+      - "@eekfonky"
+    assignees:
+      - "@eekfonky"
+    
+    commit-message:
+      prefix: "deps-dev"
+      include: "scope"
+    
+    labels:
+      - "dependencies"
+      - "dev-dependencies"
+      - "automated-pr"
+
+  # 🐳 Docker Dependencies
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "08:00"
+      timezone: "UTC"
+    target-branch: "develop"
+    reviewers:
+      - "@eekfonky"
+    assignees:
+      - "@eekfonky"
+    
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    
+    labels:
+      - "docker"
+      - "dependencies"
+      - "automated-pr"
+
+  # 🎯 GitHub Actions Dependencies  
+  - package-ecosystem: "github-actions"
+    directory: "/.github/workflows"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "10:00"
+      timezone: "UTC"
+    target-branch: "develop"
+    reviewers:
+      - "@eekfonky"
+    assignees:
+      - "@eekfonky"
+    
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    
+    groups:
+      # Group GitHub Actions updates
+      github-actions:
+        patterns:
+          - "actions/*"
+          - "docker/*"
+          - "*/*"
+        update-types:
+          - "minor"
+          - "patch"
+    
+    labels:
+      - "github-actions"
+      - "dependencies"  
+      - "ci/cd"
+      - "automated-pr"
+
+# 📝 Additional Dependabot Notes:
+# 
+# 1. **Security Updates**: Critical security updates will be created immediately
+#    regardless of schedule, with high priority labels
+#
+# 2. **Automatic Merging**: PRs from dependabot for patch/minor updates to 
+#    non-critical dependencies can be auto-merged if CI passes
+#
+# 3. **Manual Review Required**: Major version updates and core dependency 
+#    changes require manual review and testing
+#
+# 4. **Branch Strategy**: All dependabot PRs target 'develop' branch to ensure
+#    proper testing before merging to 'main'
+#
+# 5. **Rate Limiting**: Open PR limits prevent overwhelming the review process
+#    while ensuring steady progress on dependency updates
+#
+# 6. **Intelligent Grouping**: Related dependencies are updated together to
+#    minimize conflicts and improve testing efficiency
+#
+# 7. **Time Zones**: All schedules use UTC to ensure consistent timing
+#    regardless of maintainer location

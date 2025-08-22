@@ -1,0 +1,190 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement for n8n-mcp-modern
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+projects: ["eekfonky/n8n-mcp-modern"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! ✨
+        
+        Please provide detailed information about your feature request to help us understand and prioritize it.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm you have completed the following
+      options:
+        - label: I have searched existing issues and this feature is not already requested
+          required: true
+        - label: I have read the [documentation](https://github.com/eekfonky/n8n-mcp-modern/blob/main/README.md)
+          required: true
+        - label: This feature aligns with the project's goals and scope
+          required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: What category does this feature belong to?
+      options:
+        - n8n API Tools (new endpoints, functionality)
+        - Agent System (routing, specialization)
+        - Performance & Optimization
+        - Security & Validation
+        - Developer Experience
+        - Documentation & Examples
+        - Configuration & Setup
+        - Testing & Quality Assurance
+        - CI/CD & Automation
+        - Other (specify in description)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How important is this feature to you?
+      options:
+        - Critical (blocking current work)
+        - High (significantly improves workflow)
+        - Medium (nice to have improvement)
+        - Low (minor enhancement)
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What limitations exist currently?
+      placeholder: |
+        Describe the problem or limitation you're experiencing...
+        
+        For example:
+        - "Currently there's no way to..."
+        - "It's difficult to..."
+        - "Users have to manually..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your ideal solution to this problem
+      placeholder: |
+        Describe what you'd like to see implemented...
+        
+        Be as specific as possible about:
+        - New commands or tools
+        - API changes or additions
+        - User interface improvements
+        - Configuration options
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered any alternative approaches?
+      placeholder: |
+        Describe any alternative solutions or workarounds you've considered...
+        
+        Include:
+        - Other ways to solve the problem
+        - Existing tools that partially address this
+        - Why the proposed solution is preferred
+    validations:
+      required: false
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: Provide specific examples of how this feature would be used
+      placeholder: |
+        Example use cases:
+        
+        1. **Use Case 1**: As a workflow developer, I want to...
+        2. **Use Case 2**: When integrating with external APIs, I need to...
+        3. **Use Case 3**: For debugging purposes, it would help if...
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Ideas
+      description: If you have ideas about how this could be implemented, share them
+      placeholder: |
+        Optional: Share any technical ideas about implementation...
+        
+        For example:
+        - New MCP tools that would need to be created
+        - Changes to existing agent routing logic
+        - Database schema modifications
+        - API integrations required
+    validations:
+      required: false
+
+  - type: textarea
+    id: benefits
+    attributes:
+      label: Expected Benefits
+      description: What benefits would this feature provide?
+      placeholder: |
+        Describe the benefits this feature would provide:
+        
+        - User experience improvements
+        - Performance gains
+        - Reduced complexity
+        - Better integration capabilities
+        - Enhanced security
+    validations:
+      required: true
+
+  - type: textarea
+    id: considerations
+    attributes:
+      label: Additional Considerations
+      description: Any other important considerations?
+      placeholder: |
+        Consider mentioning:
+        
+        - Breaking changes or backward compatibility
+        - Performance implications
+        - Security considerations
+        - Documentation that would need updating
+        - Dependencies that might be required
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Are you willing to help implement this feature?
+      options:
+        - label: I would like to work on implementing this feature
+        - label: I can help with testing and feedback
+        - label: I can contribute to documentation
+        - label: I can provide use case examples and requirements
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        
+        **Note**: Feature requests will be reviewed by maintainers and prioritized based on:
+        - Alignment with project goals
+        - Community interest and votes
+        - Implementation complexity
+        - Available maintainer capacity
+        
+        Thank you for helping improve n8n-mcp-modern! 🚀
