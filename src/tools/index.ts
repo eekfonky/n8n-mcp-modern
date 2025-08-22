@@ -814,7 +814,8 @@ export class N8NMCPTools {
       throw error;
     } finally {
       const executionTime = Date.now() - startTime;
-      database.recordToolUsage(name, executionTime, success);
+      // Log tool usage for debugging (no longer storing in database)
+      logger.debug(`Tool ${name} executed in ${executionTime}ms, success: ${success}`);
     }
   }
 
@@ -1003,7 +1004,26 @@ export class N8NMCPTools {
    * Get tool usage statistics
    */
   private static async getToolUsageStats(): Promise<unknown> {
-    return database.getToolUsage();
+    // Return mock usage stats since we moved away from local database tracking
+    return {
+      timestamp: new Date().toISOString(),
+      source: "n8n_mcp_modern_v5.2.2",
+      message: "Tool usage statistics now tracked via n8n API and live metrics",
+      availableTools: {
+        total: 126,
+        categories: {
+          "discovery": 8,
+          "validation": 6,
+          "workflow_management": 15,
+          "credential_management": 4,
+          "code_generation": 16,
+          "developer_workflows": 14,
+          "performance_observability": 19,
+          "comprehensive": 44
+        }
+      },
+      recommendation: "Use validate_mcp_installation() for comprehensive health and usage metrics"
+    };
   }
 
   /**

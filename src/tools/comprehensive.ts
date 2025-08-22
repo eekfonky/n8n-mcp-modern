@@ -1202,17 +1202,50 @@ export class ComprehensiveMCPTools {
   private static async getDatabaseStatistics(
     args: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const stats = {
-      database: {
-        totalNodes: 0,
-        categories: 0,
-        lastUpdated: new Date(),
-      },
+    const stats: Record<string, unknown> = {
+      timestamp: new Date().toISOString(),
+      source: "n8n_api_live_data"
     };
 
-    if (args.includeHealth !== false && n8nApi) {
-      const health = await n8nApi.getHealthStatus();
-      (stats as Record<string, unknown>).systemHealth = health;
+    // Get live statistics from n8n API instead of database
+    if (n8nApi) {
+      try {
+        const nodes = await n8nApi.getNodeTypes();
+        const categories = new Map<string, number>();
+        
+        nodes.forEach(node => {
+          node.group.forEach(group => {
+            categories.set(group, (categories.get(group) || 0) + 1);
+          });
+        });
+
+        stats.nodeStatistics = {
+          totalNodes: nodes.length,
+          totalCategories: categories.size,
+          categorieBreakdown: Object.fromEntries(categories.entries()),
+          sampleNodes: nodes.slice(0, 5).map(n => ({ 
+            name: n.name, 
+            displayName: n.displayName,
+            group: n.group 
+          }))
+        };
+
+        if (args.includeHealth !== false) {
+          const health = await n8nApi.getHealthStatus();
+          stats.systemHealth = health;
+        }
+
+        stats.status = "success";
+        stats.message = `Successfully retrieved live statistics from n8n instance`;
+      } catch (error) {
+        stats.status = "error";
+        stats.error = error instanceof Error ? error.message : String(error);
+        stats.message = "Failed to retrieve statistics from n8n API";
+      }
+    } else {
+      stats.status = "error";
+      stats.error = "n8n API not available";
+      stats.message = "Cannot retrieve statistics - n8n API not initialized";
     }
 
     return stats;
