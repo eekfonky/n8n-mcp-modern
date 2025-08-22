@@ -43,14 +43,6 @@
   "simple-git-hooks": {
     "pre-commit": "lint-staged"
   },
-  "lint-staged": {
-    "*.{ts,tsx,js,jsx,mjs,cjs}": [
-      "eslint --fix"
-    ],
-    "*.{ts,tsx,js,jsx,mjs,cjs,json,md}": [
-      "eslint --fix"
-    ]
-  },
   "keywords": [
     "n8n",
     "mcp",
