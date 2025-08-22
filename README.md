@@ -10,12 +10,21 @@
 
 ## 🎯 What's New in v5.2.8
 
-**Proper NPM Registry Publishing (SOLUTION):**
+**Enterprise Security & JavaScript Excellence (MAJOR):**
 
-- ✅ **Published to NPM Registry** - Now available as `n8n-mcp-modern` on npmjs.org
+- ✅ **JavaScript Validator Integration** - Comprehensive security analysis and code quality improvements
+- ✅ **Command Injection Prevention** - Replaced execSync with secure spawn-based command execution
+- ✅ **Input Validation Layer** - Complete sanitization of environment variables and user input
+- ✅ **JSON Parsing Safety** - Enhanced error handling with structure validation for all JSON operations
+- ✅ **Structured Logging System** - Professional logging infrastructure with file output and metadata
+- ✅ **Process Management** - Graceful shutdown handling, error recovery, and resource monitoring
+- ✅ **NPM Publishing Best Practices** - Provenance statements, security scanning, and upgrade cleanup
+- ✅ **Dynamic Tool Calculation** - Intelligent tool counting replacing hardcoded values
+
+**Previous Release (v5.2.7) - NPM Registry Publishing:**
+
+- ✅ **Published to NPM Registry** - Now available as `n8n-mcp-modern` on npmjs.org  
 - ✅ **Restored postinstall script** - SQLite cleanup works as intended with `|| true` fallback
-- ✅ **Fixed root cause** - No more git install issues, use standard npm install
-- ✅ **Preserved all functionality** - Database, scripts, and dependencies all work properly
 - ✅ **Simple installation** - Just `npm install -g n8n-mcp-modern`
 
 ## 🎯 What's New in v5.2.7
@@ -336,6 +345,31 @@ claude mcp add n8n-mcp-modern --scope local \
 ```
 
 > **⚠️ Important**: For full n8n workflow automation capabilities, you MUST provide your n8n API credentials via environment variables as shown above.
+
+### 🧹 Clean Removal of Old Installations
+
+**Before upgrading, completely remove old MCP servers and agents:**
+
+```bash
+# 1. Remove MCP server (try both scopes)
+claude mcp remove n8n-mcp-modern --scope project 2>/dev/null || true
+claude mcp remove n8n-mcp-modern --scope local 2>/dev/null || true
+
+# 2. Remove old agent files
+rm -f ~/.claude/agents/n8n-*.md
+rm -f ~/.claude/agents/.n8n-mcp-*
+
+# 3. Clean up legacy installations
+npm uninstall -g @eekfonky/n8n-mcp-modern 2>/dev/null || true
+npm uninstall -g n8n-mcp-modern 2>/dev/null || true
+
+# 4. Clean npm cache
+npm cache clean --force
+
+# 5. Verify cleanup
+claude mcp list | grep -i n8n || echo "✅ No n8n MCP servers found"
+ls ~/.claude/agents/n8n-* 2>/dev/null || echo "✅ No n8n agents found"
+```
 
 ### 🔄 Upgrading Existing Installation
 
