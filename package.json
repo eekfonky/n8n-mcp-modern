@@ -11,7 +11,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc && chmod +x dist/index.js",
     "start": "node dist/index.js",
-    "postinstall": "node scripts/cleanup-sqlite.cjs 2>/dev/null || true",
+    "postinstall": "node scripts/cleanup-sqlite.cjs 2>/dev/null || echo 'SQLite cleanup skipped'",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
@@ -30,6 +30,7 @@
     "sync-version": "node scripts/sync-version.cjs",
     "install-agents": "node scripts/install-claude-mcp.js",
     "mcp:install": "node scripts/install-mcp.js",
+    "setup-github-packages": "node scripts/install-github-packages.cjs",
     "mcp:install-project": "echo 'Run: claude mcp add n8n-mcp-modern --scope project --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern'",
     "mcp:install-global": "echo 'Run: claude mcp add n8n-mcp-modern --scope local --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern'",
     "sync-release": "./scripts/sync-release.sh",
@@ -63,7 +64,8 @@
   },
   "homepage": "https://github.com/eekfonky/n8n-mcp-modern#readme",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -97,9 +99,11 @@
     "scripts/cleanup-sqlite.cjs",
     "scripts/install-claude-mcp.js",
     "scripts/install-mcp.js",
+    "scripts/install-github-packages.cjs",
     "scripts/sync-release.sh",
     "scripts/test-runner.ts",
     "scripts/validate-readme.cjs",
+    ".npmrc.template",
     "README.md",
     "LICENSE"
   ]

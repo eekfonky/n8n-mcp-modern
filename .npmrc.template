@@ -1,0 +1,15 @@
+# GitHub Packages configuration for @eekfonky/n8n-mcp-modern
+# Copy this file to ~/.npmrc and replace YOUR_GITHUB_TOKEN with your actual token
+
+# Registry configuration for @eekfonky scope
+@eekfonky:registry=https://npm.pkg.github.com/
+
+# Authentication for GitHub Packages
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
+
+# Keep npmjs.org as default for other packages
+registry=https://registry.npmjs.org/
+
+# GitHub Packages requires authentication for all operations
+# Generate token at: https://github.com/settings/tokens
+# Required scopes: read:packages, write:packages (if publishing)
