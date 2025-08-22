@@ -3,7 +3,7 @@
  * SQLite database for storing n8n node metadata and tool information
  */
 
-import Database from 'better-sqlite3';
+// Dynamic import for optional dependency
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { z } from 'zod';
@@ -13,6 +13,23 @@ import { logger } from '../server/logger.js';
 import { config } from '../server/config.js';
 import { N8NMcpError } from '../types/index.js';
 import type { N8NNodeDatabase } from '../types/core.js';
+
+// Optional dependency - may not be available
+let Database: any = null;
+
+// Helper to dynamically load SQLite
+async function loadDatabase(): Promise<any> {
+  if (Database) return Database;
+  
+  try {
+    const db = await import('better-sqlite3');
+    Database = db.default;
+    return Database;
+  } catch (error) {
+    logger.warn('SQLite database not available - running in API-only mode', { error: error instanceof Error ? error.message : String(error) });
+    return null;
+  }
+}
 
 /**
  * n8n Node metadata
@@ -127,14 +144,15 @@ export class DatabaseQueryError extends N8NMcpError {
  * Database manager class
  */
 export class DatabaseManager {
-  private db: Database.Database | null = null;
+  private db: any = null; // Use any type since Database might not be available
   private readonly dbPath: string;
   private readonly initTime: Date = new Date();
   private lastHealthCheck: Date | null = null;
   private queryCount: number = 0;
   private successfulQueryCount: number = 0;
-  private preparedStatements: Map<string, Database.Statement> = new Map();
+  private preparedStatements: Map<string, any> = new Map(); // Use any for optional dependency
   private queryCache: Map<string, { data: unknown; expires: number }> = new Map();
+  private sqliteAvailable: boolean = false;
 
   constructor() {
     this.dbPath = config.databaseInMemory ? ':memory:' : config.databasePath;
@@ -176,7 +194,13 @@ export class DatabaseManager {
   /**
    * Safe execution wrapper for database operations with error handling
    */
-  private safeExecute<T>(operation: string, fn: (db: Database.Database) => T, context?: Record<string, unknown>): T {
+  private safeExecute<T>(operation: string, fn: (db: any) => T, context?: Record<string, unknown>): T {
+    if (!this.sqliteAvailable) {
+      logger.debug(`Database operation skipped - SQLite not available: ${operation}`);
+      // Return empty results for database operations when SQLite is not available
+      return this.getFallbackResult<T>(operation);
+    }
+
     if (!this.db) {
       throw new DatabaseConnectionError('Database not initialized');
     }
@@ -203,10 +227,39 @@ export class DatabaseManager {
   }
 
   /**
+   * Provide fallback results when SQLite is not available
+   */
+  private getFallbackResult<T>(operation: string): T {
+    switch (operation) {
+      case 'getNodes':
+      case 'searchNodes':
+        return [] as T;
+      case 'getToolUsage':
+        return [] as T;
+      case 'getAgentRoute':
+        return null as T;
+      default:
+        logger.debug(`No fallback available for operation: ${operation}`);
+        return [] as T;
+    }
+  }
+
+  /**
    * Initialize database connection and schema
    */
   async initialize(): Promise<void> {
     try {
+      // Try to load SQLite database
+      const DatabaseClass = await loadDatabase();
+      
+      if (!DatabaseClass) {
+        logger.info('SQLite not available - running in API-only mode without local database');
+        this.sqliteAvailable = false;
+        return;
+      }
+
+      this.sqliteAvailable = true;
+
       // Ensure data directory exists
       if (!config.databaseInMemory) {
         const dataDir = join(process.cwd(), 'data');
@@ -216,7 +269,7 @@ export class DatabaseManager {
       }
 
       // Open database connection
-      this.db = new Database(this.dbPath);
+      this.db = new DatabaseClass(this.dbPath);
       this.db.pragma('journal_mode = WAL');
       this.db.pragma('synchronous = NORMAL');
       this.db.pragma('cache_size = 1000');
@@ -231,7 +284,9 @@ export class DatabaseManager {
       logger.info(`Database initialized: ${this.dbPath}`);
     } catch (error) {
       logger.error('Failed to initialize database:', error);
-      throw error;
+      // Don't throw - allow the application to continue in API-only mode
+      this.sqliteAvailable = false;
+      logger.warn('Continuing without local database - running in API-only mode');
     }
   }
 
@@ -507,6 +562,10 @@ export class DatabaseManager {
    * Check if database is ready
    */
   isReady(): boolean {
+    if (!this.sqliteAvailable) {
+      return true; // API-only mode is always "ready"
+    }
+    
     try {
       if (!this.db) return false;
       this.db.prepare('SELECT 1').get();
@@ -523,7 +582,7 @@ export class DatabaseManager {
   /**
    * Get or create prepared statement with caching
    */
-  private getPreparedStatement(db: Database.Database, key: string, sql: string): Database.Statement {
+  private getPreparedStatement(db: any, key: string, sql: string): any {
     if (!this.preparedStatements.has(key)) {
       this.preparedStatements.set(key, db.prepare(sql));
     }
@@ -572,7 +631,7 @@ export class DatabaseManager {
   /**
    * Async wrapper for heavy operations to prevent event loop blocking
    */
-  private async asyncSafeExecute<T>(operation: string, fn: (db: Database.Database) => T, context?: Record<string, unknown>): Promise<T> {
+  private async asyncSafeExecute<T>(operation: string, fn: (db: any) => T, context?: Record<string, unknown>): Promise<T> {
     return new Promise((resolve, reject) => {
       setImmediate(() => {
         try {
@@ -592,7 +651,7 @@ export class DatabaseManager {
     if (usageEntries.length === 0) return;
 
     this.safeExecute('batchRecordToolUsage', (db) => {
-      const transaction = db.transaction((entries) => {
+      const transaction = db.transaction((entries: Array<{ toolName: string; executionTime: number; success: boolean }>) => {
         const upsertStmt = this.getPreparedStatement(db, 'upsert-tool-usage', `
           INSERT INTO tool_usage (tool_name, usage_count, last_used, total_execution_time, success_count, error_count)
           VALUES (?, 1, datetime('now'), ?, ?, ?)

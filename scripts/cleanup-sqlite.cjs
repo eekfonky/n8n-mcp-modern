@@ -2,15 +2,21 @@
 /**
  * Cleanup SQLite temporary files
  * Removes WAL/SHM files that might exist from previous versions
+ * Safe for global installs - exits gracefully if data directory doesn't exist
  */
 
 const fs = require("fs");
 const path = require("path");
 
 function cleanupSQLiteFiles() {
-  const dataDir = path.join(__dirname, "..", "data");
+  try {
+    const dataDir = path.join(__dirname, "..", "data");
 
-  if (fs.existsSync(dataDir)) {
+    // Skip cleanup if data directory doesn't exist (fresh install)
+    if (!fs.existsSync(dataDir)) {
+      return;
+    }
+
     const filesToClean = ["nodes.db-wal", "nodes.db-shm"];
     filesToClean.forEach((file) => {
       const filePath = path.join(dataDir, file);
@@ -23,6 +29,9 @@ function cleanupSQLiteFiles() {
         }
       }
     });
+  } catch (error) {
+    // Exit gracefully on any error during postinstall
+    // This prevents installation failures
   }
 }
 
