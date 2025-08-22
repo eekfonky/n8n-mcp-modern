@@ -5,9 +5,17 @@
 
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { database } from "../database/index.js";
 import { n8nApi } from "../n8n/api.js";
 import { logger } from "../server/logger.js";
+
+/**
+ * Standardized MCP tool response format
+ */
+export interface McpToolResponse {
+  success: boolean;
+  data?: unknown;
+  error?: string;
+}
 import {
   getAllComprehensiveTools,
   ComprehensiveMCPTools,
@@ -513,17 +521,28 @@ export class N8NMCPTools {
 
   /**
    * Execute MCP tool (handles both original and comprehensive tools)
+   * Returns standardized McpToolResponse format
    */
   static async executeTool(
     name: string,
     args: Record<string, unknown>,
-  ): Promise<unknown> {
+  ): Promise<McpToolResponse> {
     // Try comprehensive tools first
     const comprehensiveToolNames = getAllComprehensiveTools().map(
       (tool) => tool.name,
     );
     if (comprehensiveToolNames.includes(name)) {
-      return await ComprehensiveMCPTools.executeTool(name, args);
+      // Comprehensive tools need to be updated to return structured format
+      // For now, wrap their response
+      try {
+        const result = await ComprehensiveMCPTools.executeTool(name, args);
+        return { success: true, data: result };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error)
+        };
+      }
     }
 
     // Fall back to original tools
@@ -803,15 +822,28 @@ export class N8NMCPTools {
           break;
 
         default:
-          throw new Error(`Unknown tool: ${name}`);
+          return {
+            success: false,
+            error: `Unknown tool: ${name}`
+          };
       }
 
       success = true;
       logger.info(`Tool executed successfully: ${name}`);
-      return result;
+      
+      // Return structured response format
+      return {
+        success: true,
+        data: result
+      };
     } catch (error) {
       logger.error(`Tool execution failed: ${name}`, error);
-      throw error;
+      
+      // Return structured error response
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
     } finally {
       const executionTime = Date.now() - startTime;
       // Log tool usage for debugging (no longer storing in database)

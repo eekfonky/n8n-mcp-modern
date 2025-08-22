@@ -1215,7 +1215,7 @@ export class ComprehensiveMCPTools {
         
         nodes.forEach(node => {
           node.group.forEach(group => {
-            categories.set(group, (categories.get(group) || 0) + 1);
+            categories.set(group, (categories.get(group) ?? 0) + 1);
           });
         });
 
@@ -1615,13 +1615,13 @@ export class ComprehensiveMCPTools {
     if (args.includeNodeSample && n8nApi) {
       try {
         const sampleNodes = await n8nApi.getNodeTypes();
-        (results as any).sampleNodes = sampleNodes.slice(0, 10).map(node => ({
+        (results as Record<string, unknown>).sampleNodes = sampleNodes.slice(0, 10).map(node => ({
           name: node.name,
           displayName: node.displayName,
           description: node.description,
           group: node.group,
         }));
-      } catch (error) {
+      } catch (_error) {
         // Non-critical error
       }
     }

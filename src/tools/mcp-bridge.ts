@@ -8,7 +8,6 @@
 import { logger } from "../server/logger.js";
 import { N8NMCPTools } from "./index.js";
 import { n8nApi } from "../n8n/api.js";
-import { database } from "../database/index.js";
 
 /**
  * MCP Tool Proxy Handler

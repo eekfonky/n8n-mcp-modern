@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { N8NNodeProperty, N8NNodeAPI } from "./core.js";
 
 // Core MCP Types
 export interface ToolDefinition {
@@ -49,49 +50,22 @@ export const ConfigSchema = z.object({
 
 export type Config = z.infer<typeof ConfigSchema>;
 
-// N8N Node Types (Minimal)
-export interface N8NNode {
-  type: string;
-  displayName: string;
-  name: string;
-  group: string[];
-  version: number | number[];
-  description: string;
-  defaults: Record<string, unknown>;
-  inputs: string[];
-  outputs: string[];
-  properties: N8NNodeProperty[];
-  credentials?: N8NCredential[];
-  webhooks?: N8NWebhook[];
-  codex?: {
-    categories: string[];
-    subcategories?: Record<string, string[]>;
-    resources?: {
-      primaryDocumentation?: Array<{
-        url: string;
-        title?: string;
-      }>;
-    };
-  };
-}
+// N8N Node Types (Deprecated - Use Unified Types)
+/**
+ * @deprecated Use N8NNodeAPI from types/core.ts for API responses, 
+ * N8NNodeDatabase for database operations, or N8NWorkflowNode for workflows.
+ * This legacy interface caused type conflicts and unsafe casting.
+ */
+export type N8NNodeLegacy = N8NNodeAPI;
 
-export interface N8NNodeProperty {
-  displayName: string;
-  name: string;
-  type: string;
-  required?: boolean;
-  default?: unknown;
-  description?: string;
-  options?: Array<{
-    name: string;
-    value: string | number | boolean;
-    description?: string;
-  }>;
-  displayOptions?: {
-    show?: Record<string, unknown[]>;
-    hide?: Record<string, unknown[]>;
-  };
-}
+/**
+ * @deprecated Use N8NNodeProperty from types/core.ts instead
+ */
+export type N8NNodePropertyLegacy = N8NNodeProperty;
+
+// Re-export unified types for convenience
+export type { N8NNodeDatabase, N8NNodeAPI, N8NNodeProperty, N8NNodeCredential } from "./core.js";
+export { isN8NNodeDatabase, isN8NNodeAPI, isN8NWorkflowNode, convertApiToDatabase } from "./core.js";
 
 export interface N8NCredential {
   id?: string;
@@ -238,7 +212,7 @@ export const N8NWorkflowSchema = z.object({
 export interface N8NWorkflow {
   id?: string;
   name: string;
-  nodes: N8NWorkflowNode[];
+  nodes: import("./core.js").N8NWorkflowNode[];
   connections: Record<
     string,
     Record<string, Array<Array<{ node: string; type: string; index: number }>>>
@@ -250,26 +224,9 @@ export interface N8NWorkflow {
   versionId?: string;
 }
 
-export interface N8NWorkflowNode {
-  id: string;
-  name: string;
-  type: string;
-  typeVersion: number;
-  position: [number, number];
-  parameters: Record<string, unknown>;
-  credentials?: Record<string, string>;
-  disabled?: boolean;
-  notes?: string;
-  notesInFlow?: boolean;
-  color?: string;
-  continueOnFail?: boolean;
-  alwaysOutputData?: boolean;
-  executeOnce?: boolean;
-  retryOnFail?: boolean;
-  maxTries?: number;
-  waitBetweenTries?: number;
-  onError?: string;
-}
+// N8NWorkflowNode interface moved to types/core.ts to prevent duplication
+// Re-export from core.ts for backward compatibility
+export type { N8NWorkflowNode } from "./core.js";
 
 // Error Types
 export class N8NMcpError extends Error {

@@ -8,6 +8,7 @@ import { z } from "zod";
 import { config } from "../server/config.js";
 import { logger } from "../server/logger.js";
 import { retryHandler, n8nApiCircuitBreaker } from "../server/resilience.js";
+import type { N8NNodeAPI, N8NNodeProperty, N8NNodeCredential } from "../types/core.js";
 import type {
   WorkflowCreatePayload,
   WorkflowUpdatePayload,
@@ -62,16 +63,9 @@ export interface N8NWorkflow {
 
 /**
  * n8n Workflow Node
+ * @deprecated Use N8NWorkflowNode from types/core.ts instead
  */
-export interface N8NWorkflowNode {
-  id: string;
-  name: string;
-  type: string;
-  typeVersion: number;
-  position: [number, number];
-  parameters: Record<string, unknown>;
-  credentials?: Record<string, string>;
-}
+export type N8NWorkflowNode = import("../types/core.js").N8NWorkflowNode;
 
 /**
  * n8n Execution
@@ -119,42 +113,21 @@ export interface N8NUser {
 
 /**
  * n8n Node Type
+ * @deprecated Use N8NNodeAPI from types/core.ts instead
  */
-export interface N8NNodeType {
-  name: string;
-  displayName: string;
-  description: string;
-  version: number;
-  defaults?: Record<string, unknown>;
-  inputs: string[];
-  outputs: string[];
-  properties: N8NNodeProperty[];
-  credentials?: N8NNodeCredential[];
-  group: string[];
-  category?: string;
-}
+export type N8NNodeType = N8NNodeAPI;
 
 /**
  * n8n Node Property
+ * @deprecated Use N8NNodeProperty from types/core.ts instead
  */
-export interface N8NNodeProperty {
-  displayName: string;
-  name: string;
-  type: string;
-  required?: boolean;
-  default?: unknown;
-  description?: string;
-  options?: Array<{ name: string; value: unknown }>;
-}
+export type N8NNodePropertyLegacy = N8NNodeProperty;
 
 /**
- * n8n Node Credential
+ * n8n Node Credential  
+ * @deprecated Use N8NNodeCredential from types/core.ts instead
  */
-export interface N8NNodeCredential {
-  name: string;
-  required?: boolean;
-  displayOptions?: Record<string, unknown>;
-}
+export type N8NNodeCredentialLegacy = N8NNodeCredential;
 
 /**
  * n8n Settings
@@ -752,25 +725,25 @@ export class N8NApiClient {
   /**
    * Get all available node types
    */
-  async getNodeTypes(): Promise<N8NNodeType[]> {
+  async getNodeTypes(): Promise<N8NNodeAPI[]> {
     const response = await this.request(
       "/node-types",
       {},
       NodeTypeListResponseSchema,
     );
-    return response.data as N8NNodeType[];
+    return response.data as N8NNodeAPI[];
   }
 
   /**
    * Get specific node type information
    */
-  async getNodeType(nodeType: string): Promise<N8NNodeType> {
+  async getNodeType(nodeType: string): Promise<N8NNodeAPI> {
     const response = await this.request(
       `/node-types/${nodeType}`,
       {},
       N8NNodeTypeResponseSchema,
     );
-    return response as N8NNodeType;
+    return response as N8NNodeAPI;
   }
 
   /**
@@ -779,7 +752,7 @@ export class N8NApiClient {
   async searchNodeTypes(
     query: string,
     category?: string,
-  ): Promise<N8NNodeType[]> {
+  ): Promise<N8NNodeAPI[]> {
     const nodeTypes = await this.getNodeTypes();
 
     const searchTerm = query.toLowerCase();
