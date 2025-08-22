@@ -22,7 +22,7 @@
 
 **Installation Reliability Fix v2 (CRITICAL):**
 
-- ✅ **Fixed `--ignore-scripts` Installation** - Use `npm install -g --ignore-scripts` to bypass dependency script issues  
+- ✅ **Fixed `--ignore-scripts` Installation** - Use `npm install -g --ignore-scripts` to bypass dependency script issues
 - ✅ **Resolved chmod Errors** - No more `ENOENT: chmod` failures during global npm installs
 - ✅ **Eliminated Script Dependencies** - Removed problematic postinstall hooks completely
 - ✅ **Universal Install Success** - Works reliably across all Node.js and npm versions
@@ -196,18 +196,20 @@ claude mcp add sequential-thinking -s user -- npx -y @modelcontextprotocol/serve
 **⚠️ IMPORTANT: If you're upgrading from `@lexinet/n8n-mcp-modern`**
 
 ### 🚀 **Easy Migration (One Command)**
+
 ```bash
 # Download and run migration script
 curl -fsSL https://raw.githubusercontent.com/eekfonky/n8n-mcp-modern/main/migration-standalone.sh | bash
 ```
 
 ### 🔧 **Manual Migration Steps**
+
 ```bash
 # 1. Remove old package
 claude mcp remove n8n-mcp-modern
 claude mcp remove @lexinet/n8n-mcp-modern
 
-# 2. Clear caches  
+# 2. Clear caches
 npm cache clean --force
 
 # 3. Set up GitHub Packages authentication (choose one):
@@ -267,7 +269,7 @@ echo "//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN" >> ~/.npmrc
 # Install from GitHub Packages
 npm install -g @eekfonky/n8n-mcp-modern
 
-# Configure and install  
+# Configure and install
 N8N_API_URL="https://your-n8n-instance.com" \
 N8N_API_KEY="your-api-key" \
 n8n-mcp install
@@ -356,8 +358,9 @@ n8n-mcp --version
 ```
 
 **✅ Why This Method:**
+
 - **Always gets latest commit** from main branch
-- **Overwrites any existing version** completely  
+- **Overwrites any existing version** completely
 - **No version caching issues**
 - **Forces clean reinstall**
 

@@ -1,70 +1,153 @@
-import { config as dotenvConfig } from "dotenv";
-import { z } from "zod";
-import type { Config } from "../types/index.js";
-import { ConfigSchema } from "../types/index.js";
+import type { Config } from '../types/index.js'
+import process from 'node:process'
+
+import { config as dotenvConfig } from 'dotenv'
+import { z } from 'zod'
+import { ConfigSchema } from '../types/index.js'
 
 // Load environment variables (quiet: true to maintain v16 behavior in v17)
-dotenvConfig({ quiet: true });
+dotenvConfig({ quiet: true })
 
-// Environment variable parsing with validation
+// TypeScript 5.9+ const type parameters for better inference
+const NODE_ENVIRONMENTS = ['development', 'production', 'test'] as const
+const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const
+const MCP_MODES = ['stdio', 'http'] as const
+
+// Environment variable parsing with validation using enhanced TypeScript patterns
 const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]).default("production"),
+  NODE_ENV: z.enum(NODE_ENVIRONMENTS).default('production'),
   N8N_API_URL: z.string().url().optional(),
   N8N_API_KEY: z.string().optional(),
-  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
   DISABLE_CONSOLE_OUTPUT: z
     .string()
-    .transform((val) => val === "true")
-    .default("false"),
-  MCP_MODE: z.enum(["stdio", "http"]).default("stdio"),
+    .transform((val): val is 'true' => val === 'true')
+    .default('false'),
+  MCP_MODE: z.enum(MCP_MODES).default('stdio'),
   MCP_TIMEOUT: z
     .string()
-    .transform((val) => parseInt(val, 10))
-    .default("30000"),
-  DATABASE_PATH: z.string().default("./data/nodes.db"),
+    .transform((val): number => {
+      const num = Number.parseInt(val, 10)
+      if (Number.isNaN(num))
+        throw new Error(`Invalid MCP_TIMEOUT: ${val}`)
+      return num
+    })
+    .default('30000'),
+  DATABASE_PATH: z.string().default('./data/nodes.db'),
   DATABASE_IN_MEMORY: z
     .string()
-    .transform((val) => val === "true")
-    .default("false"),
+    .transform((val): val is 'true' => val === 'true')
+    .default('false'),
   ENABLE_CACHE: z
     .string()
-    .transform((val) => val === "true")
-    .default("true"),
+    .transform((val): val is 'true' => val === 'true')
+    .default('true'),
   CACHE_TTL: z
     .string()
-    .transform((val) => parseInt(val, 10))
-    .default("3600"),
+    .transform((val): number => {
+      const num = Number.parseInt(val, 10)
+      if (Number.isNaN(num) || num < 0)
+        throw new Error(`Invalid CACHE_TTL: ${val}`)
+      return num
+    })
+    .default('3600'),
   MAX_CONCURRENT_REQUESTS: z
     .string()
-    .transform((val) => parseInt(val, 10))
-    .default("10"),
+    .transform((val): number => {
+      const num = Number.parseInt(val, 10)
+      if (Number.isNaN(num) || num < 1)
+        throw new Error(`Invalid MAX_CONCURRENT_REQUESTS: ${val}`)
+      return num
+    })
+    .default('10'),
   DEBUG: z
     .string()
-    .transform((val) => val === "true")
-    .default("false"),
+    .transform((val): val is 'true' => val === 'true')
+    .default('false'),
 
-  // API Response Validation Settings
+  // API Response Validation Settings with enhanced validation
   STRICT_API_VALIDATION: z
     .string()
-    .transform((val) => val === "true")
-    .default("false"),
+    .transform((val): val is 'true' => val === 'true')
+    .default('false'),
   ENABLE_RESPONSE_LOGGING: z
     .string()
-    .transform((val) => val === "true")
-    .default("true"),
+    .transform((val): val is 'true' => val === 'true')
+    .default('true'),
   VALIDATION_TIMEOUT: z
     .string()
-    .transform((val) => parseInt(val, 10))
-    .default("5000"),
+    .transform((val): number => {
+      const num = Number.parseInt(val, 10)
+      if (Number.isNaN(num) || num < 100)
+        throw new Error(`Invalid VALIDATION_TIMEOUT: ${val}`)
+      return num
+    })
+    .default('5000'),
   SANITIZE_API_RESPONSES: z
     .string()
-    .transform((val) => val === "true")
-    .default("true"),
+    .transform((val): val is 'true' => val === 'true')
+    .default('true'),
   MAX_RESPONSE_SIZE: z
     .string()
-    .transform((val) => parseInt(val, 10))
-    .default("10485760"),
-});
+    .transform((val): number => {
+      const num = Number.parseInt(val, 10)
+      if (Number.isNaN(num) || num < 1024)
+        throw new Error(`Invalid MAX_RESPONSE_SIZE: ${val}`)
+      return num
+    })
+    .default('10485760'),
+
+  // Memory Management Settings
+  ENABLE_MEMORY_MONITORING: z
+    .string()
+    .transform((val): val is 'true' => val === 'true')
+    .default('true'),
+  MEMORY_THRESHOLD_WARNING: z
+    .string()
+    .transform((val): number => {
+      const num = Number.parseInt(val, 10)
+      if (Number.isNaN(num) || num < 50 || num > 95)
+        throw new Error(`Invalid MEMORY_THRESHOLD_WARNING: ${val} (must be 50-95)`)
+      return num
+    })
+    .default('80'),
+  MEMORY_THRESHOLD_CRITICAL: z
+    .string()
+    .transform((val): number => {
+      const num = Number.parseInt(val, 10)
+      if (Number.isNaN(num) || num < 80 || num > 98)
+        throw new Error(`Invalid MEMORY_THRESHOLD_CRITICAL: ${val} (must be 80-98)`)
+      return num
+    })
+    .default('90'),
+  GC_INTERVAL_MS: z
+    .string()
+    .transform((val): number => {
+      const num = Number.parseInt(val, 10)
+      if (Number.isNaN(num) || num < 10000)
+        throw new Error(`Invalid GC_INTERVAL_MS: ${val} (minimum 10000ms)`)
+      return num
+    })
+    .default('60000'),
+  MAX_HEAP_SIZE_MB: z
+    .string()
+    .transform((val): number => {
+      const num = Number.parseInt(val, 10)
+      if (Number.isNaN(num) || num < 128)
+        throw new Error(`Invalid MAX_HEAP_SIZE_MB: ${val} (minimum 128MB)`)
+      return num
+    })
+    .default('512'),
+  CACHE_CLEANUP_INTERVAL_MS: z
+    .string()
+    .transform((val): number => {
+      const num = Number.parseInt(val, 10)
+      if (Number.isNaN(num) || num < 30000)
+        throw new Error(`Invalid CACHE_CLEANUP_INTERVAL_MS: ${val} (minimum 30000ms)`)
+      return num
+    })
+    .default('300000'),
+})
 
 // Parse and validate environment variables
 function parseEnvironment(): Config {
@@ -87,7 +170,13 @@ function parseEnvironment(): Config {
     VALIDATION_TIMEOUT: process.env.VALIDATION_TIMEOUT,
     SANITIZE_API_RESPONSES: process.env.SANITIZE_API_RESPONSES,
     MAX_RESPONSE_SIZE: process.env.MAX_RESPONSE_SIZE,
-  });
+    ENABLE_MEMORY_MONITORING: process.env.ENABLE_MEMORY_MONITORING,
+    MEMORY_THRESHOLD_WARNING: process.env.MEMORY_THRESHOLD_WARNING,
+    MEMORY_THRESHOLD_CRITICAL: process.env.MEMORY_THRESHOLD_CRITICAL,
+    GC_INTERVAL_MS: process.env.GC_INTERVAL_MS,
+    MAX_HEAP_SIZE_MB: process.env.MAX_HEAP_SIZE_MB,
+    CACHE_CLEANUP_INTERVAL_MS: process.env.CACHE_CLEANUP_INTERVAL_MS,
+  })
 
   return ConfigSchema.parse({
     n8nApiUrl: normalizeN8NUrl(env.N8N_API_URL),
@@ -108,53 +197,87 @@ function parseEnvironment(): Config {
     validationTimeout: env.VALIDATION_TIMEOUT,
     sanitizeApiResponses: env.SANITIZE_API_RESPONSES,
     maxResponseSize: env.MAX_RESPONSE_SIZE,
-  });
+    enableMemoryMonitoring: env.ENABLE_MEMORY_MONITORING,
+    memoryThresholdWarning: env.MEMORY_THRESHOLD_WARNING,
+    memoryThresholdCritical: env.MEMORY_THRESHOLD_CRITICAL,
+    gcIntervalMs: env.GC_INTERVAL_MS,
+    maxHeapSizeMb: env.MAX_HEAP_SIZE_MB,
+    cacheCleanupIntervalMs: env.CACHE_CLEANUP_INTERVAL_MS,
+  })
 }
 
 // Normalize N8N API URL to ensure correct format
 function normalizeN8NUrl(url: string | undefined): string | undefined {
-  if (!url) return undefined;
+  if (!url)
+    return undefined
 
   try {
-    const parsed = new URL(url);
-    const baseUrl = `${parsed.protocol}//${parsed.host}`;
+    const parsed = new URL(url)
+    const baseUrl = `${parsed.protocol}//${parsed.host}`
 
     // Remove trailing slashes and existing api paths
     const cleanPath = parsed.pathname
-      .replace(/\/+$/, "")
-      .replace(/\/api.*$/, "");
+      .replace(/\/+$/, '')
+      .replace(/\/api.*$/, '')
 
     // Always append /api/v1
-    return `${baseUrl}${cleanPath}/api/v1`;
-  } catch {
-    throw new Error(`Invalid N8N_API_URL format: ${url}`);
+    return `${baseUrl}${cleanPath}/api/v1`
+  }
+  catch {
+    throw new Error(`Invalid N8N_API_URL format: ${url}`)
   }
 }
 
 // Export singleton config
-export const config = parseEnvironment();
+export const config = parseEnvironment()
 
 // Helper function for runtime config updates
 export function updateConfig(updates: Partial<Config>): Config {
-  const updated = ConfigSchema.parse({ ...config, ...updates });
-  Object.assign(config, updated);
-  return config;
+  const updated = ConfigSchema.parse({ ...config, ...updates })
+  Object.assign(config, updated)
+  return config
 }
 
 // Validation helper
 export function validateConfig(cfg: unknown): Config {
-  return ConfigSchema.parse(cfg);
+  return ConfigSchema.parse(cfg)
 }
 
-// Environment helpers
-export const isDevelopment = config.nodeEnv === "development";
-export const isProduction = config.nodeEnv === "production";
-export const isDebug = config.debug || isDevelopment;
+// Environment helpers with TypeScript 5.9+ type predicates
+export const isDevelopment = config.nodeEnv === 'development'
+export const isProduction = config.nodeEnv === 'production'
+export const isDebug = config.debug || isDevelopment
 
-// Feature flags based on config
+// TypeScript 5.9+ type helper for environment checking
+export function assertEnvironment<T extends typeof NODE_ENVIRONMENTS[number]>(
+  env: T,
+): void {
+  if (config.nodeEnv !== env) {
+    throw new Error(`Expected environment ${env}, got ${config.nodeEnv}`)
+  }
+}
+
+// Feature flags with enhanced type safety using const assertions
 export const features = {
   hasN8nApi: Boolean(config.n8nApiUrl && config.n8nApiKey),
   cachingEnabled: config.enableCache,
   consoleLoggingEnabled: !config.disableConsoleOutput,
   debugMode: isDebug,
-} as const;
+  strictValidation: config.strictApiValidation,
+  responseLogging: config.enableResponseLogging,
+  sanitizedResponses: config.sanitizeApiResponses,
+} as const satisfies Record<string, boolean>
+
+// Export type-safe configuration constants
+export type NodeEnvironment = typeof NODE_ENVIRONMENTS[number]
+export type LogLevel = typeof LOG_LEVELS[number]
+export type McpMode = typeof MCP_MODES[number]
+
+// Configuration type predicate helpers
+export function isValidLogLevel(level: string): level is LogLevel {
+  return LOG_LEVELS.includes(level as LogLevel)
+}
+
+export function isValidEnvironment(env: string): env is NodeEnvironment {
+  return NODE_ENVIRONMENTS.includes(env as NodeEnvironment)
+}

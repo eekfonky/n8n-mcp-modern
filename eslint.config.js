@@ -1,100 +1,97 @@
-import js from '@eslint/js';
-import tseslint from '@typescript-eslint/eslint-plugin';
-import tsparser from '@typescript-eslint/parser';
+import antfu from '@antfu/eslint-config'
 
-export default [
-  js.configs.recommended,
-  {
-    files: ['src/**/*.ts'],
-    ignores: ['**/*.test.ts', '**/*.spec.ts'],
-    languageOptions: {
-      parser: tsparser,
-      parserOptions: {
-        ecmaVersion: 2022,
-        sourceType: 'module',
-        project: './tsconfig.json'
-      },
-      globals: {
-        process: 'readonly',
-        console: 'readonly',
-        URL: 'readonly',
-        Buffer: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly'
-      }
-    },
-    plugins: {
-      '@typescript-eslint': tseslint
-    },
-    rules: {
-      // TypeScript rules
-      '@typescript-eslint/no-unused-vars': ['error', { 
-        'argsIgnorePattern': '^_',
-        'varsIgnorePattern': '^_',
-        'ignoreRestSiblings': true,
-        'destructuredArrayIgnorePattern': '^_',
-        'caughtErrorsIgnorePattern': '^_'
+export default antfu({
+  // Type of the project - library configuration
+  type: 'lib',
+
+  // Enable TypeScript support
+  typescript: {
+    overrides: {
+      'ts/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        ignoreRestSiblings: true,
+        destructuredArrayIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
       }],
-      'no-unused-vars': 'off', // Use TypeScript version instead
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/explicit-function-return-type': 'warn',
-      '@typescript-eslint/no-non-null-assertion': 'error',
-      '@typescript-eslint/prefer-nullish-coalescing': 'error',
-      '@typescript-eslint/prefer-optional-chain': 'error',
-      
-      // General rules
-      'no-console': 'warn',
-      'prefer-const': 'error',
-      'no-var': 'error',
-      'object-shorthand': 'error',
-      'prefer-template': 'error',
-      'no-undef': 'error',
-      'no-control-regex': 'error'
-    }
-  },
-  {
-    files: ['**/*.test.ts', '**/*.spec.ts'],
-    languageOptions: {
-      parser: tsparser,
-      parserOptions: {
-        ecmaVersion: 2022,
-        sourceType: 'module'
-      },
-      globals: {
-        process: 'readonly',
-        console: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-        global: 'readonly',
-        describe: 'readonly',
-        it: 'readonly',
-        test: 'readonly',
-        expect: 'readonly',
-        beforeAll: 'readonly',
-        afterAll: 'readonly',
-        beforeEach: 'readonly',
-        afterEach: 'readonly',
-        vi: 'readonly'
-      }
+      'ts/no-explicit-any': 'warn',
+      'ts/explicit-function-return-type': 'warn',
+      'ts/no-non-null-assertion': 'error',
+      'ts/consistent-type-definitions': ['error', 'interface'],
     },
-    rules: {
-      'no-console': 'off',
-      'no-undef': 'off',
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': 'off',
-      'no-unused-vars': 'off'
-    }
   },
-  {
-    files: ['src/server/logger.ts'],
-    rules: {
-      'no-console': 'off'
-    }
-  }
-];
+
+  // Enable stylistic formatting rules with modern patterns
+  stylistic: {
+    indent: 2,
+    quotes: 'single',
+    semi: false,
+  },
+
+  // Enable formatters for better code style
+  formatters: {
+    css: true,
+    html: true,
+    markdown: 'prettier',
+  },
+
+  // Disable JSONC and YAML for now to keep focused
+  jsonc: false,
+  yaml: false,
+
+  // Ignore patterns (replaces .eslintignore)
+  ignores: [
+    '**/fixtures',
+    '**/node_modules',
+    '**/dist',
+    '**/coverage',
+    '**/*.d.ts',
+    '**/data/nodes.db*',
+    'CLAUDE.md/**/*',
+    '**/*.log',
+    '.vscode/**/*',
+    '**/*.md',
+    '**/agents/**/*.md',
+    '**/.claude/**/*.md',
+  ],
+},
+// Additional configuration for specific needs
+{
+  files: ['src/**/*.ts'],
+  rules: {
+    // n8n-mcp-modern specific rules
+    'no-console': 'warn',
+    'prefer-const': 'error',
+    'no-var': 'error',
+    'object-shorthand': 'error',
+    'prefer-template': 'error',
+    'no-control-regex': 'error',
+
+    // MCP server performance optimizations
+    'no-await-in-loop': 'warn',
+    'no-promise-executor-return': 'error',
+    'prefer-promise-reject-errors': 'error',
+  },
+}, {
+  files: ['**/*.test.ts', '**/*.spec.ts'],
+  rules: {
+    // Test files can be more lenient
+    'no-console': 'off',
+    'ts/no-explicit-any': 'off',
+    'ts/no-unused-vars': 'off',
+    'unused-imports/no-unused-vars': 'off',
+    'ts/explicit-function-return-type': 'off',
+    'ts/no-non-null-assertion': 'off',
+    'no-promise-executor-return': 'off',
+
+    // Test-specific performance rules
+    'no-await-in-loop': 'off',
+    'no-new': 'off',
+    'vars-on-top': 'off',
+  },
+}, {
+  files: ['src/server/logger.ts', 'scripts/**/*.ts', 'scripts/**/*.js'],
+  rules: {
+    'no-console': 'off',
+  },
+})

@@ -61,11 +61,20 @@ afterEach(() => {
   vi.clearAllTimers()
   
   // Clean up process event listeners to prevent EventEmitter memory leak warnings
-  const eventsToCleanup = ['SIGINT', 'SIGTERM', 'unhandledRejection', 'uncaughtException', 'warning', 'beforeExit']
-  eventsToCleanup.forEach(event => {
-    const listeners = process.listeners(event)
+  const signalEvents: NodeJS.Signals[] = ['SIGINT', 'SIGTERM']
+  const processEvents = ['unhandledRejection', 'uncaughtException', 'warning', 'beforeExit']
+  
+  signalEvents.forEach(signal => {
+    const listeners = process.listeners(signal)
     listeners.forEach(listener => {
-      process.removeListener(event, listener)
+      process.removeListener(signal, listener as (...args: any[]) => void)
+    })
+  })
+  
+  processEvents.forEach(event => {
+    const listeners = process.listeners(event as any)
+    listeners.forEach(listener => {
+      process.removeListener(event as any, listener as (...args: any[]) => void)
     })
   })
 })

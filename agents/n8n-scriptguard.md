@@ -79,15 +79,15 @@ return { html: `<div>${$json.userContent}</div>` }; // → Escape HTML
 // Inefficient data processing
 items.forEach((item) => {
   /* sync operation */
-});
+})
 // → Batch async processing with proper flow control
 
 // Memory-intensive operations
-const bigArray = items.map((item) => processLargeData(item));
+const bigArray = items.map(item => processLargeData(item))
 // → Streaming/generator approach
 
 // Missing pagination
-const allRecords = await api.getAllRecords(); // Could be huge
+const allRecords = await api.getAllRecords() // Could be huge
 // → Implement pagination logic
 ```
 
@@ -190,16 +190,17 @@ try {
 ```javascript
 // GOOD: Proper async handling in n8n
 async function processItems(items) {
-  const results = [];
+  const results = []
   for (const item of items) {
     try {
-      const result = await processItem(item);
-      results.push(result);
-    } catch (error) {
-      results.push({ error: error.message, item });
+      const result = await processItem(item)
+      results.push(result)
+    }
+    catch (error) {
+      results.push({ error: error.message, item })
     }
   }
-  return results;
+  return results
 }
 ```
 

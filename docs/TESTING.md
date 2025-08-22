@@ -42,11 +42,13 @@ The testing suite is organized into multiple layers providing comprehensive cove
 ## Quick Start
 
 ### Run All Tests
+
 ```bash
 npm run test:all
 ```
 
 ### Run Specific Test Suites
+
 ```bash
 # Unit tests only
 npm run test:unit
@@ -65,6 +67,7 @@ npm run test:performance
 ```
 
 ### Development Testing
+
 ```bash
 # Watch mode for development
 npm run test:watch
@@ -125,6 +128,7 @@ Test fixtures are centralized in `src/tests/fixtures/test-data.ts`:
 ### Console Output
 
 The test runner provides detailed console output:
+
 - ✅ Test suite status
 - 📊 Performance metrics
 - 🔴 Critical vs 🟡 Non-critical failures
@@ -133,6 +137,7 @@ The test runner provides detailed console output:
 ### JSON Reports
 
 Detailed test reports are saved to `test-reports/`:
+
 ```json
 {
   "timestamp": "2024-01-15T10:30:00.000Z",
@@ -151,6 +156,7 @@ Detailed test reports are saved to `test-reports/`:
 ### Coverage Reports
 
 HTML coverage reports are generated in `coverage/`:
+
 - Line coverage
 - Branch coverage
 - Function coverage
@@ -160,17 +166,18 @@ HTML coverage reports are generated in `coverage/`:
 
 ### Target Metrics
 
-| Component | Target | Unit | Critical |
-|-----------|--------|------|----------|
-| Server Init | < 500ms | ms | Yes |
-| Tool Execution | < 50ms | ms | Yes |
-| Agent Routing | < 10ms | ms | No |
-| Schema Validation | < 5ms | ms | No |
-| DB Queries | < 10ms | ms | Yes |
+| Component         | Target  | Unit | Critical |
+| ----------------- | ------- | ---- | -------- |
+| Server Init       | < 500ms | ms   | Yes      |
+| Tool Execution    | < 50ms  | ms   | Yes      |
+| Agent Routing     | < 10ms  | ms   | No       |
+| Schema Validation | < 5ms   | ms   | No       |
+| DB Queries        | < 10ms  | ms   | Yes      |
 
 ### Load Testing
 
 The performance suite includes:
+
 - **Concurrent Requests**: 50 simultaneous tool calls
 - **Sustained Load**: 1000 requests over 30 seconds
 - **Burst Testing**: 100 requests in quick succession
@@ -207,6 +214,7 @@ The test suite integrates with CI/CD pipelines:
 ### Test Coverage
 
 Live integration tests verify:
+
 - ✅ API connectivity and authentication
 - ✅ Workflow CRUD operations
 - ✅ Execution management
@@ -285,17 +293,17 @@ Mark tests appropriately:
 // Critical test - blocks deployment if failed
 describe('Critical: Tool Validation', () => {
   // ...
-});
+})
 
 // Integration test - requires multiple components
 describe('Integration: Agent System', () => {
   // ...
-});
+})
 
 // Performance test - measures metrics
 describe('Performance: Database Queries', () => {
   // ...
-});
+})
 ```
 
 ## Performance Comparison
@@ -304,13 +312,13 @@ describe('Performance: Database Queries', () => {
 
 The test suite validates performance improvements:
 
-| Metric | v4.x Modern | v3.x Legacy | Improvement |
-|--------|-------------|-------------|-------------|
-| Bundle Size | 15MB | 1.1GB | 98.6% smaller |
-| Install Time | <30s | >3min | 90% faster |
-| Init Time | <500ms | >3s | 90% faster |
-| Tool Execution | <50ms | >200ms | 75% faster |
-| Dependencies | 5 | 1000+ | 99.5% fewer |
+| Metric         | v4.x Modern | v3.x Legacy | Improvement   |
+| -------------- | ----------- | ----------- | ------------- |
+| Bundle Size    | 15MB        | 1.1GB       | 98.6% smaller |
+| Install Time   | <30s        | >3min       | 90% faster    |
+| Init Time      | <500ms      | >3s         | 90% faster    |
+| Tool Execution | <50ms       | >200ms      | 75% faster    |
+| Dependencies   | 5           | 1000+       | 99.5% fewer   |
 
 ## Troubleshooting
 
@@ -340,4 +348,4 @@ The test suite validates performance improvements:
 
 ---
 
-*This testing strategy ensures the n8n-MCP Modern server maintains its performance advantages while providing comprehensive validation of all functionality.*
+_This testing strategy ensures the n8n-MCP Modern server maintains its performance advantages while providing comprehensive validation of all functionality._

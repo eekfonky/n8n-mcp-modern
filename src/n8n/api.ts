@@ -3,266 +3,403 @@
  * Handles communication with n8n REST API
  */
 
-import { fetch, Headers } from "undici";
-import { z } from "zod";
-import { config } from "../server/config.js";
-import { logger } from "../server/logger.js";
-import { retryHandler, n8nApiCircuitBreaker } from "../server/resilience.js";
-import type { N8NNodeAPI, N8NNodeProperty, N8NNodeCredential } from "../types/core.js";
 import type {
   WorkflowCreatePayload,
   WorkflowUpdatePayload,
-} from "../types/api-payloads.js";
+} from '../types/api-payloads.js'
+import type { N8NNodeAPI, N8NNodeCredential, N8NNodeProperty } from '../types/core.js'
+import type { EnhancedRequestOptions } from '../utils/enhanced-http-client.js'
+import process from 'node:process'
+
+import { fetch, Headers } from 'undici'
+import { z } from 'zod'
+import { config } from '../server/config.js'
+import { logger } from '../server/logger.js'
+import { n8nApiCircuitBreaker, retryHandler } from '../server/resilience.js'
 import {
   PayloadSanitizers,
   sanitizeWorkflowCreation,
   validateWorkflowCreation,
-} from "../types/api-payloads.js";
+} from '../types/api-payloads.js'
 import {
-  validateApiResponse,
-  createValidationConfig,
-  ApiValidationError,
-  ApiConnectionError,
-} from "../types/api-validation.js";
-import {
-  N8NWorkflowResponseSchema,
-  WorkflowListResponseSchema,
-  N8NExecutionResponseSchema,
-  ExecutionListResponseSchema,
-  N8NHealthStatusResponseSchema,
-  VersionInfoResponseSchema,
-  N8NCredentialResponseSchema,
   CredentialListResponseSchema,
+  ExecutionListResponseSchema,
+  N8NCredentialResponseSchema,
+  N8NExecutionResponseSchema,
+  N8NHealthStatusResponseSchema,
   N8NNodeTypeResponseSchema,
-  NodeTypeListResponseSchema,
-  N8NUserResponseSchema,
-  UserListResponseSchema,
   N8NSettingsResponseSchema,
+  N8NUserResponseSchema,
+  N8NWorkflowResponseSchema,
+  NodeTypeListResponseSchema,
   TagCreateResponseSchema,
-} from "../types/api-responses.js";
+  UserListResponseSchema,
+  VersionInfoResponseSchema,
+  WorkflowListResponseSchema,
+} from '../types/api-responses.js'
+import {
+  ApiConnectionError,
+  ApiValidationError,
+  createValidationConfig,
+  validateApiResponse,
+} from '../types/api-validation.js'
+import { httpClient } from '../utils/enhanced-http-client.js'
 
 /**
  * n8n Workflow structure
  */
 export interface N8NWorkflow {
-  id?: string;
-  name: string;
-  active: boolean;
-  nodes: N8NWorkflowNode[];
+  id?: string
+  name: string
+  active: boolean
+  nodes: N8NWorkflowNode[]
   connections: Record<
     string,
-    Record<string, Array<Array<{ node: string; type: string; index: number }>>>
-  >;
-  settings?: Record<string, unknown>;
-  staticData?: Record<string, unknown>;
-  tags?: string[];
-  versionId?: string;
-  createdAt?: string;
-  updatedAt?: string;
+    Record<string, Array<Array<{ node: string, type: string, index: number }>>>
+  >
+  settings?: Record<string, unknown>
+  staticData?: Record<string, unknown>
+  tags?: string[]
+  versionId?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 /**
  * n8n Workflow Node
  * @deprecated Use N8NWorkflowNode from types/core.ts instead
  */
-export type N8NWorkflowNode = import("../types/core.js").N8NWorkflowNode;
+export type N8NWorkflowNode = import('../types/core.js').N8NWorkflowNode
 
 /**
  * n8n Execution
  */
 export interface N8NExecution {
-  id: string;
-  finished: boolean;
-  mode: string;
-  retryOf?: string;
-  retrySuccessId?: string;
-  startedAt: string;
-  stoppedAt?: string;
-  workflowId: string;
-  data?: Record<string, unknown>;
+  id: string
+  finished: boolean
+  mode: string
+  retryOf?: string
+  retrySuccessId?: string
+  startedAt: string
+  stoppedAt?: string
+  workflowId: string
+  data?: Record<string, unknown>
 }
 
 /**
  * n8n Credential
  */
 export interface N8NCredential {
-  id: string;
-  name: string;
-  type: string;
-  data?: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-  ownedBy?: string;
-  sharedWith?: string[];
+  id: string
+  name: string
+  type: string
+  data?: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+  ownedBy?: string
+  sharedWith?: string[]
 }
 
 /**
  * n8n User
  */
 export interface N8NUser {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  role: string;
-  isOwner: boolean;
-  isPending: boolean;
-  createdAt: string;
-  updatedAt: string;
+  id: string
+  email: string
+  firstName?: string
+  lastName?: string
+  role: string
+  isOwner: boolean
+  isPending: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 /**
  * n8n Node Type
  * @deprecated Use N8NNodeAPI from types/core.ts instead
  */
-export type N8NNodeType = N8NNodeAPI;
+export type N8NNodeType = N8NNodeAPI
 
 /**
  * n8n Node Property
  * @deprecated Use N8NNodeProperty from types/core.ts instead
  */
-export type N8NNodePropertyLegacy = N8NNodeProperty;
+export type N8NNodePropertyLegacy = N8NNodeProperty
 
 /**
- * n8n Node Credential  
+ * n8n Node Credential
  * @deprecated Use N8NNodeCredential from types/core.ts instead
  */
-export type N8NNodeCredentialLegacy = N8NNodeCredential;
+export type N8NNodeCredentialLegacy = N8NNodeCredential
 
 /**
  * n8n Settings
  */
 export interface N8NSettings {
-  endpointWebhook: string;
-  endpointWebhookWaiting: string;
-  saveDataErrorExecution: string;
-  saveDataSuccessExecution: string;
-  saveManualExecutions: boolean;
-  timezone: string;
-  urlBaseWebhook: string;
+  endpointWebhook: string
+  endpointWebhookWaiting: string
+  saveDataErrorExecution: string
+  saveDataSuccessExecution: string
+  saveManualExecutions: boolean
+  timezone: string
+  urlBaseWebhook: string
 }
 
 /**
  * n8n Health Status
  */
 export interface N8NHealthStatus {
-  status: "ok" | "error";
-  database: { status: "ok" | "error"; latency?: number };
-  redis?: { status: "ok" | "error"; latency?: number };
+  status: 'ok' | 'error'
+  database: { status: 'ok' | 'error', latency?: number }
+  redis?: { status: 'ok' | 'error', latency?: number }
 }
 
 /**
  * n8n API Response
  */
 interface N8NApiResponse<T = unknown> {
-  data: T;
-  nextCursor?: string;
+  data: T
+  nextCursor?: string
 }
 
 /**
  * n8n API Client
  */
 export class N8NApiClient {
-  private readonly baseUrl: string;
-  private readonly apiKey: string;
+  private readonly baseUrl: string
+  private readonly apiKey: string
+  private readonly useEnhancedClient: boolean
 
-  constructor() {
+  constructor(useEnhancedClient = true) {
     if (!config.n8nApiUrl || !config.n8nApiKey) {
       throw new Error(
-        "n8n API configuration missing. Set N8N_API_URL and N8N_API_KEY environment variables.",
-      );
+        'n8n API configuration missing. Set N8N_API_URL and N8N_API_KEY environment variables.',
+      )
     }
 
-    this.baseUrl = config.n8nApiUrl;
-    this.apiKey = config.n8nApiKey;
+    this.baseUrl = config.n8nApiUrl
+    this.apiKey = config.n8nApiKey
+    this.useEnhancedClient = useEnhancedClient
+
+    if (useEnhancedClient) {
+      logger.debug('N8N API client initialized with enhanced HTTP client')
+    }
   }
 
   /**
-   * Make authenticated request to n8n API with optional response validation
+   * Make authenticated request to n8n API with enhanced HTTP client
+   */
+  private async enhancedRequest<T = unknown>(
+    endpoint: string,
+    options: {
+      method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+      body?: unknown
+      headers?: Record<string, string>
+      cache?: boolean
+      timeout?: number
+    } = {},
+    responseSchema?: z.ZodSchema<T>,
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`
+
+    // Sanitize the API key
+    const sanitizedApiKey = this.apiKey.trim().replace(/[\r\n\0]/g, '')
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-N8N-API-KEY': sanitizedApiKey,
+      ...options.headers,
+    }
+
+    // Build request options with proper typing
+    const requestOptions: EnhancedRequestOptions = {
+      method: options.method ?? 'GET',
+      headers,
+      timeout: options.timeout ?? config.mcpTimeout,
+    }
+
+    // Add body if present
+    if (options.body) {
+      requestOptions.body = JSON.stringify(options.body)
+    }
+
+    // Add cache setting if explicitly provided
+    if (options.cache !== undefined) {
+      requestOptions.cache = options.cache
+    }
+
+    try {
+      const response = await httpClient.request(url, requestOptions, responseSchema)
+
+      logger.debug(`n8n API request completed`, {
+        endpoint,
+        method: options.method ?? 'GET',
+        status: response.status,
+        responseTime: `${response.responseTime}ms`,
+        fromCache: response.fromCache,
+        size: `${Math.round(response.size / 1024)}KB`,
+      })
+
+      if (response.status >= 400) {
+        throw new ApiConnectionError(
+          `n8n API error (${response.status}): ${JSON.stringify(response.data)}`,
+          endpoint,
+          new Error(`HTTP ${response.status}`),
+          response.responseTime,
+        )
+      }
+
+      return response.data
+    }
+    catch (error) {
+      logger.error('Enhanced n8n API request failed:', {
+        endpoint,
+        method: options.method ?? 'GET',
+        error: error instanceof Error ? error.message : String(error),
+      })
+      throw error
+    }
+  }
+
+  /**
+   * Convert Headers object to plain object
+   */
+  private headersToObject(headers?: Record<string, string> | Headers | Array<[string, string]>): Record<string, string> {
+    if (!headers)
+      return {}
+
+    if (headers instanceof Headers) {
+      const result: Record<string, string> = {}
+      headers.forEach((value, key) => {
+        result[key] = value
+      })
+      return result
+    }
+
+    if (Array.isArray(headers)) {
+      const result: Record<string, string> = {}
+      headers.forEach(([key, value]) => {
+        result[key] = value
+      })
+      return result
+    }
+
+    return headers as Record<string, string>
+  }
+
+  /**
+   * Make authenticated request to n8n API with optional response validation (legacy method)
    */
   private async request<T = unknown>(
     endpoint: string,
     options: globalThis.RequestInit = {},
     responseSchema?: z.ZodSchema<T>,
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    // Use enhanced client if enabled
+    if (this.useEnhancedClient) {
+      const enhancedOptions: {
+        method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+        body?: unknown
+        headers?: Record<string, string>
+        cache?: boolean
+      } = {
+        method: (options.method as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH') ?? 'GET',
+        cache: true,
+      }
+
+      if (options.body) {
+        enhancedOptions.body = JSON.parse(options.body as string)
+      }
+
+      if (options.headers) {
+        enhancedOptions.headers = this.headersToObject(options.headers as Record<string, string>)
+      }
+
+      return this.enhancedRequest(endpoint, enhancedOptions, responseSchema)
+    }
+
+    // Original fetch-based implementation for fallback
+    const url = `${this.baseUrl}${endpoint}`
 
     // Sanitize the API key to ensure it's valid for HTTP headers
-    const sanitizedApiKey = this.apiKey.trim().replace(/[\r\n\0]/g, "");
+    const sanitizedApiKey = this.apiKey.trim().replace(/[\r\n\0]/g, '')
 
     // Create headers object more carefully to avoid undici validation issues
     const headers = new Headers({
-      "Content-Type": "application/json",
-      "X-N8N-API-KEY": sanitizedApiKey,
-    });
+      'Content-Type': 'application/json',
+      'X-N8N-API-KEY': sanitizedApiKey,
+    })
 
     // Add any additional headers from options
     if (options.headers) {
-      const additionalHeaders = options.headers as Record<string, string>;
+      const additionalHeaders = this.headersToObject(options.headers as Record<string, string>)
       for (const [key, value] of Object.entries(additionalHeaders)) {
-        headers.set(key, value);
+        headers.set(key, value)
       }
     }
 
     // Create a clean request options object to avoid type conflicts
     const requestOptions: Record<string, unknown> = {
-      method: options.method ?? "GET",
+      method: options.method ?? 'GET',
       headers,
-    };
+    }
 
     // Add body if present
     if (options.body) {
-      requestOptions.body = options.body;
+      requestOptions.body = options.body
     }
 
-    const startTime = Date.now();
+    const startTime = Date.now()
 
     return await n8nApiCircuitBreaker.execute(async () => {
       return await retryHandler.execute(
         async () => {
           logger.debug(
-            `Making request to n8n API: ${requestOptions.method ?? "GET"} ${url}`,
-          );
+            `Making request to n8n API: ${requestOptions.method ?? 'GET'} ${url}`,
+          )
 
           const response = await fetch(
             url,
             requestOptions as Record<string, unknown>,
-          );
+          )
 
-          const responseTime = Date.now() - startTime;
+          const responseTime = Date.now() - startTime
 
           if (!response.ok) {
-            let errorMessage: string;
+            let errorMessage: string
             try {
               const errorJson = (await response.json()) as {
-                message?: string;
-                error?: string;
-              };
-              errorMessage =
-                errorJson.message ??
-                errorJson.error ??
-                JSON.stringify(errorJson);
-            } catch {
-              errorMessage = await response.text();
+                message?: string
+                error?: string
+              }
+              errorMessage
+                = errorJson.message
+                  ?? errorJson.error
+                  ?? JSON.stringify(errorJson)
+            }
+            catch {
+              errorMessage = await response.text()
             }
             throw new ApiConnectionError(
               `n8n API error (${response.status}): ${errorMessage}`,
               endpoint,
               new Error(`HTTP ${response.status}: ${errorMessage}`),
               responseTime,
-            );
+            )
           }
 
-          let rawResponse: unknown;
+          let rawResponse: unknown
           try {
-            rawResponse = await response.json();
-          } catch (error) {
+            rawResponse = await response.json()
+          }
+          catch (error) {
             throw new ApiConnectionError(
               `Failed to parse n8n API response as JSON`,
               endpoint,
               error,
               responseTime,
-            );
+            )
           }
 
           // Apply response validation if schema provided
@@ -273,7 +410,7 @@ export class N8NApiClient {
               timeout: config.validationTimeout,
               sanitizeResponses: config.sanitizeApiResponses,
               maxResponseSize: config.maxResponseSize,
-            });
+            })
 
             try {
               return await validateApiResponse(
@@ -283,12 +420,14 @@ export class N8NApiClient {
                 response.status,
                 validationConfig,
                 responseTime,
-              );
-            } catch (validationError) {
+              )
+            }
+            catch (validationError) {
               if (validationError instanceof ApiValidationError) {
                 // Re-throw validation errors as-is
-                throw validationError;
-              } else {
+                throw validationError
+              }
+              else {
                 // Wrap other errors
                 throw new ApiValidationError(
                   `Response validation failed: ${validationError instanceof Error ? validationError.message : String(validationError)}`,
@@ -297,7 +436,7 @@ export class N8NApiClient {
                   rawResponse,
                   new z.ZodError([
                     {
-                      code: "custom",
+                      code: 'custom',
                       message:
                         validationError instanceof Error
                           ? validationError.message
@@ -306,17 +445,18 @@ export class N8NApiClient {
                     },
                   ]),
                   responseTime,
-                );
+                )
               }
             }
-          } else {
+          }
+          else {
             // Return raw response without validation
-            return rawResponse as T;
+            return rawResponse as T
           }
         },
-        `n8n API ${options.method ?? "GET"} ${endpoint}`,
-      );
-    });
+        `n8n API ${options.method ?? 'GET'} ${endpoint}`,
+      )
+    })
   }
 
   /**
@@ -324,12 +464,13 @@ export class N8NApiClient {
    */
   async testConnection(): Promise<boolean> {
     try {
-      await this.request("/workflows?limit=1");
-      logger.info("n8n API connection successful");
-      return true;
-    } catch (error) {
-      logger.error("n8n API connection failed:", error);
-      return false;
+      await this.request('/workflows?limit=1')
+      logger.info('n8n API connection successful')
+      return true
+    }
+    catch (error) {
+      logger.error('n8n API connection failed:', error)
+      return false
     }
   }
 
@@ -338,11 +479,11 @@ export class N8NApiClient {
    */
   async getWorkflows(): Promise<N8NWorkflow[]> {
     const response = await this.request(
-      "/workflows",
+      '/workflows',
       {},
       WorkflowListResponseSchema,
-    );
-    return response.data as N8NWorkflow[];
+    )
+    return response.data as N8NWorkflow[]
   }
 
   /**
@@ -353,8 +494,8 @@ export class N8NApiClient {
       `/workflows/${id}`,
       {},
       N8NWorkflowResponseSchema,
-    );
-    return response as N8NWorkflow;
+    )
+    return response as N8NWorkflow
   }
 
   /**
@@ -365,44 +506,45 @@ export class N8NApiClient {
     workflow: WorkflowCreatePayload | Record<string, unknown>,
   ): Promise<N8NWorkflow> {
     // Ensure type safety by sanitizing payload
-    let cleanPayload: WorkflowCreatePayload;
+    let cleanPayload: WorkflowCreatePayload
 
-    if (typeof workflow === "object" && workflow !== null) {
+    if (typeof workflow === 'object' && workflow !== null) {
       // Sanitize any unknown payload to ensure API compliance
       cleanPayload = sanitizeWorkflowCreation(
         workflow as Record<string, unknown>,
-      );
-    } else {
-      throw new Error("Invalid workflow payload: must be an object");
+      )
+    }
+    else {
+      throw new Error('Invalid workflow payload: must be an object')
     }
 
     // Additional runtime validation
     if (!validateWorkflowCreation(cleanPayload)) {
       throw new Error(
-        "Invalid workflow payload: missing required fields (name, nodes, connections)",
-      );
+        'Invalid workflow payload: missing required fields (name, nodes, connections)',
+      )
     }
 
-    logger.debug("Creating workflow with sanitized payload", {
+    logger.debug('Creating workflow with sanitized payload', {
       name: cleanPayload.name,
       nodeCount: cleanPayload.nodes.length,
       hasSettings: !!cleanPayload.settings,
-    });
+    })
 
     const response = await this.request(
-      "/workflows",
+      '/workflows',
       {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify(cleanPayload),
       },
       N8NWorkflowResponseSchema,
-    );
+    )
 
-    const createdWorkflow = response as N8NWorkflow;
+    const createdWorkflow = response as N8NWorkflow
     logger.info(
       `✅ Created workflow: ${cleanPayload.name} (ID: ${createdWorkflow.id})`,
-    );
-    return createdWorkflow;
+    )
+    return createdWorkflow
   }
 
   /**
@@ -416,24 +558,24 @@ export class N8NApiClient {
     // Sanitize payload to remove read-only fields
     const cleanPayload = PayloadSanitizers.workflowUpdate(
       workflow as Record<string, unknown>,
-    );
+    )
 
     logger.debug(`Updating workflow ${id} with sanitized payload`, {
       providedFields: Object.keys(workflow as Record<string, unknown>),
       cleanedFields: Object.keys(cleanPayload),
-    });
+    })
 
     const response = await this.request(
       `/workflows/${id}`,
       {
-        method: "PUT",
+        method: 'PUT',
         body: JSON.stringify(cleanPayload),
       },
       N8NWorkflowResponseSchema,
-    );
+    )
 
-    logger.info(`✅ Updated workflow: ${id}`);
-    return response as N8NWorkflow;
+    logger.info(`✅ Updated workflow: ${id}`)
+    return response as N8NWorkflow
   }
 
   /**
@@ -441,10 +583,10 @@ export class N8NApiClient {
    */
   async deleteWorkflow(id: string): Promise<void> {
     await this.request(`/workflows/${id}`, {
-      method: "DELETE",
-    });
+      method: 'DELETE',
+    })
 
-    logger.info(`Deleted workflow: ${id}`);
+    logger.info(`Deleted workflow: ${id}`)
   }
 
   /**
@@ -454,13 +596,13 @@ export class N8NApiClient {
     const response = await this.request(
       `/workflows/${id}/activate`,
       {
-        method: "POST",
+        method: 'POST',
       },
       N8NWorkflowResponseSchema,
-    );
+    )
 
-    logger.info(`Activated workflow: ${id}`);
-    return response as N8NWorkflow;
+    logger.info(`Activated workflow: ${id}`)
+    return response as N8NWorkflow
   }
 
   /**
@@ -470,13 +612,13 @@ export class N8NApiClient {
     const response = await this.request(
       `/workflows/${id}/deactivate`,
       {
-        method: "POST",
+        method: 'POST',
       },
       N8NWorkflowResponseSchema,
-    );
+    )
 
-    logger.info(`Deactivated workflow: ${id}`);
-    return response as N8NWorkflow;
+    logger.info(`Deactivated workflow: ${id}`)
+    return response as N8NWorkflow
   }
 
   /**
@@ -489,32 +631,32 @@ export class N8NApiClient {
     const response = await this.request(
       `/workflows/${id}/execute`,
       {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify({ data }),
       },
       N8NExecutionResponseSchema,
-    );
+    )
 
-    const execution = response as N8NExecution;
-    logger.info(`Executed workflow: ${id} (Execution: ${execution.id})`);
-    return execution;
+    const execution = response as N8NExecution
+    logger.info(`Executed workflow: ${id} (Execution: ${execution.id})`)
+    return execution
   }
 
   /**
    * Get workflow executions
    */
   async getExecutions(workflowId?: string): Promise<N8NExecution[]> {
-    let endpoint = "/executions";
+    let endpoint = '/executions'
     if (workflowId) {
-      endpoint += `?workflowId=${workflowId}`;
+      endpoint += `?workflowId=${workflowId}`
     }
 
     const response = await this.request(
       endpoint,
       {},
       ExecutionListResponseSchema,
-    );
-    return response.data as N8NExecution[];
+    )
+    return response.data as N8NExecution[]
   }
 
   /**
@@ -525,8 +667,8 @@ export class N8NApiClient {
       `/executions/${id}`,
       {},
       N8NExecutionResponseSchema,
-    );
-    return response as N8NExecution;
+    )
+    return response as N8NExecution
   }
 
   /**
@@ -536,13 +678,13 @@ export class N8NApiClient {
     const response = await this.request(
       `/executions/${id}/stop`,
       {
-        method: "POST",
+        method: 'POST',
       },
       N8NExecutionResponseSchema,
-    );
+    )
 
-    logger.info(`Stopped execution: ${id}`);
-    return response as N8NExecution;
+    logger.info(`Stopped execution: ${id}`)
+    return response as N8NExecution
   }
 
   /**
@@ -551,80 +693,80 @@ export class N8NApiClient {
   async getExecutionData(id: string): Promise<Record<string, unknown>> {
     const response = await this.request<{ data: Record<string, unknown> }>(
       `/executions/${id}`,
-    );
-    return response.data;
+    )
+    return response.data
   }
 
   /**
    * Search workflows
    */
   async searchWorkflows(query: string): Promise<N8NWorkflow[]> {
-    const workflows = await this.getWorkflows();
+    const workflows = await this.getWorkflows()
 
-    const searchTerm = query.toLowerCase();
+    const searchTerm = query.toLowerCase()
     return workflows.filter(
-      (workflow) =>
-        workflow.name.toLowerCase().includes(searchTerm) ||
-        workflow.tags?.some((tag) => tag.toLowerCase().includes(searchTerm)),
-    );
+      workflow =>
+        workflow.name.toLowerCase().includes(searchTerm)
+        || workflow.tags?.some(tag => tag.toLowerCase().includes(searchTerm)),
+    )
   }
 
   /**
    * Get workflow statistics
    */
   async getWorkflowStats(id: string): Promise<{
-    executions: number;
-    successRate: number;
-    avgExecutionTime: number;
-    lastExecution?: Date;
+    executions: number
+    successRate: number
+    avgExecutionTime: number
+    lastExecution?: Date
   }> {
-    const executions = await this.getExecutions(id);
+    const executions = await this.getExecutions(id)
 
     if (executions.length === 0) {
       return {
         executions: 0,
         successRate: 0,
         avgExecutionTime: 0,
-      };
+      }
     }
 
-    const successful = executions.filter((e) => e.finished && !e.data?.error);
-    const successRate = (successful.length / executions.length) * 100;
+    const successful = executions.filter(e => e.finished && !e.data?.error)
+    const successRate = (successful.length / executions.length) * 100
 
     const executionTimes = executions
-      .filter((e) => e.startedAt && e.stoppedAt)
+      .filter(e => e.startedAt && e.stoppedAt)
       .map(
-        (e) =>
-          new Date(e.stoppedAt ?? "").getTime() -
-          new Date(e.startedAt).getTime(),
-      );
+        e =>
+          new Date(e.stoppedAt ?? '').getTime()
+            - new Date(e.startedAt).getTime(),
+      )
 
-    const avgExecutionTime =
-      executionTimes.length > 0
+    const avgExecutionTime
+      = executionTimes.length > 0
         ? executionTimes.reduce((a, b) => a + b, 0) / executionTimes.length
-        : 0;
+        : 0
 
-    const lastExecution =
-      executions.length > 0 && executions[0]
+    const lastExecution
+      = executions.length > 0 && executions[0]
         ? new Date(executions[0].startedAt)
-        : undefined;
+        : undefined
 
     const result: {
-      executions: number;
-      successRate: number;
-      avgExecutionTime: number;
-      lastExecution?: Date;
+      executions: number
+      successRate: number
+      avgExecutionTime: number
+      lastExecution?: Date
     } = {
       executions: executions.length,
       successRate,
       avgExecutionTime,
-    };
-
-    if (lastExecution) {
-      result.lastExecution = lastExecution;
     }
 
-    return result;
+    if (lastExecution) {
+      result.lastExecution = lastExecution
+    }
+
+    return result
   }
 
   // ============== CREDENTIAL MANAGEMENT ==============
@@ -634,11 +776,11 @@ export class N8NApiClient {
    */
   async getCredentials(): Promise<N8NCredential[]> {
     const response = await this.request(
-      "/credentials",
+      '/credentials',
       {},
       CredentialListResponseSchema,
-    );
-    return response.data as N8NCredential[];
+    )
+    return response.data as N8NCredential[]
   }
 
   /**
@@ -649,28 +791,28 @@ export class N8NApiClient {
       `/credentials/${id}`,
       {},
       N8NCredentialResponseSchema,
-    );
-    return response as N8NCredential;
+    )
+    return response as N8NCredential
   }
 
   /**
    * Create new credential
    */
   async createCredential(
-    credential: Omit<N8NCredential, "id" | "createdAt" | "updatedAt">,
+    credential: Omit<N8NCredential, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<N8NCredential> {
     const response = await this.request(
-      "/credentials",
+      '/credentials',
       {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify(credential),
       },
       N8NCredentialResponseSchema,
-    );
+    )
 
-    const cred = response as N8NCredential;
-    logger.info(`Created credential: ${credential.name} (ID: ${cred.id})`);
-    return cred;
+    const cred = response as N8NCredential
+    logger.info(`Created credential: ${credential.name} (ID: ${cred.id})`)
+    return cred
   }
 
   /**
@@ -683,14 +825,14 @@ export class N8NApiClient {
     const response = await this.request(
       `/credentials/${id}`,
       {
-        method: "PUT",
+        method: 'PUT',
         body: JSON.stringify(credential),
       },
       N8NCredentialResponseSchema,
-    );
+    )
 
-    logger.info(`Updated credential: ${id}`);
-    return response as N8NCredential;
+    logger.info(`Updated credential: ${id}`)
+    return response as N8NCredential
   }
 
   /**
@@ -698,10 +840,10 @@ export class N8NApiClient {
    */
   async deleteCredential(id: string): Promise<void> {
     await this.request(`/credentials/${id}`, {
-      method: "DELETE",
-    });
+      method: 'DELETE',
+    })
 
-    logger.info(`Deleted credential: ${id}`);
+    logger.info(`Deleted credential: ${id}`)
   }
 
   /**
@@ -709,14 +851,15 @@ export class N8NApiClient {
    */
   async testCredential(
     id: string,
-  ): Promise<{ status: "success" | "error"; message?: string }> {
+  ): Promise<{ status: 'success' | 'error', message?: string }> {
     try {
       await this.request(`/credentials/${id}/test`, {
-        method: "POST",
-      });
-      return { status: "success" };
-    } catch (error) {
-      return { status: "error", message: (error as Error).message };
+        method: 'POST',
+      })
+      return { status: 'success' }
+    }
+    catch (error) {
+      return { status: 'error', message: (error as Error).message }
     }
   }
 
@@ -727,11 +870,11 @@ export class N8NApiClient {
    */
   async getNodeTypes(): Promise<N8NNodeAPI[]> {
     const response = await this.request(
-      "/node-types",
+      '/node-types',
       {},
       NodeTypeListResponseSchema,
-    );
-    return response.data as N8NNodeAPI[];
+    )
+    return response.data as N8NNodeAPI[]
   }
 
   /**
@@ -742,8 +885,8 @@ export class N8NApiClient {
       `/node-types/${nodeType}`,
       {},
       N8NNodeTypeResponseSchema,
-    );
-    return response as N8NNodeAPI;
+    )
+    return response as N8NNodeAPI
   }
 
   /**
@@ -753,23 +896,23 @@ export class N8NApiClient {
     query: string,
     category?: string,
   ): Promise<N8NNodeAPI[]> {
-    const nodeTypes = await this.getNodeTypes();
+    const nodeTypes = await this.getNodeTypes()
 
-    const searchTerm = query.toLowerCase();
+    const searchTerm = query.toLowerCase()
     return nodeTypes.filter((node) => {
-      const matchesQuery =
-        node.displayName.toLowerCase().includes(searchTerm) ||
-        node.description.toLowerCase().includes(searchTerm) ||
-        node.name.toLowerCase().includes(searchTerm);
+      const matchesQuery
+        = node.displayName.toLowerCase().includes(searchTerm)
+          || node.description.toLowerCase().includes(searchTerm)
+          || node.name.toLowerCase().includes(searchTerm)
 
-      const matchesCategory =
-        !category ||
-        node.group.some((g) =>
-          g.toLowerCase().includes(category.toLowerCase()),
-        );
+      const matchesCategory
+        = !category
+          || node.group.some(g =>
+            g.toLowerCase().includes(category.toLowerCase()),
+          )
 
-      return matchesQuery && matchesCategory;
-    });
+      return matchesQuery && matchesCategory
+    })
   }
 
   // ============== USER MANAGEMENT ==============
@@ -778,36 +921,36 @@ export class N8NApiClient {
    * Get all users
    */
   async getUsers(): Promise<N8NUser[]> {
-    const response = await this.request("/users", {}, UserListResponseSchema);
-    return response.data as N8NUser[];
+    const response = await this.request('/users', {}, UserListResponseSchema)
+    return response.data as N8NUser[]
   }
 
   /**
    * Get current user information
    */
   async getCurrentUser(): Promise<N8NUser> {
-    const response = await this.request("/users/me", {}, N8NUserResponseSchema);
-    return response as N8NUser;
+    const response = await this.request('/users/me', {}, N8NUserResponseSchema)
+    return response as N8NUser
   }
 
   /**
    * Create new user
    */
   async createUser(
-    user: Omit<N8NUser, "id" | "createdAt" | "updatedAt">,
+    user: Omit<N8NUser, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<N8NUser> {
     const response = await this.request(
-      "/users",
+      '/users',
       {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify(user),
       },
       N8NUserResponseSchema,
-    );
+    )
 
-    const newUser = response as N8NUser;
-    logger.info(`Created user: ${user.email} (ID: ${newUser.id})`);
-    return newUser;
+    const newUser = response as N8NUser
+    logger.info(`Created user: ${user.email} (ID: ${newUser.id})`)
+    return newUser
   }
 
   /**
@@ -817,14 +960,14 @@ export class N8NApiClient {
     const response = await this.request(
       `/users/${id}`,
       {
-        method: "PUT",
+        method: 'PUT',
         body: JSON.stringify(user),
       },
       N8NUserResponseSchema,
-    );
+    )
 
-    logger.info(`Updated user: ${id}`);
-    return response as N8NUser;
+    logger.info(`Updated user: ${id}`)
+    return response as N8NUser
   }
 
   // ============== SYSTEM MANAGEMENT ==============
@@ -834,11 +977,11 @@ export class N8NApiClient {
    */
   async getSettings(): Promise<N8NSettings> {
     const response = await this.request(
-      "/settings",
+      '/settings',
       {},
       N8NSettingsResponseSchema,
-    );
-    return response as N8NSettings;
+    )
+    return response as N8NSettings
   }
 
   /**
@@ -846,16 +989,16 @@ export class N8NApiClient {
    */
   async updateSettings(settings: Partial<N8NSettings>): Promise<N8NSettings> {
     const response = await this.request(
-      "/settings",
+      '/settings',
       {
-        method: "PUT",
+        method: 'PUT',
         body: JSON.stringify(settings),
       },
       N8NSettingsResponseSchema,
-    );
+    )
 
-    logger.info("Updated system settings");
-    return response as N8NSettings;
+    logger.info('Updated system settings')
+    return response as N8NSettings
   }
 
   /**
@@ -864,33 +1007,35 @@ export class N8NApiClient {
   async getHealthStatus(): Promise<N8NHealthStatus> {
     try {
       const response = await this.request(
-        "/health",
+        '/health',
         {},
         N8NHealthStatusResponseSchema,
-      );
-      return response as N8NHealthStatus;
-    } catch {
+      )
+      return response as N8NHealthStatus
+    }
+    catch {
       return {
-        status: "error",
-        database: { status: "error" },
-      };
+        status: 'error',
+        database: { status: 'error' },
+      }
     }
   }
 
   /**
    * Get system version information
    */
-  async getVersionInfo(): Promise<{ version: string; build?: string }> {
+  async getVersionInfo(): Promise<{ version: string, build?: string }> {
     try {
       const response = await this.request(
-        "/version",
+        '/version',
         {},
         VersionInfoResponseSchema,
-      );
-      return response as { version: string; build?: string };
-    } catch {
+      )
+      return response as { version: string, build?: string }
+    }
+    catch {
       // Fallback for instances without version endpoint
-      return { version: "unknown" };
+      return { version: 'unknown' }
     }
   }
 
@@ -901,30 +1046,31 @@ export class N8NApiClient {
    */
   async getTags(): Promise<string[]> {
     try {
-      const response =
-        await this.request<N8NApiResponse<{ name: string }[]>>("/tags");
-      return response.data.map((tag) => tag.name);
-    } catch {
+      const response
+        = await this.request<N8NApiResponse<{ name: string }[]>>('/tags')
+      return response.data.map(tag => tag.name)
+    }
+    catch {
       // Not all n8n versions support tags
-      return [];
+      return []
     }
   }
 
   /**
    * Create workflow tag
    */
-  async createTag(name: string): Promise<{ id: string; name: string }> {
+  async createTag(name: string): Promise<{ id: string, name: string }> {
     const response = await this.request(
-      "/tags",
+      '/tags',
       {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify({ name }),
       },
       TagCreateResponseSchema,
-    );
+    )
 
-    logger.info(`Created tag: ${name}`);
-    return response as { id: string; name: string };
+    logger.info(`Created tag: ${name}`)
+    return response as { id: string, name: string }
   }
 
   /**
@@ -934,11 +1080,12 @@ export class N8NApiClient {
     try {
       const response = await this.request<
         N8NApiResponse<Record<string, unknown>[]>
-      >("/workflows/templates");
-      return response.data;
-    } catch {
+      >('/workflows/templates')
+      return response.data
+    }
+    catch {
       // Templates might not be available in all n8n versions
-      return [];
+      return []
     }
   }
 
@@ -949,17 +1096,17 @@ export class N8NApiClient {
     workflowData: Record<string, unknown>,
   ): Promise<N8NWorkflow> {
     const response = await this.request(
-      "/workflows/import",
+      '/workflows/import',
       {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify(workflowData),
       },
       N8NWorkflowResponseSchema,
-    );
+    )
 
-    const workflow = response as N8NWorkflow;
-    logger.info(`Imported workflow: ${workflow.name} (ID: ${workflow.id})`);
-    return workflow;
+    const workflow = response as N8NWorkflow
+    logger.info(`Imported workflow: ${workflow.name} (ID: ${workflow.id})`)
+    return workflow
   }
 
   /**
@@ -967,17 +1114,17 @@ export class N8NApiClient {
    */
   async exportWorkflow(
     id: string,
-    format: "json" | "yaml" = "json",
+    format: 'json' | 'yaml' = 'json',
   ): Promise<N8NWorkflow> {
-    const workflow = await this.getWorkflow(id);
+    const workflow = await this.getWorkflow(id)
 
-    if (format === "json") {
-      return workflow;
+    if (format === 'json') {
+      return workflow
     }
 
     // For YAML export, we'd need a YAML library
     // For now, return JSON format
-    return workflow;
+    return workflow
   }
 
   /**
@@ -987,11 +1134,12 @@ export class N8NApiClient {
     try {
       const response = await this.request<Record<string, unknown>>(
         `/executions/${id}/logs`,
-      );
-      return response;
-    } catch {
+      )
+      return response
+    }
+    catch {
       // Fallback to execution data
-      return await this.getExecutionData(id);
+      return await this.getExecutionData(id)
     }
   }
 
@@ -1002,14 +1150,14 @@ export class N8NApiClient {
     const response = await this.request(
       `/executions/${id}/retry`,
       {
-        method: "POST",
+        method: 'POST',
       },
       N8NExecutionResponseSchema,
-    );
+    )
 
-    const execution = response as N8NExecution;
-    logger.info(`Retried execution: ${id} (New execution: ${execution.id})`);
-    return execution;
+    const execution = response as N8NExecution
+    logger.info(`Retried execution: ${id} (New execution: ${execution.id})`)
+    return execution
   }
 
   /**
@@ -1020,8 +1168,8 @@ export class N8NApiClient {
       `/users/${id}`,
       {},
       N8NUserResponseSchema,
-    );
-    return response as N8NUser;
+    )
+    return response as N8NUser
   }
 
   /**
@@ -1030,12 +1178,12 @@ export class N8NApiClient {
   async deleteUser(id: string, transferWorkflows?: string): Promise<void> {
     const params = transferWorkflows
       ? `?transferWorkflows=${transferWorkflows}`
-      : "";
+      : ''
     await this.request(`/users/${id}${params}`, {
-      method: "DELETE",
-    });
+      method: 'DELETE',
+    })
 
-    logger.info(`Deleted user: ${id}`);
+    logger.info(`Deleted user: ${id}`)
   }
 
   /**
@@ -1048,19 +1196,19 @@ export class N8NApiClient {
     const response = await this.request(
       `/users/${userId}/permissions`,
       {
-        method: "PUT",
+        method: 'PUT',
         body: JSON.stringify({ permissions }),
       },
       N8NUserResponseSchema,
-    );
-    return response as N8NUser;
+    )
+    return response as N8NUser
   }
 
   /**
    * Get system settings (alias for getSettings)
    */
   async getSystemSettings(): Promise<N8NSettings> {
-    return await this.getSettings();
+    return await this.getSettings()
   }
 
   /**
@@ -1069,7 +1217,7 @@ export class N8NApiClient {
   async updateSystemSettings(
     settings: Record<string, unknown>,
   ): Promise<N8NSettings> {
-    return await this.updateSettings(settings as Partial<N8NSettings>);
+    return await this.updateSettings(settings as Partial<N8NSettings>)
   }
 }
 
@@ -1078,19 +1226,19 @@ export class N8NApiClient {
  * Suppresses warnings during npm install/postinstall scripts
  */
 function shouldSuppressApiWarnings(): boolean {
-  const argv1 = process.argv[1] ?? "";
+  const argv1 = process.argv[1] ?? ''
 
   // Suppress during npm install/postinstall contexts
   return (
-    argv1.includes("postinstall") ||
-    argv1.includes("cleanup") ||
-    argv1.includes("install-") ||
-    argv1.includes("validate-") ||
-    argv1.includes("scripts/") ||
-    process.argv.includes("--silent") ||
-    process.argv.includes("--version") ||
-    process.argv.includes("--help")
-  );
+    argv1.includes('postinstall')
+    || argv1.includes('cleanup')
+    || argv1.includes('install-')
+    || argv1.includes('validate-')
+    || argv1.includes('scripts/')
+    || process.argv.includes('--silent')
+    || process.argv.includes('--version')
+    || process.argv.includes('--help')
+  )
 }
 
 /**
@@ -1098,19 +1246,20 @@ function shouldSuppressApiWarnings(): boolean {
  */
 export function createN8NApiClient(): N8NApiClient | null {
   try {
-    return new N8NApiClient();
-  } catch (error) {
+    return new N8NApiClient()
+  }
+  catch (error) {
     // Suppress warnings during npm install/postinstall contexts
     if (shouldSuppressApiWarnings()) {
-      logger.debug("n8n API client not configured (install/script context)");
-      return null;
+      logger.debug('n8n API client not configured (install/script context)')
+      return null
     }
 
     // For MCP server and CLI contexts, show appropriate warning
-    logger.warn("n8n API client not available:", (error as Error).message);
-    return null;
+    logger.warn('n8n API client not available:', (error as Error).message)
+    return null
   }
 }
 
 // Export singleton instance
-export const n8nApi = createN8NApiClient();
+export const n8nApi = createN8NApiClient()

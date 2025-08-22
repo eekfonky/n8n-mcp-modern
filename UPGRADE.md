@@ -1,4 +1,4 @@
-# 🚀 n8n MCP Modern - Migration Guide  
+# 🚀 n8n MCP Modern - Migration Guide
 
 ## ⚠️ **CRITICAL: Package Migration Required**
 
@@ -7,13 +7,15 @@
 ## 🚀 **Easy Migration (Recommended)**
 
 ### **One-Command Migration**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/eekfonky/n8n-mcp-modern/main/migration-standalone.sh | bash
 ```
 
 **This script will:**
+
 - ✅ Remove old `@lexinet` package
-- ✅ Clear all caches  
+- ✅ Clear all caches
 - ✅ Set up GitHub Packages authentication
 - ✅ Install fresh `@eekfonky/n8n-mcp-modern@5.2.0`
 - ✅ Verify everything works
@@ -25,6 +27,7 @@ curl -fsSL https://raw.githubusercontent.com/eekfonky/n8n-mcp-modern/main/migrat
 If you prefer manual control:
 
 ### **Step 1: Clean Removal**
+
 ```bash
 # Remove all old installations
 claude mcp remove n8n-mcp-modern
@@ -50,12 +53,13 @@ export GITHUB_TOKEN=your_github_token_here
 # Method B: Login via npm
 npm login --scope=@eekfonky --registry=https://npm.pkg.github.com
 
-# Method C: Update ~/.npmrc file  
+# Method C: Update ~/.npmrc file
 echo "@eekfonky:registry=https://npm.pkg.github.com" >> ~/.npmrc
 echo "//npm.pkg.github.com/:_authToken=YOUR_TOKEN" >> ~/.npmrc
 ```
 
 ### **Step 3: Fresh Installation**
+
 ```bash
 # Smart installer (preserves your configuration)
 npx @eekfonky/n8n-mcp-modern install
@@ -69,6 +73,7 @@ claude mcp add n8n-mcp-modern \
 ```
 
 ### **Step 4: Verification**
+
 ```bash
 # Check installation
 claude mcp list
@@ -93,11 +98,11 @@ npx @eekfonky/n8n-mcp-modern install
 
 That's it! The smart install/upgrade will:
 
-✅ **Automatically detect** your current installation  
-✅ **Backup** your configuration safely  
-✅ **Preserve** your custom environment variables  
-✅ **Update** all 6 agents to latest capabilities  
-✅ **Verify** the upgrade was successful  
+✅ **Automatically detect** your current installation
+✅ **Backup** your configuration safely
+✅ **Preserve** your custom environment variables
+✅ **Update** all 6 agents to latest capabilities
+✅ **Verify** the upgrade was successful
 ✅ **Rollback** automatically if anything goes wrong
 
 ### What Gets Upgraded

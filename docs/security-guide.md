@@ -9,17 +9,20 @@ This guide provides comprehensive security best practices for deploying and oper
 ### Development Environment
 
 1. **Create a `.env` file** (never commit this to git):
+
 ```bash
 cp .env.example .env
 ```
 
 2. **Set your n8n API credentials**:
+
 ```bash
 N8N_API_URL=https://your-n8n-instance.com
 N8N_API_KEY=your-secure-api-key-here
 ```
 
 3. **Secure file permissions**:
+
 ```bash
 chmod 600 .env  # Only owner can read/write
 ```
@@ -105,7 +108,7 @@ The MCP server binds to localhost only by default. Keep it this way unless absol
 
 ```javascript
 // This is the default and most secure configuration
-MCP_MODE=stdio  // Uses standard I/O, no network exposure
+MCP_MODE = stdio // Uses standard I/O, no network exposure
 ```
 
 ### TLS/HTTPS Configuration
@@ -122,16 +125,19 @@ openssl s_client -connect your-n8n-instance.com:443 -servername your-n8n-instanc
 ### Key Generation Best Practices
 
 1. **Use strong, unique API keys**:
+
 ```bash
 # Generate a secure API key
 openssl rand -hex 32
 ```
 
 2. **Rotate keys regularly**:
+
 - Set up a key rotation schedule (e.g., every 90 days)
 - Keep one previous key active during transition
 
 3. **Never share API keys**:
+
 - Each user/service should have its own key
 - Never commit keys to version control
 - Don't log API keys
@@ -142,6 +148,7 @@ When using with Claude Code, store your API key securely:
 
 1. **Never paste API keys directly in chat**
 2. **Use environment variables**:
+
 ```bash
 # Set before starting Claude Code
 export N8N_API_KEY="your-key"
@@ -149,6 +156,7 @@ claude-code
 ```
 
 3. **Or use the .env file** (for development only):
+
 ```bash
 echo "N8N_API_KEY=your-key" >> .env
 chmod 600 .env
@@ -162,10 +170,10 @@ The security module provides comprehensive audit logging:
 
 ```typescript
 // Access recent security events programmatically
-import { securityAudit } from './server/security.js';
+import { securityAudit } from './server/security.js'
 
-const recentEvents = securityAudit.getRecentEvents(100);
-const deniedAccess = securityAudit.getEventsByType(SecurityEventType.ACCESS_DENIED);
+const recentEvents = securityAudit.getRecentEvents(100)
+const deniedAccess = securityAudit.getEventsByType(SecurityEventType.ACCESS_DENIED)
 ```
 
 ### Log Analysis
@@ -251,18 +259,21 @@ Report security vulnerabilities to: [Create a security issue on GitHub](https://
 ### Keeping Secure
 
 1. **Monitor for updates**:
+
 ```bash
 npm outdated
 npm audit
 ```
 
 2. **Apply security patches**:
+
 ```bash
 npm audit fix
 npm update
 ```
 
 3. **Subscribe to security advisories**:
+
 - Watch the GitHub repository
 - Enable Dependabot alerts
 - Monitor npm security advisories

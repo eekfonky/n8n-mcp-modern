@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **n8n-MCP Modern** is a high-performance MCP (Model Context Protocol) server that provides 87+ tools for n8n workflow automation. Built from the ground up with zero legacy dependencies, it features a 7-agent hierarchical system and modern TypeScript architecture.
 
 **Key Architecture Principles:**
+
 - Ultra-minimal dependencies (5 core packages vs 1000+ in legacy versions)
 - Official MCP TypeScript SDK with full type safety
 - Zod-first validation throughout
@@ -16,6 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Essential Commands
 
 ### Development
+
 ```bash
 npm run dev           # Watch mode with tsx
 npm run build         # Production build (TypeScript compilation + chmod +x)
@@ -23,9 +25,10 @@ npm run start         # Run production build
 ```
 
 ### Quality Assurance
+
 ```bash
 npm run lint          # ESLint with TypeScript rules
-npm run lint:fix      # Auto-fix linting issues  
+npm run lint:fix      # Auto-fix linting issues
 npm run typecheck     # TypeScript type checking (--noEmit)
 npm test              # Vitest test runner
 npm run test:watch    # Watch mode testing
@@ -33,6 +36,7 @@ npm run test:coverage # Coverage reports with v8 provider
 ```
 
 ### Database Management
+
 ```bash
 npm run rebuild-db    # Rebuild node database (src/scripts/rebuild-database.ts)
 npm run validate      # Validate data integrity (src/scripts/validate-data.ts)
@@ -41,45 +45,54 @@ npm run validate      # Validate data integrity (src/scripts/validate-data.ts)
 ## Core Architecture
 
 ### Directory Structure
+
 ```
 src/
 ├── server/           # MCP server implementation (config.ts, logger.ts)
 ├── database/         # SQLite with clean schemas
 ├── tools/           # 87+ MCP tools (modern patterns)
 ├── agents/          # 7-agent hierarchical system
-├── validation/      # Zod-based validation engine  
+├── validation/      # Zod-based validation engine
 ├── n8n/            # Minimal n8n integration layer
 ├── types/          # Complete TypeScript definitions
 └── scripts/        # Database and validation utilities
 ```
 
 ### Agent Hierarchy
+
 **TIER 1 - Master Orchestrator:**
+
 - `n8n-workflow-architect`: Strategic planning & coordination
 
 **TIER 2 - Core Specialists:**
+
 - `n8n-validator`: Security & validation
-- `n8n-integration-specialist`: Authentication & connectivity  
+- `n8n-integration-specialist`: Authentication & connectivity
 - `n8n-node-specialist`: 525+ node expertise
 
 **TIER 3 - Research Specialists:**
+
 - `n8n-assistant`: Quick research & synthesis
 - `n8n-docs-specialist`: Documentation & setup
 - `n8n-community-specialist`: AI/ML & community patterns
 
 ### Configuration System
+
 Environment variables are validated through Zod schemas in `src/server/config.ts`:
 
 **Core MCP Settings:**
+
 - `MCP_MODE=stdio` (optimized for Claude Code)
 - `LOG_LEVEL=info`
 - `DISABLE_CONSOLE_OUTPUT=false`
 
 **N8N API Integration (Optional):**
+
 - `N8N_API_URL` (auto-normalized to `/api/v1` endpoint)
 - `N8N_API_KEY`
 
 **Performance Optimization:**
+
 - `ENABLE_CACHE=true`
 - `CACHE_TTL=3600`
 - `MAX_CONCURRENT_REQUESTS=10`
@@ -87,6 +100,7 @@ Environment variables are validated through Zod schemas in `src/server/config.ts
 ## TypeScript Configuration
 
 **Strict Modern Setup:**
+
 - Target: ES2024 with ESNext modules
 - Bundler module resolution for optimal tree-shaking
 - Ultra-strict compiler options including `noUncheckedIndexedAccess`
@@ -96,6 +110,7 @@ Environment variables are validated through Zod schemas in `src/server/config.ts
 ## Validation & Error Handling
 
 **Zod-First Approach:**
+
 - All configurations validated via `ConfigSchema`
 - Input validation for all 87+ MCP tools
 - Custom `N8NMcpError` class for structured error handling
@@ -104,6 +119,7 @@ Environment variables are validated through Zod schemas in `src/server/config.ts
 ## Development Standards
 
 **Code Style:**
+
 - ESLint with TypeScript-specific rules
 - Strict type checking with explicit return types
 - No `any` types (warnings enforced)
@@ -111,6 +127,7 @@ Environment variables are validated through Zod schemas in `src/server/config.ts
 - Modern ES patterns (const, template literals, object shorthand)
 
 **Dependencies Philosophy:**
+
 - Minimal surface area (5 core dependencies only)
 - Official packages over community alternatives
 - Security-first package selection
@@ -119,18 +136,21 @@ Environment variables are validated through Zod schemas in `src/server/config.ts
 ## Key Patterns
 
 **Error Handling:**
+
 ```typescript
 // Use structured errors with codes
 throw new N8NMcpError('Message', 'ERROR_CODE', 400, details);
 ```
 
 **Configuration Updates:**
+
 ```typescript
 // Runtime config updates through helper
 const updated = updateConfig({ logLevel: 'debug' });
 ```
 
 **Validation:**
+
 ```typescript
 // All inputs validated via Zod schemas
 const result = ValidationProfileSchema.parse(input);
@@ -139,6 +159,7 @@ const result = ValidationProfileSchema.parse(input);
 ## Testing Strategy
 
 **Vitest Configuration:**
+
 - Node environment with globals enabled
 - v8 coverage provider
 - HTML, JSON, and text reports
@@ -155,6 +176,7 @@ const result = ValidationProfileSchema.parse(input);
 ## Performance Characteristics
 
 **Benchmarks vs Legacy (v3.x):**
+
 - 95% smaller bundle (1.1GB → 15MB)
 - 10x faster installation (3+ min → <30s)
 - 2x faster runtime execution

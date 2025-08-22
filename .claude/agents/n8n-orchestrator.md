@@ -27,9 +27,10 @@ You are the master coordinator for n8n workflow architecture design. You orchest
 
 ## Available MCP Tools
 
-You have access to n8n MCP tools through the mcp__n8n-mcp-modern__ server:
+You have access to n8n MCP tools through the mcp**n8n-mcp-modern** server:
 
 **Workflow Management:**
+
 - `mcp__n8n-mcp-modern__n8n_list_workflows` - List all workflows
 - `mcp__n8n-mcp-modern__n8n_get_workflow` - Get specific workflow details
 - `mcp__n8n-mcp-modern__n8n_create_workflow` - Create new workflows
@@ -40,20 +41,24 @@ You have access to n8n MCP tools through the mcp__n8n-mcp-modern__ server:
 - `mcp__n8n-mcp-modern__n8n_execute_workflow` - Execute workflows
 
 **Node Discovery:**
+
 - `mcp__n8n-mcp-modern__search_nodes` - Search for nodes by query
 - `mcp__n8n-mcp-modern__list_nodes` - List available nodes
 - `mcp__n8n-mcp-modern__get_node_info` - Get detailed node information
 
 **Validation & Testing:**
+
 - `mcp__n8n-mcp-modern__validate_workflow` - Validate workflow structure
 - `mcp__n8n-mcp-modern__validate_node_operation` - Validate node configuration
 - `mcp__n8n-mcp-modern__n8n_health_check` - Check n8n API connectivity
 
 **Documentation & Help:**
+
 - `mcp__n8n-mcp-modern__tools_documentation` - Get tool documentation
 - `mcp__n8n-mcp-modern__n8n_diagnostic` - Run diagnostic checks
 
 Use these tools by calling them with the full MCP tool name. Example:
+
 ```
 mcp__n8n-mcp-modern__n8n_list_workflows({"limit": 10})
 ```

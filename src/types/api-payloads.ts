@@ -8,12 +8,12 @@
 
 // Import shared types to avoid circular dependencies
 import type {
+  N8NCredential,
+  N8NSettings,
+  N8NUser,
   N8NWorkflow,
   N8NWorkflowNode,
-  N8NCredential,
-  N8NUser,
-  N8NSettings,
-} from "./index.js";
+} from './index.js'
 
 // ============================================================================
 // UTILITY TYPES FOR READ-ONLY FIELD EXCLUSION
@@ -22,30 +22,30 @@ import type {
 /**
  * Server-managed read-only fields that should never be in API payloads
  */
-type ServerManagedFields = "id" | "createdAt" | "updatedAt" | "versionId";
+type ServerManagedFields = 'id' | 'createdAt' | 'updatedAt' | 'versionId'
 
 /**
  * Workflow-specific read-only fields during creation
  */
-type WorkflowCreationReadOnlyFields = ServerManagedFields | "active"; // Read-only during creation, managed via separate activate/deactivate endpoints
+type WorkflowCreationReadOnlyFields = ServerManagedFields | 'active' // Read-only during creation, managed via separate activate/deactivate endpoints
 
 /**
  * Workflow-specific read-only fields during updates
  */
-type WorkflowUpdateReadOnlyFields = ServerManagedFields;
+type WorkflowUpdateReadOnlyFields = ServerManagedFields
 
 /**
  * User-specific read-only fields during creation
  */
-type UserCreationReadOnlyFields = ServerManagedFields | "isOwner" | "isPending";
+type UserCreationReadOnlyFields = ServerManagedFields | 'isOwner' | 'isPending'
 
 /**
  * Credential-specific read-only fields during creation
  */
-type CredentialCreationReadOnlyFields =
-  | ServerManagedFields
-  | "ownedBy"
-  | "sharedWith";
+type CredentialCreationReadOnlyFields
+  = | ServerManagedFields
+    | 'ownedBy'
+    | 'sharedWith'
 
 // ============================================================================
 // STRICT API PAYLOAD TYPES
@@ -58,26 +58,26 @@ type CredentialCreationReadOnlyFields =
 export type WorkflowCreatePayload = Omit<
   N8NWorkflow,
   WorkflowCreationReadOnlyFields
->;
+>
 
 /**
  * Workflow Update Payload - Allows partial updates but excludes server-managed fields
  */
 export type WorkflowUpdatePayload = Partial<
   Omit<N8NWorkflow, WorkflowUpdateReadOnlyFields>
->;
+>
 
 /**
  * User Creation Payload - Excludes server-managed and business logic fields
  */
-export type UserCreatePayload = Omit<N8NUser, UserCreationReadOnlyFields>;
+export type UserCreatePayload = Omit<N8NUser, UserCreationReadOnlyFields>
 
 /**
  * User Update Payload - Allows partial updates excluding read-only fields
  */
 export type UserUpdatePayload = Partial<
-  Omit<N8NUser, ServerManagedFields | "isOwner">
->;
+  Omit<N8NUser, ServerManagedFields | 'isOwner'>
+>
 
 /**
  * Credential Creation Payload - Excludes server-managed sharing fields
@@ -85,24 +85,24 @@ export type UserUpdatePayload = Partial<
 export type CredentialCreatePayload = Omit<
   N8NCredential,
   CredentialCreationReadOnlyFields
->;
+>
 
 /**
  * Credential Update Payload - Allows partial updates
  */
 export type CredentialUpdatePayload = Partial<
   Omit<N8NCredential, ServerManagedFields>
->;
+>
 
 /**
  * Settings Update Payload - Settings are always partial updates
  */
-export type SettingsUpdatePayload = Partial<N8NSettings>;
+export type SettingsUpdatePayload = Partial<N8NSettings>
 
 /**
  * Workflow Node Creation Payload - Nodes in workflow creation context
  */
-export type WorkflowNodePayload = N8NWorkflowNode;
+export type WorkflowNodePayload = N8NWorkflowNode
 
 // ============================================================================
 // BRANDED TYPES FOR ENHANCED TYPE SAFETY
@@ -111,14 +111,14 @@ export type WorkflowNodePayload = N8NWorkflowNode;
 /**
  * Branded type to ensure only validated API payloads are used
  */
-declare const __brand: unique symbol;
-type ApiPayload<T> = T & { [__brand]: "ApiPayload" };
+declare const __brand: unique symbol
+type ApiPayload<T> = T & { [__brand]: 'ApiPayload' }
 
 /**
  * Creates a validated API payload with compile-time guarantees
  */
 export function createApiPayload<T>(payload: T): ApiPayload<T> {
-  return payload as ApiPayload<T>;
+  return payload as ApiPayload<T>
 }
 
 // ============================================================================
@@ -129,12 +129,12 @@ export function createApiPayload<T>(payload: T): ApiPayload<T> {
  * Validates that required fields are present for workflow creation
  */
 export interface WorkflowCreationValidation {
-  name: string; // Required
-  nodes: N8NWorkflowNode[]; // Required
-  connections: N8NWorkflow["connections"]; // Required
-  settings?: N8NWorkflow["settings"]; // Optional but recommended
-  staticData?: N8NWorkflow["staticData"]; // Optional
-  tags?: N8NWorkflow["tags"]; // Optional
+  name: string // Required
+  nodes: N8NWorkflowNode[] // Required
+  connections: N8NWorkflow['connections'] // Required
+  settings?: N8NWorkflow['settings'] // Optional but recommended
+  staticData?: N8NWorkflow['staticData'] // Optional
+  tags?: N8NWorkflow['tags'] // Optional
 }
 
 /**
@@ -143,16 +143,17 @@ export interface WorkflowCreationValidation {
 export function validateWorkflowCreation(
   payload: unknown,
 ): payload is WorkflowCreationValidation {
-  if (typeof payload !== "object" || payload === null) return false;
+  if (typeof payload !== 'object' || payload === null)
+    return false
 
-  const obj = payload as Record<string, unknown>;
+  const obj = payload as Record<string, unknown>
 
   return (
-    typeof obj.name === "string" &&
-    Array.isArray(obj.nodes) &&
-    typeof obj.connections === "object" &&
-    obj.connections !== null
-  );
+    typeof obj.name === 'string'
+    && Array.isArray(obj.nodes)
+    && typeof obj.connections === 'object'
+    && obj.connections !== null
+  )
 }
 
 /**
@@ -161,16 +162,16 @@ export function validateWorkflowCreation(
 export function sanitizeWorkflowCreation(
   payload: Record<string, unknown>,
 ): WorkflowCreatePayload {
-  const { id, createdAt, updatedAt, versionId, active, ...sanitized } = payload;
+  const { id, createdAt, updatedAt, versionId, active, ...sanitized } = payload
 
   // Validate required fields
   if (!validateWorkflowCreation(sanitized)) {
     throw new Error(
-      "Invalid workflow creation payload: missing required fields (name, nodes, connections)",
-    );
+      'Invalid workflow creation payload: missing required fields (name, nodes, connections)',
+    )
   }
 
-  return sanitized as WorkflowCreatePayload;
+  return sanitized as WorkflowCreatePayload
 }
 
 /**
@@ -183,11 +184,11 @@ export function isCleanApiPayload<T extends Record<string, unknown>>(
   // Check if any read-only fields are present
   for (const field of readOnlyFields) {
     if (payload[field as string] !== undefined) {
-      return false;
+      return false
     }
   }
 
-  return true;
+  return true
 }
 
 // ============================================================================
@@ -201,42 +202,42 @@ export function stripReadOnlyFields<T extends Record<string, unknown>>(
   payload: T,
   readOnlyFields: readonly (keyof T)[],
 ): Omit<T, (typeof readOnlyFields)[number]> {
-  const cleaned = { ...payload };
+  const cleaned = { ...payload }
 
   for (const field of readOnlyFields) {
-    delete cleaned[field as string];
+    delete cleaned[field as string]
   }
 
-  return cleaned as Omit<T, (typeof readOnlyFields)[number]>;
+  return cleaned as Omit<T, (typeof readOnlyFields)[number]>
 }
 
 /**
  * Common read-only field sets for reuse
  */
 export const READ_ONLY_FIELD_SETS = {
-  serverManaged: ["id", "createdAt", "updatedAt", "versionId"] as const,
+  serverManaged: ['id', 'createdAt', 'updatedAt', 'versionId'] as const,
   workflowCreation: [
-    "id",
-    "createdAt",
-    "updatedAt",
-    "versionId",
-    "active",
+    'id',
+    'createdAt',
+    'updatedAt',
+    'versionId',
+    'active',
   ] as const,
   userCreation: [
-    "id",
-    "createdAt",
-    "updatedAt",
-    "isOwner",
-    "isPending",
+    'id',
+    'createdAt',
+    'updatedAt',
+    'isOwner',
+    'isPending',
   ] as const,
   credentialCreation: [
-    "id",
-    "createdAt",
-    "updatedAt",
-    "ownedBy",
-    "sharedWith",
+    'id',
+    'createdAt',
+    'updatedAt',
+    'ownedBy',
+    'sharedWith',
   ] as const,
-} as const;
+} as const
 
 /**
  * Pre-configured payload sanitizers for common operations
@@ -265,7 +266,7 @@ export const PayloadSanitizers = {
       payload,
       READ_ONLY_FIELD_SETS.credentialCreation as readonly (keyof typeof payload)[],
     ),
-} as const;
+} as const
 
 // ============================================================================
 // EXPORT TYPES FOR EXTERNAL USE
@@ -273,9 +274,9 @@ export const PayloadSanitizers = {
 
 export type {
   ApiPayload,
+  CredentialCreationReadOnlyFields,
   ServerManagedFields,
+  UserCreationReadOnlyFields,
   WorkflowCreationReadOnlyFields,
   WorkflowUpdateReadOnlyFields,
-  UserCreationReadOnlyFields,
-  CredentialCreationReadOnlyFields,
-};
+}

@@ -3,8 +3,8 @@
  * Error classes, validation helpers, and runtime validation logic
  */
 
-import { z } from "zod";
-import { logger } from "../server/logger.js";
+import { z } from 'zod'
+import { logger } from '../server/logger.js'
 
 // ============================================================================
 // VALIDATION ERROR CLASSES
@@ -15,8 +15,8 @@ import { logger } from "../server/logger.js";
  * Thrown when API response doesn't match expected schema
  */
 export class ApiValidationError extends Error {
-  public override readonly name = "ApiValidationError";
-  public readonly isApiValidationError = true;
+  public override readonly name = 'ApiValidationError'
+  public readonly isApiValidationError = true
 
   constructor(
     message: string,
@@ -26,19 +26,19 @@ export class ApiValidationError extends Error {
     public readonly validationErrors: z.ZodError,
     public readonly responseTime?: number,
   ) {
-    super(message);
+    super(message)
 
     // Ensure proper prototype chain for instanceof checks
-    Object.setPrototypeOf(this, ApiValidationError.prototype);
+    Object.setPrototypeOf(this, ApiValidationError.prototype)
 
     // Log validation failure for monitoring
-    logger.warn("API Response Validation Failed", {
+    logger.warn('API Response Validation Failed', {
       endpoint,
       httpStatus,
       errorCount: validationErrors.issues.length,
       firstError: validationErrors.issues[0],
       responseTime,
-    });
+    })
   }
 
   /**
@@ -46,57 +46,57 @@ export class ApiValidationError extends Error {
    */
   public getValidationDetails(): {
     issues: Array<{
-      path: string;
-      message: string;
-      code: string;
-      received: unknown;
-    }>;
-    summary: string;
+      path: string
+      message: string
+      code: string
+      received: unknown
+    }>
+    summary: string
   } {
-    const issues = this.validationErrors.issues.map((issue) => ({
-      path: issue.path.join(".") || "root",
+    const issues = this.validationErrors.issues.map(issue => ({
+      path: issue.path.join('.') || 'root',
       message: issue.message,
       code: issue.code,
-      received: "received" in issue ? issue.received : undefined,
-    }));
+      received: 'received' in issue ? issue.received : undefined,
+    }))
 
     const summary = `${issues.length} validation error(s): ${issues
       .slice(0, 3)
-      .map((i) => `${i.path}: ${i.message}`)
-      .join(", ")}${issues.length > 3 ? "..." : ""}`;
+      .map(i => `${i.path}: ${i.message}`)
+      .join(', ')}${issues.length > 3 ? '...' : ''}`
 
-    return { issues, summary };
+    return { issues, summary }
   }
 
   /**
    * Get sanitized response data (removes sensitive info)
    */
   public getSanitizedResponse(): unknown {
-    if (typeof this.response === "object" && this.response !== null) {
-      const obj = this.response as Record<string, unknown>;
-      const sanitized = { ...obj };
+    if (typeof this.response === 'object' && this.response !== null) {
+      const obj = this.response as Record<string, unknown>
+      const sanitized = { ...obj }
 
       // Remove potentially sensitive fields
       const sensitiveFields = [
-        "password",
-        "token",
-        "apiKey",
-        "secret",
-        "credential",
-        "auth",
-        "key",
-      ];
+        'password',
+        'token',
+        'apiKey',
+        'secret',
+        'credential',
+        'auth',
+        'key',
+      ]
 
       for (const field of sensitiveFields) {
         if (field in sanitized) {
-          sanitized[field] = "[REDACTED]";
+          sanitized[field] = '[REDACTED]'
         }
       }
 
-      return sanitized;
+      return sanitized
     }
 
-    return this.response;
+    return this.response
   }
 }
 
@@ -105,8 +105,8 @@ export class ApiValidationError extends Error {
  * Thrown when API request fails at network/HTTP level
  */
 export class ApiConnectionError extends Error {
-  public override readonly name = "ApiConnectionError";
-  public readonly isApiConnectionError = true;
+  public override readonly name = 'ApiConnectionError'
+  public readonly isApiConnectionError = true
 
   constructor(
     message: string,
@@ -114,15 +114,15 @@ export class ApiConnectionError extends Error {
     public override readonly cause?: unknown,
     public readonly responseTime?: number,
   ) {
-    super(message);
-    Object.setPrototypeOf(this, ApiConnectionError.prototype);
+    super(message)
+    Object.setPrototypeOf(this, ApiConnectionError.prototype)
 
-    logger.error("API Connection Failed", {
+    logger.error('API Connection Failed', {
       endpoint,
       message,
       cause: cause instanceof Error ? cause.message : String(cause),
       responseTime,
-    });
+    })
   }
 }
 
@@ -135,15 +135,15 @@ export class ApiConnectionError extends Error {
  */
 export interface ValidationConfig {
   /** Whether to throw errors on validation failures (vs. logging warnings) */
-  strict: boolean;
+  strict: boolean
   /** Whether to log validation details */
-  enableLogging: boolean;
+  enableLogging: boolean
   /** Timeout for validation operations (ms) */
-  timeout: number;
+  timeout: number
   /** Whether to sanitize responses before validation */
-  sanitizeResponses: boolean;
+  sanitizeResponses: boolean
   /** Maximum response size to validate (bytes) */
-  maxResponseSize: number;
+  maxResponseSize: number
 }
 
 /**
@@ -155,7 +155,7 @@ export const defaultValidationConfig: ValidationConfig = {
   timeout: 5000,
   sanitizeResponses: true,
   maxResponseSize: 10 * 1024 * 1024, // 10MB
-};
+}
 
 // ============================================================================
 // VALIDATION UTILITIES
@@ -172,48 +172,49 @@ export async function validateApiResponse<T>(
   config: ValidationConfig = defaultValidationConfig,
   responseTime?: number,
 ): Promise<T> {
-  const startTime = Date.now();
+  const startTime = Date.now()
 
   try {
     // Check response size limit
-    const responseStr = JSON.stringify(response);
+    const responseStr = JSON.stringify(response)
     if (responseStr.length > config.maxResponseSize) {
       throw new Error(
         `Response too large: ${responseStr.length} bytes > ${config.maxResponseSize} bytes`,
-      );
+      )
     }
 
     // Sanitize response if enabled
-    let sanitizedResponse = response;
+    let sanitizedResponse = response
     if (config.sanitizeResponses) {
-      sanitizedResponse = sanitizeResponse(response);
+      sanitizedResponse = sanitizeResponse(response)
     }
 
     // Validate with timeout
-    const validationPromise = schema.parseAsync(sanitizedResponse);
+    const validationPromise = schema.parseAsync(sanitizedResponse)
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("Validation timeout")), config.timeout);
-    });
+      setTimeout(() => reject(new Error('Validation timeout')), config.timeout)
+    })
 
     const validatedData = await Promise.race([
       validationPromise,
       timeoutPromise,
-    ]);
+    ])
 
     // Log successful validation
     if (config.enableLogging) {
-      const validationTime = Date.now() - startTime;
-      logger.debug("API Response Validated Successfully", {
+      const validationTime = Date.now() - startTime
+      logger.debug('API Response Validated Successfully', {
         endpoint,
         httpStatus,
         responseTime,
         validationTime,
-      });
+      })
     }
 
-    return validatedData;
-  } catch (error) {
-    const validationTime = Date.now() - startTime;
+    return validatedData
+  }
+  catch (error) {
+    const validationTime = Date.now() - startTime
 
     if (error instanceof z.ZodError) {
       const validationError = new ApiValidationError(
@@ -223,36 +224,39 @@ export async function validateApiResponse<T>(
         response,
         error,
         responseTime,
-      );
+      )
 
       if (config.strict) {
-        throw validationError;
-      } else {
+        throw validationError
+      }
+      else {
         // Non-strict mode: log warning and return raw response
-        logger.warn("API Response Validation Failed (Non-Strict Mode)", {
+        logger.warn('API Response Validation Failed (Non-Strict Mode)', {
           endpoint,
           httpStatus,
           validationTime,
           errorDetails: validationError.getValidationDetails(),
-        });
+        })
 
         // Return raw response with type assertion (unsafe but preserves functionality)
-        return response as T;
+        return response as T
       }
-    } else {
+    }
+    else {
       // Other validation errors (timeout, size, etc.)
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage
+        = error instanceof Error ? error.message : String(error)
 
       if (config.strict) {
-        throw new Error(`Response validation failed: ${errorMessage}`);
-      } else {
-        logger.warn("Response Validation Issue (Non-Strict Mode)", {
+        throw new Error(`Response validation failed: ${errorMessage}`)
+      }
+      else {
+        logger.warn('Response Validation Issue (Non-Strict Mode)', {
           endpoint,
           error: errorMessage,
           validationTime,
-        });
-        return response as T;
+        })
+        return response as T
       }
     }
   }
@@ -263,31 +267,31 @@ export async function validateApiResponse<T>(
  */
 function sanitizeResponse(response: unknown): unknown {
   if (response === null || response === undefined) {
-    return response;
+    return response
   }
 
   if (Array.isArray(response)) {
-    return response.map(sanitizeResponse);
+    return response.map(sanitizeResponse)
   }
 
-  if (typeof response === "object") {
-    const obj = response as Record<string, unknown>;
-    const sanitized: Record<string, unknown> = {};
+  if (typeof response === 'object') {
+    const obj = response as Record<string, unknown>
+    const sanitized: Record<string, unknown> = {}
 
     for (const [key, value] of Object.entries(obj)) {
       // Skip internal/debug fields that might be added by development servers
-      if (key.startsWith("_") || key.startsWith("__")) {
-        continue;
+      if (key.startsWith('_') || key.startsWith('__')) {
+        continue
       }
 
       // Recursively sanitize nested objects
-      sanitized[key] = sanitizeResponse(value);
+      sanitized[key] = sanitizeResponse(value)
     }
 
-    return sanitized;
+    return sanitized
   }
 
-  return response;
+  return response
 }
 
 // ============================================================================
@@ -297,9 +301,9 @@ function sanitizeResponse(response: unknown): unknown {
 /**
  * Result of validation operation
  */
-export type ValidationResult<T> =
-  | { success: true; data: T; warnings?: string[] }
-  | { success: false; error: ApiValidationError; fallbackData?: T };
+export type ValidationResult<T>
+  = | { success: true, data: T, warnings?: string[] }
+    | { success: false, error: ApiValidationError, fallbackData?: T }
 
 /**
  * Safe validation that never throws, returns result object instead
@@ -320,17 +324,19 @@ export async function safeValidateResponse<T>(
       httpStatus,
       config,
       responseTime,
-    );
+    )
 
-    return { success: true, data };
-  } catch (error) {
+    return { success: true, data }
+  }
+  catch (error) {
     if (error instanceof ApiValidationError) {
       return {
         success: false,
         error,
         fallbackData: response as T, // Provide fallback for graceful degradation
-      };
-    } else {
+      }
+    }
+    else {
       // Convert other errors to ApiValidationError
       const validationError = new ApiValidationError(
         `Validation failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -339,19 +345,19 @@ export async function safeValidateResponse<T>(
         response,
         new z.ZodError([
           {
-            code: "custom",
+            code: 'custom',
             message: error instanceof Error ? error.message : String(error),
             path: [],
           },
         ]),
         responseTime,
-      );
+      )
 
       return {
         success: false,
         error: validationError,
         fallbackData: response as T,
-      };
+      }
     }
   }
 }
@@ -367,12 +373,12 @@ export function isApiValidationError(
   error: unknown,
 ): error is ApiValidationError {
   return (
-    error instanceof ApiValidationError ||
-    (typeof error === "object" &&
-      error !== null &&
-      "isApiValidationError" in error &&
-      error.isApiValidationError === true)
-  );
+    error instanceof ApiValidationError
+    || (typeof error === 'object'
+      && error !== null
+      && 'isApiValidationError' in error
+      && error.isApiValidationError === true)
+  )
 }
 
 /**
@@ -382,20 +388,20 @@ export function isApiConnectionError(
   error: unknown,
 ): error is ApiConnectionError {
   return (
-    error instanceof ApiConnectionError ||
-    (typeof error === "object" &&
-      error !== null &&
-      "isApiConnectionError" in error &&
-      error.isApiConnectionError === true)
-  );
+    error instanceof ApiConnectionError
+    || (typeof error === 'object'
+      && error !== null
+      && 'isApiConnectionError' in error
+      && error.isApiConnectionError === true)
+  )
 }
 
 /**
  * Extract validation summary from error
  */
 export function getValidationSummary(error: ApiValidationError): string {
-  const details = error.getValidationDetails();
-  return `${error.endpoint}: ${details.summary}`;
+  const details = error.getValidationDetails()
+  return `${error.endpoint}: ${details.summary}`
 }
 
 /**
@@ -404,5 +410,5 @@ export function getValidationSummary(error: ApiValidationError): string {
 export function createValidationConfig(
   overrides: Partial<ValidationConfig>,
 ): ValidationConfig {
-  return { ...defaultValidationConfig, ...overrides };
+  return { ...defaultValidationConfig, ...overrides }
 }
