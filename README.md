@@ -188,7 +188,13 @@ export GITHUB_TOKEN=your_github_token_here
 npx @eekfonky/n8n-mcp-modern install
 ```
 
-**[Create GitHub Token](https://github.com/settings/tokens)** (needs `read:packages` scope)
+## 📦 Installation Options
+
+**For Latest Features (Recommended):** Use Method 1 (Direct Git) for immediate access to v5.2.4 features
+
+**For Stable Releases:** Methods 2-3 available once GitHub Package Registry is configured
+
+**[Create GitHub Token](https://github.com/settings/tokens)** (needs `read:packages` scope for Method 2)
 
 ---
 
@@ -203,16 +209,45 @@ npx @eekfonky/n8n-mcp-modern install
 >
 > Run `docker-compose up -d --build` to rebuild your container, then create your API key. This enables the REST API endpoints required by the MCP server.
 
-**Method 1: Smart Installation (Recommended)**
+**Method 1: Direct Git Installation (Recommended - Latest v5.2.4)**
 
 ```bash
-# Direct installation with smart auto-detection
+# Install directly from GitHub (latest features)
+npm install -g git+https://github.com/eekfonky/n8n-mcp-modern.git
+
+# Configure and install
 N8N_API_URL="https://your-n8n-instance.com" \
 N8N_API_KEY="your-api-key" \
-npx @eekfonky/n8n-mcp-modern install
+n8n-mcp install
+```
 
-# Alternative: Install globally first, then configure
+**Method 2: GitHub Package Registry**
+
+```bash
+# Configure npm for GitHub packages (one-time setup)
+echo "@eekfonky:registry=https://npm.pkg.github.com" >> ~/.npmrc
+echo "//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN" >> ~/.npmrc
+
+# Install from GitHub Packages
 npm install -g @eekfonky/n8n-mcp-modern
+
+# Configure and install  
+N8N_API_URL="https://your-n8n-instance.com" \
+N8N_API_KEY="your-api-key" \
+n8n-mcp install
+```
+
+**Method 3: Development/Testing**
+
+```bash
+# Clone and build locally
+git clone https://github.com/eekfonky/n8n-mcp-modern.git
+cd n8n-mcp-modern
+npm install
+npm run build
+npm link
+
+# Configure and install
 N8N_API_URL="https://your-n8n-instance.com" \
 N8N_API_KEY="your-api-key" \
 n8n-mcp install
