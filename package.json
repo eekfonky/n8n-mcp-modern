@@ -1,6 +1,6 @@
 {
   "name": "@eekfonky/n8n-mcp-modern",
-  "version": "5.2.5",
+  "version": "5.2.6",
   "description": "Modern n8n MCP server with Phase 2 orchestration - intelligent agent coordination, session management, and advanced workflow automation",
   "type": "module",
   "main": "dist/index.js",
@@ -11,7 +11,6 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc && chmod +x dist/index.js",
     "start": "node dist/index.js",
-    "postinstall": "node scripts/cleanup-sqlite.cjs || echo 'SQLite cleanup skipped'",
     "rebuild": "npm rebuild better-sqlite3 || echo 'Native dependency rebuild failed - functionality may be limited'",
     "test": "vitest",
     "test:watch": "vitest --watch",
