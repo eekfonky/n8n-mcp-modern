@@ -299,31 +299,54 @@ claude mcp add n8n-mcp-modern --scope local \
 
 > **⚠️ Important**: For full n8n workflow automation capabilities, you MUST provide your n8n API credentials via environment variables as shown above.
 
-### 🔄 Upgrading
+### 🔄 Upgrading Existing Installation
 
-**Smart Install/Upgrade (Recommended)**
+## **Method 1: Clean Git Upgrade (Recommended)**
 
 ```bash
-# Same command for both fresh installs and upgrades!
+# Remove any existing installation first
+npm uninstall -g @eekfonky/n8n-mcp-modern 2>/dev/null || true
+
+# Install fresh from git (guaranteed latest v5.2.4+)
+npm install -g git+https://github.com/eekfonky/n8n-mcp-modern.git
+
+# Configure and reinstall MCP integration
 N8N_API_URL="https://your-n8n-instance.com" \
 N8N_API_KEY="your-api-key" \
-npx @eekfonky/n8n-mcp-modern install
+n8n-mcp install
+
+# Verify you got the latest version
+n8n-mcp --version
 ```
 
-✅ **Auto-detects** existing installations and preserves configuration  
-✅ **Updates** all 7 agents to latest capabilities  
-✅ **Preserves** your environment variables and settings  
-✅ **Smart routing** for all 126 tools
+**✅ Why This Method:**
+- **Always gets latest commit** from main branch
+- **Overwrites any existing version** completely  
+- **No version caching issues**
+- **Forces clean reinstall**
 
-**Manual Upgrade (Fallback)**
+## **Method 2: GitHub Package Registry Upgrade**
 
 ```bash
-claude mcp remove n8n-mcp-modern
-claude mcp add n8n-mcp-modern \
-  --env N8N_API_URL="https://your-n8n-instance.com" \
-  --env N8N_API_KEY="your-api-key" \
-  -- npx -y @eekfonky/n8n-mcp-modern
+# Force upgrade from GitHub Packages (requires token)
+npm install -g @eekfonky/n8n-mcp-modern@latest --force
+
+# Or uninstall first, then reinstall
+npm uninstall -g @eekfonky/n8n-mcp-modern
+npm install -g @eekfonky/n8n-mcp-modern
 ```
+
+## **Verify Upgrade Success**
+
+```bash
+# Check installed version (should show v5.2.4+)
+n8n-mcp --version
+
+# Test new structured response format
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_tool_usage_stats", "arguments": {}}}' | n8n-mcp
+```
+
+**Expected in v5.2.4:** All MCP tools now return structured `{success, data, error}` format
 
 **Alternative: Direct Claude MCP Integration**
 
