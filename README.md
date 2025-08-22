@@ -1,12 +1,22 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-5.2.4-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-5.2.5-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![Technical Debt](https://img.shields.io/badge/Technical%20Debt-ZERO-brightgreen.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
+
+## 🎯 What's New in v5.2.5
+
+**Installation Reliability Fix (CRITICAL):**
+
+- ✅ **Resolved Global Installation Issues** - Fixed npm install failures with better-sqlite3 on various systems
+- ✅ **Optional SQLite Dependency** - Now falls back to API-only mode if SQLite compilation fails
+- ✅ **Enhanced Error Handling** - Graceful postinstall script that prevents installation failures
+- ✅ **Universal Compatibility** - Works on all platforms, even when native compilation is not available
+- ✅ **Reliable Upgrades** - Users can now upgrade without `chmod` or dependency installation errors
 
 ## 🎯 What's New in v5.2.4
 
@@ -209,7 +219,7 @@ npx @eekfonky/n8n-mcp-modern install
 >
 > Run `docker-compose up -d --build` to rebuild your container, then create your API key. This enables the REST API endpoints required by the MCP server.
 
-**Method 1: Direct Git Installation (Recommended - Latest v5.2.4)**
+**Method 1: Direct Git Installation (Recommended - Latest v5.2.5)**
 
 ```bash
 # Install directly from GitHub (latest features)
@@ -307,7 +317,7 @@ claude mcp add n8n-mcp-modern --scope local \
 # Remove any existing installation first
 npm uninstall -g @eekfonky/n8n-mcp-modern 2>/dev/null || true
 
-# Install fresh from git (guaranteed latest v5.2.4+)
+# Install fresh from git (guaranteed latest v5.2.5+)
 npm install -g git+https://github.com/eekfonky/n8n-mcp-modern.git
 
 # Configure and reinstall MCP integration
