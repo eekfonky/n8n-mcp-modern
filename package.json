@@ -1,5 +1,5 @@
 {
-  "name": "n8n-mcp-modern",
+  "name": "@eekfonky/n8n-mcp-modern",
   "version": "5.2.8",
   "description": "Modern n8n MCP server with Phase 2 orchestration - intelligent agent coordination, session management, and advanced workflow automation",
   "type": "module",
@@ -11,7 +11,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc && chmod +x dist/index.js",
     "start": "node dist/index.js",
-    "postinstall": "node scripts/cleanup-sqlite.cjs || true",
+    "postinstall": "node scripts/cleanup-sqlite.cjs 2>/dev/null || true",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
@@ -63,8 +63,7 @@
   },
   "homepage": "https://github.com/eekfonky/n8n-mcp-modern#readme",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/",
-    "access": "public"
+    "registry": "https://npm.pkg.github.com"
   },
   "engines": {
     "node": ">=22.0.0"

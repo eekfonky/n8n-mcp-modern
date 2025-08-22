@@ -239,16 +239,22 @@ npx @eekfonky/n8n-mcp-modern install
 >
 > Run `docker-compose up -d --build` to rebuild your container, then create your API key. This enables the REST API endpoints required by the MCP server.
 
-**Method 1: NPM Registry Installation (Recommended - Latest v5.2.8)**
+**Method 1: Local Installation (Most Reliable)**
 
 ```bash
-# Install directly from npm registry (most reliable)
-npm install -g n8n-mcp-modern
+# 1. Clone the repository
+git clone https://github.com/eekfonky/n8n-mcp-modern.git
+cd n8n-mcp-modern
 
-# Configure and install
-N8N_API_URL="https://your-n8n-instance.com" \
-N8N_API_KEY="your-api-key" \
-n8n-mcp install
+# 2. Install and build
+npm install
+npm run build
+
+# 3. Add to Claude Code
+claude mcp add n8n-mcp-modern \
+  --env N8N_API_URL="https://your-n8n-instance.com" \
+  --env N8N_API_KEY="your-api-key" \
+  -- node /absolute/path/to/n8n-mcp-modern/dist/index.js
 ```
 
 **Method 2: GitHub Package Registry**
