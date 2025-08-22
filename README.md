@@ -1,12 +1,22 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-5.2.5-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-5.2.7-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Modern](https://img.shields.io/badge/Architecture-Modern-green.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![Technical Debt](https://img.shields.io/badge/Technical%20Debt-ZERO-brightgreen.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 
 **Modern n8n MCP server built from the ground up with zero legacy dependencies and maximum performance.**
+
+## 🎯 What's New in v5.2.7
+
+**Installation Reliability Fix v2 (CRITICAL):**
+
+- ✅ **Fixed `--ignore-scripts` Installation** - Use `npm install -g --ignore-scripts` to bypass dependency script issues  
+- ✅ **Resolved chmod Errors** - No more `ENOENT: chmod` failures during global npm installs
+- ✅ **Eliminated Script Dependencies** - Removed problematic postinstall hooks completely
+- ✅ **Universal Install Success** - Works reliably across all Node.js and npm versions
+- ✅ **Preserved Full Functionality** - All features work normally, just safer installation
 
 ## 🎯 What's New in v5.2.5
 
@@ -219,11 +229,11 @@ npx @eekfonky/n8n-mcp-modern install
 >
 > Run `docker-compose up -d --build` to rebuild your container, then create your API key. This enables the REST API endpoints required by the MCP server.
 
-**Method 1: Direct Git Installation (Recommended - Latest v5.2.5)**
+**Method 1: Direct Git Installation (Recommended - Latest v5.2.7)**
 
 ```bash
-# Install directly from GitHub (latest features)
-npm install -g git+https://github.com/eekfonky/n8n-mcp-modern.git
+# Install directly from GitHub (latest features) - skip problematic scripts
+npm install -g git+https://github.com/eekfonky/n8n-mcp-modern.git --ignore-scripts
 
 # Configure and install
 N8N_API_URL="https://your-n8n-instance.com" \
@@ -317,8 +327,8 @@ claude mcp add n8n-mcp-modern --scope local \
 # Remove any existing installation first
 npm uninstall -g @eekfonky/n8n-mcp-modern 2>/dev/null || true
 
-# Install fresh from git (guaranteed latest v5.2.5+)
-npm install -g git+https://github.com/eekfonky/n8n-mcp-modern.git
+# Install fresh from git (guaranteed latest v5.2.7+) - skip problematic scripts
+npm install -g git+https://github.com/eekfonky/n8n-mcp-modern.git --ignore-scripts
 
 # Configure and reinstall MCP integration
 N8N_API_URL="https://your-n8n-instance.com" \
