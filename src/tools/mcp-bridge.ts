@@ -79,11 +79,14 @@ export class MCPToolProxy {
       return await n8nApi.getExecution((args as { id: string }).id);
     });
 
-    // Node database tools
+    // Node database tools - use n8n API for live data
     this.toolRegistry.set("search_nodes", async (args) => {
-      const query = (args as { query?: string }).query ?? "";
+      if (!n8nApi) throw new Error("n8n API not initialized");
       
-      const results = database.searchNodes(query);
+      const query = (args as { query?: string }).query ?? "";
+      const category = (args as { category?: string }).category;
+      
+      const results = await n8nApi.searchNodeTypes(query, category);
       
       return {
         success: true,
@@ -92,16 +95,28 @@ export class MCPToolProxy {
     });
 
     this.toolRegistry.set("list_nodes", async (args) => {
-      const results = database.getNodes((args as { category?: string }).category);
+      if (!n8nApi) throw new Error("n8n API not initialized");
+      
+      const results = await n8nApi.getNodeTypes();
+      
+      // Filter by category if provided
+      const category = (args as { category?: string }).category;
+      const filteredResults = category 
+        ? results.filter(node => node.group?.includes(category))
+        : results;
       
       return {
         success: true,
-        data: results
+        data: filteredResults
       };
     });
 
     this.toolRegistry.set("get_node_info", async (args) => {
-      const result = database.getNodes().find(n => n.name === (args as { nodeType: string }).nodeType);
+      if (!n8nApi) throw new Error("n8n API not initialized");
+      
+      const nodeType = (args as { nodeType: string }).nodeType;
+      const result = await n8nApi.getNodeType(nodeType);
+      
       return {
         success: true,
         data: result

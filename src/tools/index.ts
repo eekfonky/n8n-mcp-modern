@@ -822,14 +822,9 @@ export class N8NMCPTools {
    * Search for n8n nodes
    */
   private static async searchNodes(args: SearchNodesArgs): Promise<unknown> {
-    const nodes = database.searchNodes(args.query);
-
-    if (args.category) {
-      return nodes.filter(
-        (node) =>
-          node.category.toLowerCase() === (args.category ?? "").toLowerCase(),
-      );
-    }
+    if (!n8nApi) throw new Error("n8n API not available");
+    
+    const nodes = await n8nApi.searchNodeTypes(args.query, args.category);
 
     return nodes;
   }
