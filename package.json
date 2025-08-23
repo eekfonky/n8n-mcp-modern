@@ -100,9 +100,9 @@
     "vitest": "^3.2.4"
   },
   "files": [
-    "dist/**/*",
+    "dist/",
     "data/nodes.db",
-    "agents/*.md",
+    "agents/",
     "!agents/README.md",
     "scripts/deploy.sh",
     "scripts/upgrade-cleanup.cjs",

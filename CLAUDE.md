@@ -38,8 +38,8 @@ npm run test:coverage # Coverage reports with v8 provider
 ### Database Management
 
 ```bash
-npm run rebuild-db    # Rebuild node database (src/scripts/rebuild-database.ts)
-npm run validate      # Validate data integrity (src/scripts/validate-data.ts)
+node scripts/cleanup-sqlite.cjs    # Clean up SQLite database
+npm run validate-readme            # Validate documentation accuracy
 ```
 
 ## Core Architecture
@@ -48,13 +48,14 @@ npm run validate      # Validate data integrity (src/scripts/validate-data.ts)
 
 ```
 src/
-├── server/           # MCP server implementation (config.ts, logger.ts)
+├── server/           # MCP server implementation (config.ts, logger.ts, security.ts)
 ├── database/         # SQLite with clean schemas
-├── tools/           # 92 MCP tools (modern patterns)
+├── tools/           # 92+ MCP tools (modern patterns)
 ├── agents/          # 6-agent hierarchical system
-├── validation/      # Zod-based validation engine
-├── n8n/            # Minimal n8n integration layer
+├── n8n/            # N8N API integration layer
 ├── types/          # Complete TypeScript definitions
+├── utils/          # Enhanced HTTP client & memory management
+├── tests/          # Comprehensive test suite with critical bug prevention
 └── scripts/        # Database and validation utilities
 ```
 
@@ -62,19 +63,18 @@ src/
 
 **TIER 1 - Master Orchestrator:**
 
-- `n8n-workflow-architect`: Strategic planning & coordination
+- `n8n-orchestrator`: Strategic planning & coordination
 
 **TIER 2 - Core Specialists:**
 
-- `n8n-validator`: Security & validation
-- `n8n-integration-specialist`: Authentication & connectivity
-- `n8n-node-specialist`: 525+ node expertise
+- `n8n-builder`: Code generation & DevOps workflows
+- `n8n-connector`: Authentication & connectivity  
+- `n8n-node-expert`: 525+ node expertise
+- `n8n-scriptguard`: JavaScript validation & security
 
-**TIER 3 - Research Specialists:**
+**TIER 3 - Support Specialists:**
 
-- `n8n-assistant`: Quick research & synthesis
-- `n8n-docs-specialist`: Documentation & setup
-- `n8n-community-specialist`: AI/ML & community patterns
+- `n8n-guide`: Documentation, tutorials & guidance
 
 ### Configuration System
 
@@ -112,7 +112,7 @@ Environment variables are validated through Zod schemas in `src/server/config.ts
 **Zod-First Approach:**
 
 - All configurations validated via `ConfigSchema`
-- Input validation for all 92 MCP tools
+- Input validation for all 92+ MCP tools
 - Custom `N8NMcpError` class for structured error handling
 - Validation profiles: minimal, runtime, ai-friendly, strict
 

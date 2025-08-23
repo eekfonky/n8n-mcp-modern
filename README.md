@@ -108,6 +108,7 @@ TIER 3: SUPPORT SPECIALISTS
 - **🛠️ DevOps Integration** (10 tools) - CI/CD, Git, deployment automation
 - **📊 Performance & Monitoring** (12 tools) - Analytics, optimization, alerting
 - **📚 Core n8n Management** (46 tools) - Workflows, credentials, nodes, users
+- **🔍 Additional Utilities** (12 tools) - Search, validation, debugging
 
 ### Key Capabilities
 
@@ -118,6 +119,39 @@ TIER 3: SUPPORT SPECIALISTS
 - Monitor performance metrics
 - Manage credentials securely
 - Validate and optimize workflows
+
+## 🚀 Usage Examples
+
+### Basic MCP Tool Usage
+
+```bash
+# Search for n8n nodes
+claude mcp call n8n-mcp-modern search_n8n_nodes '{"query": "HTTP Request"}'
+
+# Get workflow list  
+claude mcp call n8n-mcp-modern get_n8n_workflows '{"limit": 10}'
+
+# Create a simple workflow
+claude mcp call n8n-mcp-modern create_n8n_workflow '{
+  "name": "Test Workflow", 
+  "nodes": [{"type": "webhook", "name": "Webhook"}],
+  "settings": {}
+}'
+```
+
+### Agent Integration
+
+```bash
+# Use Task tool to delegate to specialists
+"Task: Create a webhook that processes customer data and sends to Slack"
+# → Routes to n8n-builder for code generation
+
+"Task: Set up OAuth with Google Sheets" 
+# → Routes to n8n-connector for authentication
+
+"Task: What's the best node for CSV processing?"
+# → Routes to n8n-node-expert for guidance
+```
 
 ## 🔧 Configuration
 
@@ -144,7 +178,7 @@ MAX_CONCURRENT_REQUESTS=10
 
 ## 📦 Migration from Legacy
 
-From `@lexinet/n8n-mcp-modern` or `n8n-mcp-enhanced`:
+From `@lexinet/n8n-mcp-modern` or legacy versions:
 
 ```bash
 # Quick migration

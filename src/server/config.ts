@@ -211,6 +211,11 @@ function normalizeN8NUrl(url: string | undefined): string | undefined {
   if (!url)
     return undefined
 
+  // Handle empty string as undefined
+  if (url.trim() === '') {
+    return undefined
+  }
+
   try {
     const parsed = new URL(url)
     const baseUrl = `${parsed.protocol}//${parsed.host}`
@@ -233,14 +238,40 @@ export const config = parseEnvironment()
 
 // Helper function for runtime config updates
 export function updateConfig(updates: Partial<Config>): Config {
-  const updated = ConfigSchema.parse({ ...config, ...updates })
+  const merged = { ...config, ...updates }
+  const updated = validateConfig(merged)
   Object.assign(config, updated)
   return config
 }
 
 // Validation helper
 export function validateConfig(cfg: unknown): Config {
-  return ConfigSchema.parse(cfg)
+  // First validate against ConfigSchema which has strict validation
+  const result = ConfigSchema.safeParse(cfg)
+
+  if (!result.success) {
+    throw new Error(`Configuration validation failed: ${result.error.message}`)
+  }
+
+  // Additional validation for configuration logic
+  const config = result.data
+
+  // Memory threshold validation
+  if (config.memoryThresholdWarning >= config.memoryThresholdCritical) {
+    throw new Error('memoryThresholdWarning must be less than memoryThresholdCritical')
+  }
+
+  // MCP timeout validation
+  if (config.mcpTimeout < 1000 || config.mcpTimeout > 300000) {
+    throw new Error('mcpTimeout must be between 1000 and 300000 milliseconds')
+  }
+
+  // Max heap size validation
+  if (config.maxHeapSizeMb < 128) {
+    throw new Error('maxHeapSizeMb must be at least 128MB')
+  }
+
+  return config
 }
 
 // Environment helpers with TypeScript 5.9+ type predicates

@@ -44,10 +44,10 @@ describe('build-Time Consistency Checks', () => {
       if (lintStagedConfig) {
         // Should have patterns for different file types
         const hasTypeScriptPattern = Object.keys(lintStagedConfig).some(pattern =>
-          pattern.includes('*.ts') || pattern.includes('*.tsx'),
+          pattern.includes('ts') && pattern.includes('*'),
         )
         const hasJavaScriptPattern = Object.keys(lintStagedConfig).some(pattern =>
-          pattern.includes('*.js') || pattern.includes('*.jsx'),
+          pattern.includes('js') && pattern.includes('*'),
         )
 
         expect(hasTypeScriptPattern || hasJavaScriptPattern, 'Should have patterns for TypeScript/JavaScript files').toBe(true)

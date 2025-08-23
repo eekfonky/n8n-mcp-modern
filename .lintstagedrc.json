@@ -1,9 +1,11 @@
 {
-  "*.{ts,tsx,js,jsx,mjs,cjs}": [
+  "*.{ts,tsx}": [
     "eslint --fix"
   ],
-  "*.{ts,tsx,js,jsx,mjs,cjs,json,md}": [
+  "*.{js,jsx,mjs,cjs}": [
     "eslint --fix"
   ],
-  "ignore": ["node_modules/**", "dist/**"]
+  "*.{json,md}": [
+    "eslint --fix"
+  ]
 }

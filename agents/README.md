@@ -1,6 +1,6 @@
 # n8n Claude Code Agents
 
-This directory contains 7 specialized Claude Code agents for n8n workflow automation. These agents work together with the n8n-mcp-modern MCP server to provide expert n8n guidance and automation capabilities.
+This directory contains 6 specialized Claude Code agents for n8n workflow automation. These agents work together with the n8n-mcp-modern MCP server to provide expert n8n guidance and automation capabilities.
 
 ## 🏗️ Agent Architecture
 
@@ -12,7 +12,6 @@ TIER 2: CORE SPECIALISTS
 ├─ n8n-builder - Code generation & DevOps workflows
 ├─ n8n-connector - Authentication & connectivity
 ├─ n8n-node-expert - 525+ node expertise
-├─ n8n-optimizer - Performance monitoring & optimization
 └─ n8n-scriptguard - JavaScript validation & security
 
 TIER 3: SUPPORT SPECIALISTS
@@ -37,7 +36,7 @@ claude mcp add n8n-mcp-modern \
 The postinstall script will:
 
 - ✅ Create `~/.claude/agents/` directory if needed
-- ✅ Copy all 7 specialist agents automatically
+- ✅ Copy all 6 specialist agents automatically
 - ✅ Backup existing agents before updating
 - ✅ Skip agents that are already up-to-date
 
@@ -69,10 +68,6 @@ Once installed, use Claude Code's Task tool to delegate to specialists:
 # For node-specific questions
 "Task: What's the best node configuration for processing large CSV files?"
 → Uses n8n-node-expert
-
-# For performance optimization
-"Task: Monitor and optimize my workflow performance"
-→ Uses n8n-optimizer
 
 # For JavaScript validation
 "Task: Review and secure the JavaScript in my Code nodes"
