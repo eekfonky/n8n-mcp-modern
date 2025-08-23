@@ -1,6 +1,6 @@
 /**
  * MCP Tools for n8n automation
- * Comprehensive 87+ tools for Claude Code agents to interact with n8n
+ * Comprehensive 92 tools for Claude Code agents to interact with n8n
  */
 
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
@@ -142,10 +142,10 @@ export class N8NMCPTools {
   }
 
   /**
-   * Get all available MCP tools (110+ comprehensive tools)
+   * Get all available MCP tools (92 comprehensive tools)
    */
   static getTools(): Tool[] {
-    // Original 10 tools + 77+ comprehensive tools = 87+ total
+    // Original 12 tools + 80 routed tools = 92 total
     const originalTools: Tool[] = [
       {
         name: 'search_n8n_nodes',
@@ -444,7 +444,7 @@ export class N8NMCPTools {
       {
         name: 'list_available_tools',
         description:
-          'Get comprehensive list of all 98 available tools with categories',
+          'Get comprehensive list of all 92 available tools with categories',
         inputSchema: {
           type: 'object' as const,
           properties: {
@@ -511,7 +511,7 @@ export class N8NMCPTools {
       ...phase2Tools,
       ...phase3Tools,
     ]
-    const comprehensiveToolCount = 53 // Core(6) + Validation(7) + Credential(7) + User(4) + System(5) + Workflow(7) + Advanced(17)
+    const comprehensiveToolCount = 40 // Actual count from comprehensive.ts
 
     logger.info(
       `🚀 Enhanced MCP Server Ready: ${allTools.length + comprehensiveToolCount} tools available`,
@@ -1078,11 +1078,12 @@ export class N8NMCPTools {
     category?: string
   }): Promise<unknown> {
     const categories = {
-      'core': 11, // Original n8n tools
+      'core': 12, // MCP-registered tools
       'code-generation': 12, // Phase 1 tools
       'developer-workflows': 10, // Phase 2 tools
       'performance-observability': 12, // Phase 3 tools
-      'comprehensive': 53, // Comprehensive tools from comprehensive.ts
+      'comprehensive': 40, // Actual tools in comprehensive.ts
+      'other': 6, // Additional tools in executeTool
     }
 
     if (args.category) {
@@ -1102,7 +1103,7 @@ export class N8NMCPTools {
     return {
       categories,
       total: Object.values(categories).reduce((a, b) => a + b, 0),
-      breakdown: `13 MCP-registered + 87 execution-routed = ${13 + 87} total tools`,
+      breakdown: `12 MCP-registered + 80 execution-routed = ${12 + 80} total tools`,
     }
   }
 

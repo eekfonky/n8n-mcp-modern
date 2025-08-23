@@ -690,7 +690,7 @@ export const systemManagementTools = [
   },
 ]
 
-// ============== WORKFLOW MANAGEMENT EXPANSION (25+ tools) ==============
+// ============== WORKFLOW MANAGEMENT EXPANSION (40 total tools) ==============
 
 export const workflowManagementTools = [
   {

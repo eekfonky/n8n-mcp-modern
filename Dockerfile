@@ -66,7 +66,7 @@ CMD ["node", "dist/index.js"]
 # Labels for metadata
 LABEL org.opencontainers.image.title="n8n-MCP-Modern" \
       org.opencontainers.image.description="Modern n8n MCP server with zero legacy dependencies" \
-      org.opencontainers.image.version="4.1.0" \
+      org.opencontainers.image.version="5.2.8" \
       org.opencontainers.image.authors="Enhanced by eekfonky" \
       org.opencontainers.image.source="https://github.com/eekfonky/n8n-mcp-modern" \
       org.opencontainers.image.licenses="MIT"

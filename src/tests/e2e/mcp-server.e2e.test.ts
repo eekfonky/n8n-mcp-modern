@@ -103,7 +103,7 @@ describe('mCP Server E2E Tests', () => {
   })
 
   describe('tool Registration', () => {
-    it('should register all 87+ tools', async () => {
+    it('should register 12 MCP entry point tools', async () => {
       if (!serverProcess?.stdin || !serverProcess?.stdout) {
         console.warn('Server process not available for tool test')
         return
@@ -129,7 +129,8 @@ describe('mCP Server E2E Tests', () => {
         try {
           const parsed = JSON.parse(toolResponse)
           if (parsed.result && parsed.result.tools) {
-            expect(parsed.result.tools.length).toBeGreaterThanOrEqual(87)
+            // 12 MCP-registered tools act as entry points to 92 total tools
+            expect(parsed.result.tools.length).toBe(12)
           }
         }
         catch (e) {

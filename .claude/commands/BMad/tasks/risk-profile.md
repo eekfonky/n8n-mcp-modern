@@ -2,6 +2,8 @@
 
 When this command is used, execute the following task:
 
+<!-- Powered by BMAD™ Core -->
+
 # risk-profile
 
 Generate a comprehensive risk assessment matrix for a story implementation using probability × impact analysis.

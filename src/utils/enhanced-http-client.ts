@@ -163,7 +163,6 @@ export class EnhancedHttpClient {
         dispatcher: pool,
         headersTimeout: options.timeout ?? this.defaultTimeout,
         bodyTimeout: options.timeout ?? this.defaultTimeout,
-        throwOnError: false, // Handle errors manually
       })
 
       const responseTime = Date.now() - startTime

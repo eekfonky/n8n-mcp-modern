@@ -2,6 +2,8 @@
 
 When this command is used, execute the following task:
 
+<!-- Powered by BMAD™ Core -->
+
 # test-design
 
 Create comprehensive test scenarios with appropriate test level recommendations for story implementation.

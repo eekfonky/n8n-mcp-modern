@@ -72,12 +72,12 @@ class UpgradeManager {
     try {
       const content = readFileSync(CLAUDE_CONFIG_PATH, 'utf8')
       const config = JSON.parse(content)
-      
+
       // Validate JSON structure
       if (typeof config !== 'object' || config === null) {
         throw new Error('Invalid JSON structure - config must be an object')
       }
-      
+
       this.claudeConfig = config
       this.log('Claude configuration loaded successfully')
       return true
@@ -369,19 +369,20 @@ class UpgradeManager {
     try {
       const content = readFileSync(backupPath, 'utf8')
       const backupConfig = JSON.parse(content)
-      
+
       // Validate restored configuration
       if (typeof backupConfig !== 'object' || backupConfig === null) {
         throw new Error('Invalid backup configuration - must be an object')
       }
-      
+
       writeFileSync(CLAUDE_CONFIG_PATH, JSON.stringify(backupConfig, null, 2))
       this.log('Configuration restored from backup')
     }
     catch (error) {
       if (error.name === 'SyntaxError') {
         this.error(`Failed to parse backup JSON: ${error.message}`)
-      } else {
+      }
+      else {
         this.error(`Failed to restore from backup: ${error.message}`)
       }
     }
@@ -392,16 +393,16 @@ class UpgradeManager {
    */
   calculateToolCount() {
     // Default tool count - could be enhanced to read from actual MCP server response
-    let baseToolCount = 87 // Base MCP tools
-    
+    const baseToolCount = 87 // Base MCP tools
+
     // Add agent-specific tools based on current agent configuration
     const agentCount = Object.keys(this.claudeConfig?.agents || {}).filter(
       key => key.startsWith(this.agentPrefix),
     ).length
-    
+
     // Each agent typically adds additional capabilities
     const agentToolMultiplier = 5
-    
+
     return baseToolCount + (agentCount * agentToolMultiplier)
   }
 

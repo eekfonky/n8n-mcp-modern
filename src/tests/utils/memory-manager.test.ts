@@ -39,7 +39,7 @@ vi.mock('node:process', () => ({
     pid: process.pid,
     platform: process.platform,
     version: process.version,
-  }
+  },
 }))
 
 // Mock global gc
@@ -97,7 +97,7 @@ describe('advanced Memory Manager Tests', () => {
       // Access the private checkMemoryUsage method to build history
       // Since checkMemoryUsage is private, we'll simulate the behavior by calling getCurrentMemoryStats
       // multiple times and checking if history gets populated through the monitoring system
-      
+
       // Multiple calls should eventually populate some stats through getMemoryReport
       manager.getCurrentMemoryStats()
       manager.getCurrentMemoryStats()
@@ -192,9 +192,9 @@ describe('advanced Memory Manager Tests', () => {
       // Since detectMemoryLeaks requires history to be populated by checkMemoryUsage (private method),
       // and history is only built during monitoring intervals, let's test the basic functionality
       // by ensuring detectMemoryLeaks doesn't crash and returns a valid result structure
-      
+
       const detection = manager.detectMemoryLeaks()
-      
+
       expect(detection).toHaveProperty('suspected')
       expect(detection).toHaveProperty('trend')
       expect(detection).toHaveProperty('rate')

@@ -2,6 +2,8 @@
 
 When this command is used, execute the following task:
 
+<!-- Powered by BMAD™ Core -->
+
 # trace-requirements
 
 Map story requirements to test cases using Given-When-Then patterns for comprehensive traceability.

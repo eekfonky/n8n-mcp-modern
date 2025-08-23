@@ -2,6 +2,8 @@
 
 When this command is used, execute the following task:
 
+<!-- Powered by BMAD™ Core -->
+
 # qa-gate
 
 Create or update a quality gate decision file for a story based on review findings.

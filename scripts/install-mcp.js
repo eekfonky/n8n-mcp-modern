@@ -16,7 +16,7 @@ const N8N_API_KEY = process.env.N8N_API_KEY || 'your-api-key'
 // Input validation functions
 function validateEnvironmentValue(value) {
   if (typeof value !== 'string') {
-    throw new Error('Environment value must be a string')
+    throw new TypeError('Environment value must be a string')
   }
   // Prevent command injection by checking for dangerous characters
   if (value.includes(';') || value.includes('&') || value.includes('|') || value.includes('`')) {
@@ -31,35 +31,36 @@ function safeExecCommand(command, args = [], options = {}) {
     const proc = spawn(command, args, {
       stdio: options.stdio || 'pipe',
       encoding: 'utf8',
-      ...options
+      ...options,
     })
-    
+
     let stdout = ''
     let stderr = ''
-    
+
     if (proc.stdout) {
       proc.stdout.on('data', (data) => {
         stdout += data
       })
     }
-    
+
     if (proc.stderr) {
       proc.stderr.on('data', (data) => {
         stderr += data
       })
     }
-    
+
     proc.on('close', (code) => {
       if (code === 0) {
         resolve(stdout)
-      } else {
+      }
+      else {
         const error = new Error(`Command failed with code ${code}`)
         error.stdout = stdout
         error.stderr = stderr
         reject(error)
       }
     })
-    
+
     proc.on('error', (error) => {
       reject(error)
     })
@@ -147,7 +148,8 @@ async function extractExistingEnvVars() {
         for (const [key, value] of Object.entries(n8nServer.env)) {
           try {
             envVars[key] = validateEnvironmentValue(value)
-          } catch (error) {
+          }
+          catch (error) {
             console.log(`Warning: Skipping invalid env var ${key}: ${error.message}`)
           }
         }
@@ -172,7 +174,8 @@ async function extractExistingEnvVars() {
         for (const [key, value] of Object.entries(n8nServer.env)) {
           try {
             envVars[key] = validateEnvironmentValue(value)
-          } catch (error) {
+          }
+          catch (error) {
             console.log(`Warning: Skipping invalid env var ${key}: ${error.message}`)
           }
         }
@@ -257,7 +260,8 @@ async function main() {
         N8N_API_URL: validateEnvironmentValue(N8N_API_URL),
         N8N_API_KEY: validateEnvironmentValue(N8N_API_KEY),
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.log(`Warning: Environment variable validation failed: ${error.message}`)
       envVarsToAdd = {}
     }
@@ -269,7 +273,8 @@ async function main() {
       try {
         const validatedValue = validateEnvironmentValue(value)
         commandParts.push(`--env ${key}="${validatedValue}"`)
-      } catch (error) {
+      }
+      catch (error) {
         console.log(`Warning: Skipping invalid environment variable ${key}: ${error.message}`)
       }
     }
@@ -288,7 +293,8 @@ async function main() {
         try {
           const validatedValue = validateEnvironmentValue(value)
           return [`--env`, `${key}=${validatedValue}`]
-        } catch (error) {
+        }
+        catch (error) {
           console.log(`Warning: Skipping invalid environment variable ${key}: ${error.message}`)
           return []
         }
@@ -349,14 +355,15 @@ async function main() {
               try {
                 const validatedValue = validateEnvironmentValue(value)
                 return [`--env`, `${key}=${validatedValue}`]
-              } catch (error) {
+              }
+              catch (error) {
                 console.log(`Warning: Skipping invalid environment variable ${key}: ${error.message}`)
                 return []
               }
             }
             return []
           })
-          
+
           await safeExecCommand('claude', ['mcp', 'add', 'n8n-mcp-modern', '--scope', scope, ...envArgs, '--', 'npx', '-y', '@eekfonky/n8n-mcp-modern'], { stdio: 'inherit' })
           console.log('')
           console.log('✅ Upgrade completed successfully!')

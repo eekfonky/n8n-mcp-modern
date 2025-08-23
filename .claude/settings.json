@@ -1,26 +1,16 @@
 {
-  "agentSettings": {
-    "projectSpecific": true,
-    "agentPath": ".claude/agents",
-    "enforceSpecialization": true
-  },
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Write",
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/validate-typescript.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
+            "command": ".claude/hooks/validate-typescript.sh"
+          },
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/validate-javascript.sh"
+            "command": ".claude/hooks/validate-javascript.sh"
           }
         ]
       }

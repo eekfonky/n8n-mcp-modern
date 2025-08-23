@@ -103,20 +103,18 @@ function getToolCount(): {
   registered: number
   comprehensive: number
 } {
-  // Import tool counts dynamically
-  try {
-    // These will be available after imports
-    const registeredTools = 13 // Base MCP-registered tools (counted from setupTools)
-    const comprehensiveTools = 113 // Total tools via routing: 77 comprehensive + 16 code-gen + 14 dev-workflow + 19 perf-obs - 13 overlap = 113
-    return {
-      total: registeredTools + comprehensiveTools,
-      registered: registeredTools,
-      comprehensive: comprehensiveTools,
-    }
-  }
-  catch {
-    // Fallback if imports not available
-    return { total: 126, registered: 13, comprehensive: 113 }
+  // Actual tool counts from codebase analysis:
+  // - 12 tools registered via MCP protocol (index.ts)
+  // - 52 tools in executeTool switch statement
+  // - 40 tools in comprehensive.ts
+  // Total accessible: 92 unique tools
+  const registeredTools = 12 // MCP-registered entry points
+  const routedTools = 52 // Tools in executeTool switch
+  const comprehensiveTools = 40 // Tools in comprehensive.ts
+  return {
+    total: routedTools + comprehensiveTools, // 92 total unique tools
+    registered: registeredTools, // 12 MCP entry points
+    comprehensive: routedTools + comprehensiveTools, // 92 routed tools
   }
 }
 

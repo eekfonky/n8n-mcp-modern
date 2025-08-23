@@ -28,7 +28,7 @@ describe('enhanced HTTP Client Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    
+
     // Configure default mock behavior
     mockRequest.mockResolvedValue({
       statusCode: 200,
@@ -38,12 +38,12 @@ describe('enhanced HTTP Client Tests', () => {
         json: () => Promise.resolve({ success: true, data: 'test' }),
       },
     })
-    
+
     mockAgent.mockImplementation(() => ({
       close: vi.fn().mockResolvedValue(undefined),
       destroy: vi.fn().mockResolvedValue(undefined),
     }))
-    
+
     mockPool.mockImplementation(() => ({
       close: vi.fn().mockResolvedValue(undefined),
       destroy: vi.fn().mockResolvedValue(undefined),
@@ -55,9 +55,9 @@ describe('enhanced HTTP Client Tests', () => {
         size: 3,
       },
     }))
-    
+
     mockSetGlobalDispatcher.mockImplementation(() => {})
-    
+
     client = new EnhancedHttpClient()
   })
 

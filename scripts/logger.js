@@ -5,9 +5,9 @@
  * Provides consistent, structured logging across all JavaScript files
  */
 
-import { writeFileSync, existsSync, mkdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
+import { dirname, join } from 'node:path'
 
 /**
  * Log levels with numeric values for filtering
@@ -42,24 +42,24 @@ export function createLogger(context = 'general', options = {}) {
 
   const formatMessage = (message, logLevel, metadata = {}) => {
     const parts = []
-    
+
     if (includeTimestamp) {
       parts.push(`[${new Date().toISOString()}]`)
     }
-    
+
     parts.push(`[${Object.keys(LogLevel)[logLevel]}]`)
-    
+
     if (includeContext) {
       parts.push(`[${context}]`)
     }
-    
+
     parts.push(message)
-    
+
     // Add metadata if provided
     if (Object.keys(metadata).length > 0) {
       parts.push(JSON.stringify(metadata))
     }
-    
+
     return parts.join(' ')
   }
 
@@ -67,18 +67,19 @@ export function createLogger(context = 'general', options = {}) {
     // Always write to console
     const emoji = getLogEmoji(logLevel)
     console.log(`${emoji} ${formattedMessage}`)
-    
+
     // Write to file if configured
     if (writeToFile && logFile) {
       try {
         writeFileSync(logFile, `${formattedMessage}\n`, { flag: 'a' })
-      } catch (error) {
+      }
+      catch (error) {
         console.error('Failed to write to log file:', error.message)
       }
     }
   }
 
-  const shouldLog = (logLevel) => logLevel >= level
+  const shouldLog = logLevel => logLevel >= level
 
   return {
     debug: (message, metadata) => {
@@ -86,37 +87,37 @@ export function createLogger(context = 'general', options = {}) {
         writeLog(formatMessage(message, LogLevel.DEBUG, metadata), LogLevel.DEBUG)
       }
     },
-    
+
     info: (message, metadata) => {
       if (shouldLog(LogLevel.INFO)) {
         writeLog(formatMessage(message, LogLevel.INFO, metadata), LogLevel.INFO)
       }
     },
-    
+
     warn: (message, metadata) => {
       if (shouldLog(LogLevel.WARN)) {
         writeLog(formatMessage(message, LogLevel.WARN, metadata), LogLevel.WARN)
       }
     },
-    
+
     error: (message, metadata) => {
       if (shouldLog(LogLevel.ERROR)) {
         writeLog(formatMessage(message, LogLevel.ERROR, metadata), LogLevel.ERROR)
       }
     },
-    
+
     success: (message, metadata) => {
       if (shouldLog(LogLevel.SUCCESS)) {
         writeLog(formatMessage(message, LogLevel.SUCCESS, metadata), LogLevel.SUCCESS)
       }
     },
-    
+
     // Convenience method for logging with custom level
     log: (message, logLevel = LogLevel.INFO, metadata) => {
       if (shouldLog(logLevel)) {
         writeLog(formatMessage(message, logLevel, metadata), logLevel)
       }
-    }
+    },
   }
 }
 
@@ -145,7 +146,7 @@ function getLogEmoji(logLevel) {
  */
 export function createScriptLogger(scriptName, options = {}) {
   const defaultLogFile = join(homedir(), '.n8n-mcp-modern', 'logs', `${scriptName}.log`)
-  
+
   return createLogger(scriptName, {
     writeToFile: true,
     logFile: defaultLogFile,
@@ -163,14 +164,14 @@ export const logger = createLogger('n8n-mcp-modern')
  */
 export function createTimer(logger, operation) {
   const start = process.hrtime.bigint()
-  
+
   return {
     end: () => {
       const end = process.hrtime.bigint()
       const duration = Number(end - start) / 1000000 // Convert to milliseconds
       logger.info(`${operation} completed`, { duration: `${duration.toFixed(2)}ms` })
       return duration
-    }
+    },
   }
 }
 
@@ -183,7 +184,7 @@ export function logError(logger, error, context = '') {
     stack: error.stack?.split('\n').slice(0, 3).join(' | '), // First 3 lines
     context,
   }
-  
+
   logger.error(error.message, metadata)
 }
 
@@ -192,14 +193,15 @@ export function logError(logger, error, context = '') {
  */
 export function logEnvironment(logger, envVars = {}) {
   const sanitized = {}
-  
+
   for (const [key, value] of Object.entries(envVars)) {
     if (key.toLowerCase().includes('key') || key.toLowerCase().includes('token') || key.toLowerCase().includes('secret')) {
       sanitized[key] = value ? `***${value.slice(-4)}` : 'not-set'
-    } else {
+    }
+    else {
       sanitized[key] = value || 'not-set'
     }
   }
-  
+
   logger.info('Environment variables loaded', sanitized)
 }

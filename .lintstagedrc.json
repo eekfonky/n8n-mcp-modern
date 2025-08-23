@@ -4,5 +4,6 @@
   ],
   "*.{ts,tsx,js,jsx,mjs,cjs,json,md}": [
     "eslint --fix"
-  ]
+  ],
+  "ignore": ["node_modules/**", "dist/**"]
 }
