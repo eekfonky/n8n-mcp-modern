@@ -72,7 +72,8 @@ n8n-mcp install
   "better-sqlite3": "^12.2.0",              // SQLite database
   "undici": "^7.0.0",                       // HTTP client
   "dotenv": "^17.2.1",                      // Configuration
-  "zod": "^3.25.76"                         // Validation
+  "zod": "^3.25.76",                        // Validation
+  ...
 }
 ```
 
@@ -109,6 +110,8 @@ TIER 3: SUPPORT SPECIALISTS
 - **📊 Performance & Monitoring** (12 tools) - Analytics, optimization, alerting
 - **📚 Core n8n Management** (46 tools) - Workflows, credentials, nodes, users
 - **🔍 Additional Utilities** (12 tools) - Search, validation, debugging
+
+**Total: 92 tools** providing comprehensive n8n workflow automation capabilities.
 
 ### Key Capabilities
 

@@ -109,7 +109,7 @@ That's it! The smart install/upgrade will:
 
 #### 🛠️ **MCP Server (v4.3.4)**
 
-- Complete implementation of all **126 tools** (up from broken "87+")
+- Complete implementation of all **92 tools** (up from broken legacy implementations)
 - Fixed comprehensive tool routing (no more "Unknown tool" errors)
 - Enhanced user & system management capabilities
 - Improved workflow import/export and templates
@@ -149,7 +149,7 @@ claude mcp add @eekfonky/n8n-mcp-modern
 After upgrading, verify everything is working:
 
 ```bash
-# Check tool count (should show 126 tools)
+# Check tool count (should show 92 tools)
 npx @eekfonky/n8n-mcp-modern --version
 
 # Verify agents are installed
@@ -190,7 +190,7 @@ cp ~/.claude/config.json ~/.claude/config.json.backup
 npx @eekfonky/n8n-mcp-modern --health-check
 
 # Should report:
-# ✅ 126 tools available
+# ✅ 92 tools available
 # ✅ 6 agents configured
 # ✅ All systems operational
 ```
@@ -250,4 +250,4 @@ npx @eekfonky/n8n-mcp-modern --health-check
 
 ---
 
-**🚀 Ready to install or upgrade?** Run `npx @eekfonky/n8n-mcp-modern install` and get all 126 tools working in seconds!
+**🚀 Ready to install or upgrade?** Run `npx @eekfonky/n8n-mcp-modern install` and get all 92 tools working in seconds!

@@ -50,7 +50,7 @@ npm run validate-readme            # Validate documentation accuracy
 src/
 ├── server/           # MCP server implementation (config.ts, logger.ts, security.ts)
 ├── database/         # SQLite with clean schemas
-├── tools/           # 92+ MCP tools (modern patterns)
+├── tools/           # 92 MCP tools (modern patterns)
 ├── agents/          # 6-agent hierarchical system
 ├── n8n/            # N8N API integration layer
 ├── types/          # Complete TypeScript definitions
@@ -112,7 +112,7 @@ Environment variables are validated through Zod schemas in `src/server/config.ts
 **Zod-First Approach:**
 
 - All configurations validated via `ConfigSchema`
-- Input validation for all 92+ MCP tools
+- Input validation for all 92 MCP tools
 - Custom `N8NMcpError` class for structured error handling
 - Validation profiles: minimal, runtime, ai-friendly, strict
 

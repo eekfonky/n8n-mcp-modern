@@ -6,7 +6,7 @@ _Next Review: 2025-09-17_
 
 ## Infrastructure Overview
 
-**Project Context:** n8n-MCP-Modern is a high-performance MCP server providing 87+ tools for n8n workflow automation, built with zero legacy dependencies and modern TypeScript architecture.
+**Project Context:** n8n-MCP-Modern is a high-performance MCP server providing 92 tools for n8n workflow automation, built with zero legacy dependencies and modern TypeScript architecture.
 
 **Deployment Strategy:**
 

@@ -7,7 +7,7 @@ import type {
   WorkflowCreatePayload,
   WorkflowUpdatePayload,
 } from '../types/api-payloads.js'
-import type { N8NNodeAPI, N8NNodeCredential, N8NNodeProperty } from '../types/core.js'
+import type { N8NNodeAPI, N8NWorkflowNode } from '../types/core.js'
 import type { EnhancedRequestOptions } from '../utils/enhanced-http-client.js'
 import process from 'node:process'
 
@@ -66,12 +66,6 @@ export interface N8NWorkflow {
 }
 
 /**
- * n8n Workflow Node
- * @deprecated Use N8NWorkflowNode from types/core.ts instead
- */
-export type N8NWorkflowNode = import('../types/core.js').N8NWorkflowNode
-
-/**
  * n8n Execution
  */
 export interface N8NExecution {
@@ -120,18 +114,6 @@ export interface N8NUser {
  * @deprecated Use N8NNodeAPI from types/core.ts instead
  */
 export type N8NNodeType = N8NNodeAPI
-
-/**
- * n8n Node Property
- * @deprecated Use N8NNodeProperty from types/core.ts instead
- */
-export type N8NNodePropertyLegacy = N8NNodeProperty
-
-/**
- * n8n Node Credential
- * @deprecated Use N8NNodeCredential from types/core.ts instead
- */
-export type N8NNodeCredentialLegacy = N8NNodeCredential
 
 /**
  * n8n Settings

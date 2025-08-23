@@ -216,7 +216,7 @@ describe('documentation Validation Tests', () => {
       const actualAgentCount = agentFiles.length
 
       // Validate tier structure matches reality
-      const tierMatches = claudeContent.match(/TIER\s*(\d+)[^:]*:\s*([^:]+):/gi) || []
+      const tierMatches = claudeContent.match(/TIER\s*(\d)[^:\n]*:([^:\n]+):/gi) || []
 
       if (tierMatches.length > 0) {
         expect(tierMatches.length).toBeGreaterThanOrEqual(2) // At least 2 tiers
@@ -242,7 +242,7 @@ describe('documentation Validation Tests', () => {
 
     it('should have accurate command examples', () => {
       // Extract npm/command examples
-      const commandExamples = claudeContent.match(/```(?:bash|shell)?\s*\n([\s\S]*?)\n```/g) || []
+      const commandExamples = claudeContent.match(/```(?:bash|shell)?\n([^`]*?)\n```/g) || []
 
       commandExamples.forEach((example) => {
         const commands = example.match(/(npm\s+run\s+\w+|npx\s+\w+)/g) || []
@@ -266,7 +266,7 @@ describe('documentation Validation Tests', () => {
 
     it('should have accurate file structure documentation', () => {
       // Extract directory structure from CLAUDE.md
-      const structureMatch = claudeContent.match(/```\s*\nsrc\/\s*\n([\s\S]*?)\n```/)
+      const structureMatch = claudeContent.match(/```\nsrc\/\n([^`]*?)\n```/)
 
       if (structureMatch) {
         const structure = structureMatch[1]
@@ -420,7 +420,7 @@ describe('documentation Validation Tests', () => {
 
     it('should validate code examples syntax', () => {
       const codeBlocks = [readmeContent, claudeContent].map(content =>
-        content.match(/```\w*\s*\n([\s\S]*?)\n```/g) || [],
+        content.match(/```\w*\n([^`]*?)\n```/g) || [],
       ).flat()
 
       codeBlocks.forEach((block) => {
@@ -512,11 +512,20 @@ describe('documentation Validation Tests', () => {
 
     const names: string[] = []
 
+    // Known non-agent patterns to exclude
+    const excludePatterns = [
+      'n8n-mcp',
+      'n8n-mcp-modern',
+      'n8n-MCP Modern',
+      '@eekfonky/n8n-mcp-modern',
+      '@lexinet/n8n-mcp-modern',
+    ]
+
     patterns.forEach((pattern) => {
       const matches = content.match(pattern) || []
       matches.forEach((match) => {
         const name = match.replace(/[`*_]/g, '')
-        if (name.startsWith('n8n-')) {
+        if (name.startsWith('n8n-') && !excludePatterns.some(exclude => name.includes(exclude))) {
           names.push(name)
         }
       })

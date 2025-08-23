@@ -1,4 +1,3 @@
-import type { N8NNodeAPI, N8NNodeProperty } from './core.js'
 import { z } from 'zod'
 
 // Core MCP Types
@@ -77,17 +76,6 @@ export const ConfigSchema = z.object({
 export type Config = z.infer<typeof ConfigSchema>
 
 // N8N Node Types (Deprecated - Use Unified Types)
-/**
- * @deprecated Use N8NNodeAPI from types/core.ts for API responses,
- * N8NNodeDatabase for database operations, or N8NWorkflowNode for workflows.
- * This legacy interface caused type conflicts and unsafe casting.
- */
-export type N8NNodeLegacy = N8NNodeAPI
-
-/**
- * @deprecated Use N8NNodeProperty from types/core.ts instead
- */
-export type N8NNodePropertyLegacy = N8NNodeProperty
 
 // Enhanced Security Types
 export type {
