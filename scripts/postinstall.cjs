@@ -56,34 +56,66 @@ function checkAndBuild() {
       log('Building TypeScript files...')
       execSync('npx tsc', { stdio: 'inherit', cwd: packageRoot })
 
-      // Make binary executable
+      // Make binary executable and validate
       const binaryPath = path.join(distPath, 'index.js')
       if (fs.existsSync(binaryPath)) {
         execSync(`chmod +x "${binaryPath}"`)
-        log('Binary made executable')
+
+        // Validate the binary syntax is correct (quick check)
+        try {
+          execSync(`node -c "${binaryPath}"`, { stdio: 'pipe' })
+        }
+        catch {
+          throw new Error('Built binary has syntax errors')
+        }
+
+        log('Binary built and validated successfully')
+      }
+      else {
+        throw new Error('TypeScript build did not produce expected binary')
       }
     }
 
-    // Create database placeholder if needed
+    // Handle database requirement - all or nothing approach
     if (needsDatabase) {
       const dataDir = path.join(packageRoot, 'data')
       if (!fs.existsSync(dataDir)) {
         fs.mkdirSync(dataDir, { recursive: true })
       }
 
-      // Create empty database file
-      fs.writeFileSync(dataPath, '')
-      log('Database placeholder created')
-      log('Run "npm run rebuild-db" to populate with n8n node data', true)
+      // Check if we have a rebuild-db script to populate it
+      const packageJsonPath = path.join(packageRoot, 'package.json')
+      if (fs.existsSync(packageJsonPath)) {
+        const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+        if (pkg.scripts && pkg.scripts['rebuild-db']) {
+          log('Building complete n8n node database...')
+          try {
+            execSync('npm run rebuild-db', { stdio: 'inherit', cwd: packageRoot })
+            log('Database populated successfully')
+          }
+          catch {
+            log('Database rebuild failed - MCP requires complete setup', true)
+            throw new Error('Failed to build required n8n node database')
+          }
+        }
+        else {
+          log('No database rebuild script available', true)
+          log('MCP server requires complete n8n node database', true)
+          throw new Error('Installation incomplete - missing database rebuild capability')
+        }
+      }
+      else {
+        throw new Error('Package configuration not found')
+      }
     }
 
     log('Post-install setup complete')
   }
   catch (error) {
     log(`Build failed: ${error.message}`, true)
-    log('Package may not function correctly without build', true)
-    // Don't fail the install - allow degraded functionality
-    process.exit(0)
+    log('MCP server requires complete build - installation failed', true)
+    log('Please ensure TypeScript and build dependencies are available', true)
+    process.exit(1) // Fail hard - no partial functionality
   }
 }
 
