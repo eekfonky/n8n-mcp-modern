@@ -213,6 +213,10 @@ export class InputSanitizer {
     // eslint-disable-next-line no-control-regex
     let sanitized = input.replace(/[\u0000-\u001F\u007F]/g, '')
 
+    // Remove dangerous Unicode control characters
+    // Including: Zero-width chars, RTL/LTR overrides, BOM, etc.
+    sanitized = sanitized.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+
     // Truncate to max length
     if (sanitized.length > maxLength) {
       sanitized = sanitized.substring(0, maxLength)
@@ -259,6 +263,8 @@ export class InputSanitizer {
  */
 export class RateLimiter {
   private readonly requests = new Map<string, number[]>()
+  private readonly requestCounts = new Map<string, number>()
+  private readonly windowStart = new Map<string, number>()
 
   constructor(
     private readonly maxRequests: number = 100,
@@ -266,16 +272,30 @@ export class RateLimiter {
   ) {}
 
   /**
-   * Check if request is allowed
+   * Check if request is allowed (thread-safe)
    */
   isAllowed(identifier: string): boolean {
     const now = Date.now()
-    const requests = this.requests.get(identifier) ?? []
 
-    // Filter out old requests
-    const recentRequests = requests.filter(time => now - time < this.windowMs)
+    // Get or initialize window start time
+    const windowStartTime = this.windowStart.get(identifier) ?? now
 
-    if (recentRequests.length >= this.maxRequests) {
+    // Check if window has expired
+    if (now - windowStartTime >= this.windowMs) {
+      // Reset window
+      this.windowStart.set(identifier, now)
+      this.requestCounts.set(identifier, 1)
+      return true
+    }
+
+    // Atomic increment and check
+    const currentCount = (this.requestCounts.get(identifier) ?? 0) + 1
+    this.requestCounts.set(identifier, currentCount)
+
+    if (currentCount > this.maxRequests) {
+      // Decrement since we're rejecting this request
+      this.requestCounts.set(identifier, currentCount - 1)
+
       securityAudit.logEvent({
         eventType: SecurityEventType.ACCESS_DENIED,
         success: false,
@@ -285,10 +305,6 @@ export class RateLimiter {
       return false
     }
 
-    // Add current request
-    recentRequests.push(now)
-    this.requests.set(identifier, recentRequests)
-
     return true
   }
 
@@ -297,6 +313,8 @@ export class RateLimiter {
    */
   reset(identifier: string): void {
     this.requests.delete(identifier)
+    this.requestCounts.delete(identifier)
+    this.windowStart.delete(identifier)
   }
 
   /**
@@ -304,6 +322,8 @@ export class RateLimiter {
    */
   clearAll(): void {
     this.requests.clear()
+    this.requestCounts.clear()
+    this.windowStart.clear()
   }
 }
 

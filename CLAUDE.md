@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**n8n-MCP Modern** is a high-performance MCP (Model Context Protocol) server that provides 92 tools for n8n workflow automation. Built from the ground up with zero legacy dependencies, it features a 6-agent hierarchical system and modern TypeScript architecture.
+**n8n-MCP Modern** is a high-performance MCP (Model Context Protocol) server that provides a suite of tools for n8n workflow automation. Built from the ground up with zero legacy dependencies, it features a 6-agent hierarchical system and modern TypeScript architecture.
 
 **Key Architecture Principles:**
 
@@ -50,7 +50,7 @@ npm run validate-readme            # Validate documentation accuracy
 src/
 ├── server/           # MCP server implementation (config.ts, logger.ts, security.ts)
 ├── database/         # SQLite with clean schemas
-├── tools/           # 92 MCP tools (modern patterns)
+├── tools/           # MCP tools (modern patterns)
 ├── agents/          # 6-agent hierarchical system
 ├── n8n/            # N8N API integration layer
 ├── types/          # Complete TypeScript definitions

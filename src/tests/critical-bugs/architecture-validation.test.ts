@@ -267,7 +267,7 @@ describe('architecture Validation Tests', () => {
 
     it('should validate import/export consistency', () => {
       // Check that exports from tools/index.ts are imported in main index
-      const exportMatches = toolsIndexContent.match(/export\s+\{\s*([^}]+)\s*\}/g) || []
+      const exportMatches = toolsIndexContent.match(/export\s*\{([^}]+)\}/g) || []
 
       exportMatches.forEach((exportMatch) => {
         const exports = exportMatch.match(/[\w,\s]+/g)?.[0]
