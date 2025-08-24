@@ -92,6 +92,9 @@ temp/
 # BMAD package directories
 .bmad-*/
 
+# Google AI Studio / Gemini directories
+.gemini/
+
 # Prevent technical debt accumulation
 # Debug/test files at root level
 debug-*.ts
