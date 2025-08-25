@@ -1,7 +1,7 @@
 /**
  * Story File Manager - Database and Management Layer
  *
- * Provides persistence and management for BMAD-METHOD story files,
+ * Provides persistence and management for agent handover story files,
  * implementing the StoryFileOperations interface with SQLite backing.
  */
 

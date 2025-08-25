@@ -31,7 +31,7 @@ export interface CommunicationMetrics {
   queueLength: number
   circuitBreakerState: CircuitBreakerState
 
-  // BMAD-METHOD Story File Metrics
+  // Agent handover story file metrics
   storyMetrics?: StoryMetrics
   activeStoryFiles: number
   averageHandoverTime: number

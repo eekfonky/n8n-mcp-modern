@@ -4,10 +4,10 @@
  * Central integration point for all intelligent workflow optimization features.
  * Provides a unified interface for intent classification, node recommendation,
  * complexity assessment, and enhanced routing while preserving the existing
- * BMAD-METHOD architecture.
+ * agent handover architecture.
  *
  * Philosophy: Intelligent enhancement layer that augments rather than replaces
- * the proven agent coordination system.
+ * the proven agent handover system.
  */
 
 import type { CommunicationManager } from '../agents/communication.js'

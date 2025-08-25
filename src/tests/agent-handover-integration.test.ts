@@ -1,7 +1,7 @@
 /**
  * Integration Tests for Agent Handover Flows
  *
- * Tests the complete BMAD-METHOD agent handover patterns including:
+ * Tests the complete agent handover patterns including:
  * - Two-phase workflow (planning → implementation)
  * - Context preservation across agent boundaries
  * - Story file persistence and retrieval

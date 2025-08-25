@@ -45,7 +45,7 @@
 ### Architecture Complexity:
 - **Tool Execution Pipeline:** 6+ processing steps (target: 2-3 steps)
 - **Agent System:** 6-tier hierarchy with intelligent routing
-- **Intelligence Layer:** Full BMAD-METHOD integration (scheduled for simplification)
+- **Intelligence Layer:** Full agent handover integration (scheduled for simplification)
 - **Monitoring Systems:** 5+ overlapping monitoring layers
 
 ### Memory Usage Patterns:

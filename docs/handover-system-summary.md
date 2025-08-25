@@ -115,7 +115,7 @@ HANDOVER_DETAILED_LOGGING=true       # Verbose logging
 ## 🔧 Technical Architecture
 
 ### **Core Components**
-1. **Story Files** - BMAD-method context preservation
+1. **Story Files** - Agent handover context preservation
 2. **Communication Manager** - Advanced agent coordination  
 3. **Handover Features** - Configuration and complexity assessment
 4. **Intelligent Routing** - Decision engine for simple vs handover
@@ -153,7 +153,7 @@ HANDOVER_DETAILED_LOGGING=true       # Verbose logging
 2. **Sophisticated Handovers** - For complex workflows (automatic)
 3. **User Choice** - Enable/disable per preference
 4. **Quality Assurance** - Validation and scoring
-5. **Context Preservation** - Complete BMAD-method story files
+5. **Context Preservation** - Complete agent handover story files
 6. **Emergency Response** - Immediate security escalation
 7. **Performance Optimization** - Specialized agent expertise
 8. **Comprehensive Testing** - All scenarios validated

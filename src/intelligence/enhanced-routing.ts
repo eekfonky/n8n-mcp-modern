@@ -1,7 +1,7 @@
 /**
  * Enhanced Intelligent Routing for n8n-MCP Modern
  *
- * Extends the existing BMAD-METHOD communication system with intelligent routing
+ * Extends the existing agent handover communication system with intelligent routing
  * capabilities, lightweight handover modes, and intent-driven optimization.
  *
  * Philosophy: Layer intelligence on top of existing robust architecture without
@@ -71,7 +71,7 @@ export enum HandoverMode {
   NONE = 'none', // No handover needed - direct execution
   LIGHTWEIGHT = 'lightweight', // Minimal context sharing
   STANDARD = 'standard', // Standard story file handover
-  FULL_BMAD = 'full_bmad', // Complete BMAD-METHOD process
+  FULL_BMAD = 'full_bmad', // Complete agent handover process
 }
 
 export interface HandoverContext {

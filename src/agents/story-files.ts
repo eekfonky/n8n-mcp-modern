@@ -1,8 +1,8 @@
 /**
- * Story File System for BMAD-METHOD Agentic Handover
+ * Story File System for Agent Handover
  *
  * Implements persistent context preservation between agent handovers,
- * inspired by BMAD-METHOD's story file pattern. Provides:
+ * inspired by collaborative agent patterns. Provides:
  * - Rich context preservation during agent transitions
  * - Two-phase workflow support (planning → implementation)
  * - Decision audit trails for debugging and learning

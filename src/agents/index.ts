@@ -88,7 +88,7 @@ export enum EscalationUrgency {
 }
 
 /**
- * Escalation request structure - Enhanced with BMAD-METHOD story file support
+ * Escalation request structure - Enhanced with agent handover story file support
  */
 export interface EscalationRequest {
   originalToolName: string
@@ -103,7 +103,7 @@ export interface EscalationRequest {
   additionalContext?: Record<string, unknown>
   timestamp?: number
 
-  // BMAD-METHOD Story File Extensions
+  // Agent handover story file extensions
   storyFileId?: string
   requiresNewStory?: boolean
   completedWork?: string[]
@@ -124,7 +124,7 @@ export interface EscalationRequest {
 }
 
 /**
- * Escalation result structure - Enhanced with BMAD-METHOD story file support
+ * Escalation result structure - Enhanced with agent handover story file support
  */
 export interface EscalationResult {
   success: boolean
@@ -137,7 +137,7 @@ export interface EscalationResult {
   metadata?: Record<string, unknown>
   timestamp?: number
 
-  // BMAD-METHOD Story File Extensions
+  // Agent handover story file extensions
   storyFileId?: string | undefined
   storyUpdates?: {
     completedWork?: string[]
@@ -267,7 +267,7 @@ export interface AgentContext {
 }
 
 /**
- * Base agent interface - Enhanced with BMAD-METHOD story file support
+ * Base agent interface - Enhanced with agent handover story file support
  */
 export interface Agent {
   name: string
@@ -288,7 +288,7 @@ export interface Agent {
   escalateToSpecialist?: (request: EscalationRequest) => Promise<EscalationResult>
   handleEscalation?: (request: EscalationRequest) => Promise<EscalationResult>
 
-  // BMAD-METHOD Story File Support
+  // Agent handover story file support
   createStoryFile?: (context: AgentContext, initialWork?: string[]) => Promise<string>
   updateStoryFile?: (storyId: string, updates: {
     completedWork?: string[]

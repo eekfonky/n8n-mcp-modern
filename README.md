@@ -4,11 +4,11 @@
 [![Version](https://img.shields.io/badge/version-6.0.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 
-**Modern n8n MCP server with BMAD-METHOD agentic handover system. Zero legacy dependencies, maximum performance.**
+**Modern n8n MCP server with agent handover system. Zero legacy dependencies, maximum performance.**
 
 ## 🎯 What's New in v6.0.0
 
-**BREAKING CHANGE** - Complete BMAD-METHOD integration:
+**BREAKING CHANGE** - Complete agent handover integration:
 - ✅ **Story File System**: Rich context preservation with audit trails
 - ✅ **Two-Phase Workflows**: Planning → Implementation handovers  
 - ✅ **Decision Tracking**: Impact assessment and complete audit trails
@@ -59,7 +59,7 @@ claude mcp add n8n-mcp-modern \
 
 ## 🏗️ Architecture
 
-### 6-Agent Hierarchy with BMAD-METHOD Handovers
+### 6-Agent Hierarchy with Agent Handovers
 
 ```
 TIER 1 - MASTER ORCHESTRATOR
@@ -87,7 +87,7 @@ TIER 3 - SUPPORT
 
 ## 🛠️ Core Features
 
-### BMAD-METHOD Story Files
+### Agent Handover Story Files
 - **Rich Context**: Complete preservation during agent handovers
 - **Decision Audit**: Impact tracking with rollback capabilities  
 - **Two-Phase Flow**: Planning → Implementation workflows
@@ -106,7 +106,7 @@ TIER 3 - SUPPORT
 
 ## 📊 Story File System
 
-The BMAD-METHOD integration provides persistent context across agent handovers:
+The agent handover system provides persistent context across agent transitions:
 
 ```typescript
 // Story files automatically created during agent escalations
@@ -194,4 +194,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ---
 
 **Built for Claude Code integration**  
-Enhanced by eekfonky - Modern TypeScript rebuild with BMAD-METHOD integration
+Enhanced by eekfonky - Modern TypeScript rebuild with agent handover integration

@@ -1,7 +1,7 @@
 /**
  * Intelligent Agent Routing System
  * 
- * Bridges the gap between simple routing and BMAD-method handovers.
+ * Bridges the gap between simple routing and agent handovers.
  * Automatically determines when to use collaborative multi-agent approach
  * versus single-agent simple routing based on complexity and user preferences.
  */

@@ -1,6 +1,6 @@
 /**
  * Agent Handover Validation Tests
- * Tests the complete BMAD-method handover system for complex n8n workflows
+ * Tests the complete agent handover system for complex n8n workflows
  */
 
 import type { Agent } from '../agents/index.js'

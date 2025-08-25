@@ -1,8 +1,8 @@
 /**
- * Unit Tests for BMAD-METHOD Story File System
+ * Unit Tests for Agent Handover Story File System
  *
  * Comprehensive tests for story file creation, persistence, handovers,
- * validation, and the complete BMAD-METHOD integration.
+ * validation, and the complete agent handover integration.
  */
 
 import type { Agent, EscalationRequest } from '../agents/index.js'
@@ -547,7 +547,7 @@ describe('error Handling and Edge Cases', () => {
 })
 
 describe('integration with Agent System', () => {
-  it('should support the complete BMAD-METHOD workflow', async () => {
+  it('should support the complete agent handover workflow', async () => {
     // 1. Planning Phase - Create story file
     const planningStory = StoryFileFactory.create({
       agentName: 'n8n-workflow-architect',

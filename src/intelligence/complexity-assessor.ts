@@ -38,7 +38,7 @@ export interface ComplexityRecommendation {
 }
 
 export interface ResourceRequirements {
-  agentTier: 1 | 2 | 3 // Maps to BMAD-METHOD tiers
+  agentTier: 1 | 2 | 3 // Maps to agent hierarchy tiers
   estimatedAgents: string[]
   storyFileRequired: boolean
   governanceLevel: 'minimal' | 'standard' | 'enterprise'
