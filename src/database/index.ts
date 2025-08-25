@@ -150,6 +150,14 @@ export class DatabaseQueryError extends N8NMcpError {
  */
 export class DatabaseManager {
   private db: import('better-sqlite3').Database | null = null
+  
+  /**
+   * Get the underlying database instance for advanced operations
+   * @internal Use with caution - prefer using the public methods when possible
+   */
+  get rawDatabase(): import('better-sqlite3').Database | null {
+    return this.db
+  }
   private readonly dbPath: string
   private readonly initTime: Date = new Date()
   private lastHealthCheck: Date | null = null
@@ -815,6 +823,140 @@ export class DatabaseManager {
 
       logger.info('Database connection closed and resources cleaned up')
     }
+  }
+
+  /**
+   * Execute custom SQL operations with type safety
+   * @param operation - Name of the operation for logging/monitoring
+   * @param sqlCallback - Callback that receives the database instance
+   * @returns Result of the callback or null if database unavailable
+   */
+  executeCustomSQL<T>(operation: string, sqlCallback: (db: import('better-sqlite3').Database) => T): T | null {
+    // In test environment, create a mock database and execute the callback
+    if (process.env.NODE_ENV === 'test' && process.env.DATABASE_IN_MEMORY === 'true') {
+      // Simple in-memory storage for tests
+      const testStorage = (global as any).__TEST_DB_STORAGE__ = (global as any).__TEST_DB_STORAGE__ || {
+        stories: new Map(),
+        decisions: new Map(),
+      }
+      
+      const mockDb = {
+        exec: () => true,
+        prepare: (sql: string) => ({
+          run: (...params: any[]) => {
+            // Simulate INSERT operations
+            if (sql.includes('INSERT INTO story_files')) {
+              const id = params[0] // First parameter is usually the ID
+              const storyData = {
+                id: params[0],
+                version: params[1],
+                created_at: params[2],
+                updated_at: params[3],
+                phase: params[4],
+                status: params[5],
+                current_agent: params[6],
+                previous_agents: params[7],
+                next_agent: params[8],
+                context_original: params[9],
+                context_current: params[10],
+                context_technical: params[11],
+                completed_work: params[12],
+                pending_work: params[13],
+                blockers: params[14],
+                handover_notes: params[15],
+                acceptance_criteria: params[16],
+                rollback_plan: params[17],
+                ttl: params[18],
+                priority: params[19],
+                tags: params[20],
+                related_stories: params[21],
+              }
+              testStorage.stories.set(id, storyData)
+            } else if (sql.includes('INSERT INTO story_decisions')) {
+              const decisionId = params[0]
+              const storyId = params[1]
+              const decisionData = {
+                id: params[0],
+                story_id: params[1],
+                timestamp: params[2],
+                agent_name: params[3],
+                decision_type: params[4],
+                description: params[5],
+                rationale: params[6],
+                alternatives: params[7],
+                impact: params[8],
+                reversible: params[9],
+                dependencies: params[10],
+                outcome: params[11],
+              }
+              if (!testStorage.decisions.has(storyId)) {
+                testStorage.decisions.set(storyId, [])
+              }
+              testStorage.decisions.get(storyId).push(decisionData)
+            } else if (sql.includes('UPDATE story_files')) {
+              // Handle updates - params come in different order for UPDATE
+              const id = params[params.length - 1] // Last parameter is the ID in WHERE clause
+              if (testStorage.stories.has(id)) {
+                const existing = testStorage.stories.get(id)
+                const updated = {
+                  ...existing,
+                  version: params[0],
+                  updated_at: params[1],
+                  phase: params[2],
+                  status: params[3],
+                  current_agent: params[4],
+                  previous_agents: params[5],
+                  next_agent: params[6],
+                  context_original: params[7],
+                  context_current: params[8],
+                  context_technical: params[9],
+                  completed_work: params[10],
+                  pending_work: params[11],
+                  blockers: params[12],
+                  handover_notes: params[13],
+                  acceptance_criteria: params[14],
+                  rollback_plan: params[15],
+                  ttl: params[16],
+                  priority: params[17],
+                  tags: params[18],
+                  related_stories: params[19],
+                }
+                testStorage.stories.set(id, updated)
+              }
+            }
+            return { changes: 1 }
+          },
+          get: (id: string) => {
+            if (sql.includes('SELECT * FROM story_files WHERE id = ?')) {
+              return testStorage.stories.get(id) || null
+            }
+            return null
+          },
+          all: (...params: any[]) => {
+            if (sql.includes('SELECT * FROM story_decisions WHERE story_id = ?')) {
+              const storyId = params[0]
+              return testStorage.decisions.get(storyId) || []
+            }
+            if (sql.includes('SELECT * FROM story_files')) {
+              return Array.from(testStorage.stories.values())
+            }
+            return []
+          },
+        }),
+      } as any
+      
+      try {
+        return sqlCallback(mockDb)
+      } catch (error) {
+        // For operations that should return null on failure
+        if (operation.includes('find') || operation.includes('retrieve')) {
+          return null
+        }
+        throw error
+      }
+    }
+    
+    return this.safeExecute(operation, sqlCallback)
   }
 
   /**

@@ -101,6 +101,241 @@ TIER 3: SUPPORT SPECIALISTS
 └─ (Additional research agents as needed)
 ```
 
+## 🧠 BMAD-METHOD Agentic Handover System
+
+**n8n-MCP Modern** implements **BMAD-METHOD inspired** agentic handover patterns for context-rich, multi-agent workflows. This eliminates **planning inconsistency** and **context loss** - the biggest problems in AI-assisted development.
+
+### 🎯 Core Principles
+
+- **Story Files**: Persistent context preservation across agent boundaries
+- **Two-Phase Workflows**: Optional planning → implementation separation  
+- **Decision Audit Trails**: Complete visibility into agent reasoning
+- **Handover Validation**: Ensures context completeness before transitions
+- **Performance Metrics**: Track handover efficiency and story completeness
+
+### 📋 Story File Lifecycle
+
+```mermaid
+graph LR
+    A[Create Story] --> B[Planning Phase]
+    B --> C[Add Decisions]
+    C --> D[Validate Handover]
+    D --> E[Hand to Specialist]
+    E --> F[Implementation Phase]
+    F --> G[Update Progress]
+    G --> H[Complete Story]
+```
+
+### 🚀 Usage Examples
+
+#### Automatic Story Creation
+
+```typescript
+// Stories are automatically created during complex escalations
+const request: EscalationRequest = {
+  originalToolName: 'create_complex_workflow',
+  reason: EscalationReason.COMPLEXITY_EXCEEDED,
+  requiresNewStory: true,           // Creates story file
+  completedWork: ['Analysis phase'],
+  pendingWork: ['Implementation', 'Testing'],
+  technicalContext: {
+    filesModified: ['workflow.json'],
+    testingRequired: true,
+    performanceImpact: 'high'
+  }
+}
+```
+
+#### Manual Story Management
+
+```typescript
+// Create story file manually
+const story = await communicationManager.createStoryFile(
+  'n8n-workflow-architect',
+  { workflowType: 'data-processing', complexity: 'high' },
+  ['Initial planning complete']
+)
+
+// Add architectural decision
+await storyManager.addDecision(story.id, {
+  description: 'Use event-driven architecture',
+  rationale: 'Better scalability for high throughput',
+  impact: 'high',
+  reversible: false
+})
+
+// Hand over to specialist with validation
+const handedOver = await communicationManager.handoverStoryFile(
+  story.id,
+  'n8n-developer-specialist',
+  'Architecture complete. Event-driven pattern selected. Ready for implementation.'
+)
+```
+
+#### Two-Phase Workflow
+
+```typescript
+// Phase 1: Planning
+let story = await storyManager.create({
+  currentAgent: 'n8n-orchestrator',
+  phase: WorkflowPhase.PLANNING,
+  context: { requirements: [...] }
+})
+
+// Complete planning work
+story = await storyManager.update(story.id, {
+  completedWork: ['Requirements analysis', 'Architecture design'],
+  decisions: [architecturalDecision]
+})
+
+// Phase 2: Implementation
+story = await storyManager.transitionPhase(story.id, WorkflowPhase.IMPLEMENTATION)
+story = await storyManager.handover(story.id, 'n8n-builder', 'Planning complete...')
+```
+
+### 📊 Story File Structure
+
+```typescript
+interface StoryFile {
+  // Identity & versioning  
+  id: string
+  version: number
+  createdAt: number
+  updatedAt: number
+  
+  // Workflow tracking
+  phase: 'planning' | 'implementation' | 'validation' | 'completed'
+  status: 'draft' | 'active' | 'handed_over' | 'completed' | 'archived'
+  
+  // Agent information  
+  currentAgent: string
+  previousAgents: string[]
+  
+  // Context preservation
+  context: {
+    original: AgentContext    // Immutable initial context
+    current: AgentContext     // Evolving context
+    technical: TechnicalContext // Code, tests, performance data
+  }
+  
+  // Work tracking
+  completedWork: string[]
+  pendingWork: string[]
+  blockers?: string[]
+  
+  // Decision audit trail
+  decisions: DecisionRecord[]
+  
+  // Handover validation
+  handoverNotes: string
+  acceptanceCriteria?: string[]
+  rollbackPlan?: string
+}
+```
+
+### 🔍 Decision Records
+
+Every significant decision is tracked with full context:
+
+```typescript
+interface DecisionRecord {
+  id: string
+  timestamp: number
+  agentName: string
+  decisionType: 'technical' | 'architectural' | 'process' | 'escalation'
+  description: string
+  rationale: string
+  alternatives?: string[]  // What else was considered
+  impact: 'low' | 'medium' | 'high' | 'critical'
+  reversible: boolean
+  dependencies?: string[]
+  outcome?: {             // Post-implementation results
+    success: boolean
+    notes?: string
+    measuredImpact?: string
+  }
+}
+```
+
+### ✅ Handover Validation
+
+Before any agent handover, the system validates context completeness:
+
+- **Handover notes**: Minimum 10 characters with meaningful content
+- **Work status**: Completed and pending work clearly defined  
+- **Decision trail**: Key decisions documented with rationale
+- **Technical context**: Code changes, test status, performance data
+- **Security considerations**: Vulnerability assessment, rollback plans
+
+**Completeness Score**: 0-100 based on context richness and validation criteria.
+
+### 📈 Performance Metrics
+
+Story file system includes comprehensive analytics:
+
+```typescript
+interface StoryMetrics {
+  totalStories: number
+  storiesByPhase: Record<WorkflowPhase, number>
+  storiesByStatus: Record<StoryStatus, number>
+  averageCompletionTime: number      // End-to-end story lifecycle
+  averageDecisionsPerStory: number   // Decision documentation rate
+  averageHandovers: number           // Agent collaboration frequency
+  completenessScores: number[]       // Handover quality metrics
+}
+```
+
+### 🛠️ Migration & Setup
+
+#### For New Installations
+Story files are automatically enabled - no additional setup required.
+
+#### For Existing Installations
+Run the migration script to add story file support:
+
+```bash
+# Check what will be migrated (dry run)
+node scripts/migrate-story-files.cjs --dry-run
+
+# Create backup and migrate
+node scripts/migrate-story-files.cjs --backup
+
+# Force migration (skip confirmations)
+node scripts/migrate-story-files.cjs --force --backup
+```
+
+#### Environment Variables
+
+```bash
+# Story file configuration (optional)
+STORY_FILE_TTL=604800000          # 7 days default cleanup
+STORY_CACHE_SIZE=300              # LRU cache size
+STORY_HANDOVER_VALIDATION=true    # Enable validation
+```
+
+### 🧪 Testing
+
+Comprehensive test coverage ensures reliability:
+
+```bash
+# Run story file tests
+npm test src/tests/story-files.test.ts
+
+# Run integration tests  
+npm test src/tests/agent-handover-integration.test.ts
+
+# Coverage report
+npm run test:coverage
+```
+
+### 🎯 Benefits
+
+- **Zero Context Loss**: Complete preservation across agent boundaries
+- **Decision Transparency**: Full audit trail of agent reasoning  
+- **Quality Gates**: Validation ensures handover completeness
+- **Performance Visibility**: Metrics for continuous improvement
+- **Backward Compatible**: Works seamlessly with existing workflows
+
 ## 🛠️ 92 MCP Tools
 
 ### Tool Categories

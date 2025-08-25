@@ -12,8 +12,11 @@
  */
 
 import type { Agent, AgentContext, EscalationRequest, EscalationResult } from './index.js'
+import type { StoryFile, StoryMetrics } from './story-files.js'
 import { performance } from 'node:perf_hooks'
 import { logger } from '../server/logger.js'
+import { StoryStatus } from './story-files.js'
+import { storyManager } from './story-manager.js'
 
 // === Performance Monitoring Types ===
 
@@ -26,6 +29,12 @@ export interface CommunicationMetrics {
   activeConnections: number
   queueLength: number
   circuitBreakerState: CircuitBreakerState
+
+  // BMAD-METHOD Story File Metrics
+  storyMetrics?: StoryMetrics
+  activeStoryFiles: number
+  averageHandoverTime: number
+  storyFileHitRatio: number
 }
 
 export interface PerformanceProfile {
@@ -584,6 +593,7 @@ export class MessageQueue<T> {
 export class CommunicationManager {
   private routingCache = new AdvancedCache<Agent>(500, CacheStrategy.ADAPTIVE)
   private performanceCache = new AdvancedCache<PerformanceProfile>(200)
+  private storyFileCache = new AdvancedCache<StoryFile>(300, CacheStrategy.LRU)
   private circuitBreakers = new Map<string, CircuitBreaker>()
   private connectionPool?: AgentConnectionPool
   private messageQueue = new class extends MessageQueue<EscalationRequest> {
@@ -602,6 +612,9 @@ export class CommunicationManager {
     activeConnections: 0,
     queueLength: 0,
     circuitBreakerState: CircuitBreakerState.CLOSED,
+    activeStoryFiles: 0,
+    averageHandoverTime: 0,
+    storyFileHitRatio: 0,
   }
 
   constructor(agents: Agent[]) {
@@ -687,6 +700,49 @@ export class CommunicationManager {
     const startTime = performance.now()
 
     try {
+      // Handle story file integration
+      let storyFileId = request.storyFileId
+      let storyFile: StoryFile | null = null
+
+      // Create or retrieve story file if needed
+      if (request.requiresNewStory && !storyFileId) {
+        storyFile = await storyManager.create({
+          currentAgent: request.sourceAgent,
+          context: {
+            original: request.originalContext ?? {},
+            current: request.originalContext ?? {},
+            technical: {
+              ...(request.technicalContext && {
+                codebaseAnalysis: {
+                  filesModified: request.technicalContext.filesModified ?? [],
+                  filesCreated: [],
+                  filesDeleted: [],
+                  dependencies: [],
+                  breakingChanges: request.technicalContext.breakingChange ?? false,
+                },
+              }),
+            },
+          },
+          completedWork: request.completedWork ?? [],
+          pendingWork: request.pendingWork ?? [],
+          blockers: request.blockers ?? undefined,
+        })
+        storyFileId = storyFile.id
+
+        // Cache the story file
+        this.storyFileCache.set(storyFileId, storyFile, 300000) // 5 minutes
+      }
+      else if (storyFileId) {
+        // Try to get from cache first
+        storyFile = this.storyFileCache.get(storyFileId) ?? null
+        if (!storyFile) {
+          storyFile = await storyManager.retrieve(storyFileId)
+          if (storyFile) {
+            this.storyFileCache.set(storyFileId, storyFile, 300000)
+          }
+        }
+      }
+
       // Queue the escalation for processing (convert urgency to numeric priority)
       const urgencyToPriority = {
         low: 1,
@@ -697,14 +753,22 @@ export class CommunicationManager {
       const priority = request.urgency ? urgencyToPriority[request.urgency] : 5
       await this.messageQueue.enqueue(request, priority)
 
-      // For now, return a basic result
-      // In a full implementation, this would coordinate with other agents
+      // Enhanced result with story file integration
       const result: EscalationResult = {
         success: true,
         handledBy: 'n8n-workflow-architect',
         action: 'handled',
-        message: 'Escalation processed successfully',
+        message: 'Escalation processed successfully with story file integration',
         newContext: {},
+        storyFileId: storyFileId ?? undefined,
+        storyUpdates: storyFile
+          ? {
+              completedWork: storyFile.completedWork,
+              pendingWork: storyFile.pendingWork,
+              decisionsAdded: storyFile.decisions.length,
+              phaseChanged: false,
+            }
+          : undefined,
       }
 
       this.recordLatency('escalation', performance.now() - startTime)
@@ -745,6 +809,18 @@ export class CommunicationManager {
     const cacheStats = this.routingCache.getStats()
     this.metrics.cacheHitRatio = cacheStats.hitRatio
 
+    // Story file metrics
+    const storyFileStats = this.storyFileCache.getStats()
+    this.metrics.storyFileHitRatio = storyFileStats.hitRatio
+
+    // Get story metrics from manager (async but don't wait)
+    storyManager.getMetrics().then((storyMetrics) => {
+      this.metrics.storyMetrics = storyMetrics
+      this.metrics.activeStoryFiles = storyMetrics.storiesByStatus[StoryStatus.ACTIVE] ?? 0
+    }).catch(() => {
+      // Ignore errors in metrics collection
+    })
+
     // Calculate average circuit breaker state
     let openBreakers = 0
     for (const breaker of this.circuitBreakers.values()) {
@@ -764,7 +840,9 @@ export class CommunicationManager {
       routingLatencyAvg: this.getAverageLatency('routing'),
       escalationLatencyAvg: this.getAverageLatency('escalation'),
       cacheHitRatio: this.metrics.cacheHitRatio,
+      storyFileHitRatio: this.metrics.storyFileHitRatio,
       activeConnections: this.metrics.activeConnections,
+      activeStoryFiles: this.metrics.activeStoryFiles,
       queueLength: this.metrics.queueLength,
       circuitBreakerState: this.metrics.circuitBreakerState,
     })
@@ -781,6 +859,68 @@ export class CommunicationManager {
     return { ...this.metrics }
   }
 
+  // === Story File Management ===
+
+  async getStoryFile(storyFileId: string): Promise<StoryFile | null> {
+    // Try cache first
+    const cached = this.storyFileCache.get(storyFileId)
+    if (cached) {
+      return cached
+    }
+
+    // Fetch from database
+    const storyFile = await storyManager.retrieve(storyFileId)
+    if (storyFile) {
+      this.storyFileCache.set(storyFileId, storyFile, 300000) // 5 minute cache
+    }
+
+    return storyFile
+  }
+
+  async createStoryFile(agentName: string, context: Record<string, unknown>, initialWork?: string[]): Promise<StoryFile> {
+    const storyFile = await storyManager.create({
+      currentAgent: agentName,
+      context: {
+        original: context,
+        current: context,
+        technical: {},
+      },
+      completedWork: initialWork ?? [],
+      pendingWork: [],
+    })
+
+    // Cache the new story file
+    this.storyFileCache.set(storyFile.id, storyFile, 300000)
+
+    return storyFile
+  }
+
+  async updateStoryFile(storyFileId: string, updates: Partial<StoryFile>): Promise<StoryFile | null> {
+    const updatedStory = await storyManager.update(storyFileId, updates)
+
+    // Update cache
+    if (updatedStory) {
+      this.storyFileCache.set(storyFileId, updatedStory, 300000)
+    }
+
+    return updatedStory
+  }
+
+  async handoverStoryFile(storyFileId: string, toAgent: string, notes: string): Promise<StoryFile | null> {
+    const handedOverStory = await storyManager.handover(storyFileId, toAgent, notes)
+
+    // Update cache
+    if (handedOverStory) {
+      this.storyFileCache.set(storyFileId, handedOverStory, 300000)
+    }
+
+    return handedOverStory
+  }
+
+  async getStoryMetrics(): Promise<StoryMetrics> {
+    return await storyManager.getMetrics()
+  }
+
   async shutdown(): Promise<void> {
     if (this.connectionPool) {
       await this.connectionPool.destroy()
@@ -788,6 +928,7 @@ export class CommunicationManager {
 
     this.routingCache.clear()
     this.performanceCache.clear()
+    this.storyFileCache.clear()
     this.messageQueue.clear()
     this.circuitBreakers.clear()
 

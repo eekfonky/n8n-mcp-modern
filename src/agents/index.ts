@@ -88,7 +88,7 @@ export enum EscalationUrgency {
 }
 
 /**
- * Escalation request structure
+ * Escalation request structure - Enhanced with BMAD-METHOD story file support
  */
 export interface EscalationRequest {
   originalToolName: string
@@ -102,10 +102,29 @@ export interface EscalationRequest {
   requiredCapabilities: AgentCapability[]
   additionalContext?: Record<string, unknown>
   timestamp?: number
+
+  // BMAD-METHOD Story File Extensions
+  storyFileId?: string
+  requiresNewStory?: boolean
+  completedWork?: string[]
+  pendingWork?: string[]
+  blockers?: string[]
+  rollbackPlan?: string
+  acceptanceCriteria?: string[]
+
+  // Technical context for better handovers
+  technicalContext?: {
+    filesModified?: string[]
+    dependenciesChanged?: boolean
+    testingRequired?: boolean
+    performanceImpact?: 'none' | 'low' | 'medium' | 'high'
+    securityImpact?: 'none' | 'low' | 'medium' | 'high'
+    breakingChange?: boolean
+  }
 }
 
 /**
- * Escalation result structure
+ * Escalation result structure - Enhanced with BMAD-METHOD story file support
  */
 export interface EscalationResult {
   success: boolean
@@ -117,6 +136,17 @@ export interface EscalationResult {
   followUpRequired?: boolean
   metadata?: Record<string, unknown>
   timestamp?: number
+
+  // BMAD-METHOD Story File Extensions
+  storyFileId?: string | undefined
+  storyUpdates?: {
+    completedWork?: string[]
+    pendingWork?: string[]
+    decisionsAdded?: number
+    phaseChanged?: boolean
+  } | undefined
+  handoverNotes?: string | undefined
+  completenessScore?: number | undefined
 }
 
 // Phase 2 MCP Orchestration Types
@@ -225,7 +255,7 @@ export interface AgentContext {
 }
 
 /**
- * Base agent interface
+ * Base agent interface - Enhanced with BMAD-METHOD story file support
  */
 export interface Agent {
   name: string
@@ -245,6 +275,22 @@ export interface Agent {
   escalateToCoordinator?: (request: EscalationRequest) => Promise<EscalationResult>
   escalateToSpecialist?: (request: EscalationRequest) => Promise<EscalationResult>
   handleEscalation?: (request: EscalationRequest) => Promise<EscalationResult>
+
+  // BMAD-METHOD Story File Support
+  createStoryFile?: (context: AgentContext, initialWork?: string[]) => Promise<string>
+  updateStoryFile?: (storyId: string, updates: {
+    completedWork?: string[]
+    pendingWork?: string[]
+    blockers?: string[]
+    phase?: import('./story-files.js').WorkflowPhase
+  }) => Promise<boolean>
+  handoverStoryFile?: (storyId: string, toAgent: string, notes: string) => Promise<boolean>
+  addDecisionToStory?: (storyId: string, decision: {
+    description: string
+    rationale: string
+    impact: 'low' | 'medium' | 'high' | 'critical'
+    reversible?: boolean
+  }) => Promise<boolean>
 }
 
 /**
