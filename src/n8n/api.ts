@@ -154,18 +154,24 @@ export class N8NApiClient {
   private readonly useEnhancedClient: boolean
 
   constructor(useEnhancedClient = true) {
-    if (!config.n8nApiUrl || !config.n8nApiKey) {
-      throw new Error(
-        'n8n API configuration missing. Set N8N_API_URL and N8N_API_KEY environment variables.',
-      )
-    }
-
-    this.baseUrl = config.n8nApiUrl
-    this.apiKey = config.n8nApiKey
+    // Defer validation to allow lazy loading - validate on first actual API call
+    this.baseUrl = config.n8nApiUrl || ''
+    this.apiKey = config.n8nApiKey || ''
     this.useEnhancedClient = useEnhancedClient
 
     if (useEnhancedClient) {
       logger.debug('N8N API client initialized with enhanced HTTP client')
+    }
+  }
+
+  /**
+   * Validate configuration before API calls
+   */
+  private validateConfiguration(): void {
+    if (!this.baseUrl || !this.apiKey) {
+      throw new Error(
+        'n8n API configuration missing. Set N8N_API_URL and N8N_API_KEY environment variables.',
+      )
     }
   }
 
@@ -183,6 +189,7 @@ export class N8NApiClient {
     } = {},
     responseSchema?: z.ZodSchema<T>,
   ): Promise<T> {
+    this.validateConfiguration()
     const url = `${this.baseUrl}${endpoint}`
 
     // Sanitize the API key
@@ -278,6 +285,8 @@ export class N8NApiClient {
     options: globalThis.RequestInit = {},
     responseSchema?: z.ZodSchema<T>,
   ): Promise<T> {
+    this.validateConfiguration()
+    
     // Use enhanced client if enabled
     if (this.useEnhancedClient) {
       const enhancedOptions: {
@@ -291,7 +300,24 @@ export class N8NApiClient {
       }
 
       if (options.body) {
-        enhancedOptions.body = JSON.parse(options.body as string)
+        try {
+          enhancedOptions.body = JSON.parse(options.body as string)
+        } catch (error) {
+          throw new ApiValidationError(
+            'Invalid JSON in request body',
+            endpoint,
+            400,
+            options.body,
+            new z.ZodError([
+              {
+                code: 'custom',
+                message: `JSON parse error: ${error instanceof Error ? error.message : String(error)}`,
+                path: [],
+              },
+            ]),
+            0
+          )
+        }
       }
 
       if (options.headers) {
@@ -1228,6 +1254,15 @@ function shouldSuppressApiWarnings(): boolean {
  */
 export function createN8NApiClient(): N8NApiClient | null {
   try {
+    // Debug environment variables for troubleshooting
+    logger.debug('Environment variables available:', {
+      N8N_API_URL: !!process.env.N8N_API_URL,
+      N8N_API_KEY: !!process.env.N8N_API_KEY,
+      hasN8nConfig: !!(config.n8nApiUrl && config.n8nApiKey),
+      configUrl: config.n8nApiUrl ? 'configured' : 'missing',
+      configKey: config.n8nApiKey ? 'configured' : 'missing'
+    })
+    
     return new N8NApiClient()
   }
   catch (error) {
@@ -1239,9 +1274,45 @@ export function createN8NApiClient(): N8NApiClient | null {
 
     // For MCP server and CLI contexts, show appropriate warning
     logger.warn('n8n API client not available:', (error as Error).message)
+    logger.debug('Environment check:', {
+      N8N_API_URL: process.env.N8N_API_URL || 'not set',
+      N8N_API_KEY: process.env.N8N_API_KEY ? '[REDACTED]' : 'not set',
+      configUrl: config.n8nApiUrl || 'not set',
+      configKey: config.n8nApiKey ? '[REDACTED]' : 'not set'
+    })
     return null
   }
 }
 
-// Export singleton instance
-export const n8nApi = createN8NApiClient()
+// Lazy singleton with proper state management
+let _n8nApiInstance: N8NApiClient | null = null
+let _isInitialized = false
+
+export function getN8NApiClient(): N8NApiClient | null {
+  if (!_isInitialized) {
+    _n8nApiInstance = createN8NApiClient()
+    _isInitialized = true
+  }
+  return _n8nApiInstance
+}
+
+// Function to refresh API client (useful for MCP servers)
+export function refreshN8NApiClient(): N8NApiClient | null {
+  _isInitialized = false
+  _n8nApiInstance = null
+  return getN8NApiClient()
+}
+
+// Export singleton with proper typing - will be null until first successful initialization
+export let n8nApi: N8NApiClient | null = null
+
+// Initialize on first access
+export function ensureN8NApiClient(): N8NApiClient | null {
+  if (!n8nApi) {
+    n8nApi = getN8NApiClient()
+  }
+  return n8nApi
+}
+
+// Update the singleton reference
+n8nApi = getN8NApiClient()

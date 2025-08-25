@@ -233,8 +233,33 @@ function normalizeN8NUrl(url: string | undefined): string | undefined {
   }
 }
 
-// Export singleton config
-export const config = parseEnvironment()
+// Lazy config loading to handle MCP environment variables
+let _configInstance: Config | null = null
+
+function getConfig(): Config {
+  if (_configInstance === null) {
+    _configInstance = parseEnvironment()
+  }
+  return _configInstance
+}
+
+// Function to refresh config (useful for MCP servers)
+export function refreshConfig(): Config {
+  _configInstance = null
+  return getConfig()
+}
+
+// Export lazy singleton config
+export const config = new Proxy({} as Config, {
+  get(_target, prop: string | symbol) {
+    const configInstance = getConfig()
+    return configInstance[prop as keyof Config]
+  },
+  has(_target, prop: string | symbol) {
+    const configInstance = getConfig()
+    return prop in configInstance
+  }
+})
 
 // Helper function for runtime config updates
 export function updateConfig(updates: Partial<Config>): Config {

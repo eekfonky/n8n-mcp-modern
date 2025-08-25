@@ -4,6 +4,24 @@
  */
 
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
+
+/**
+ * Centralized error sanitization utility
+ */
+function sanitizeError(error: Error, includeStack = false): string {
+  const errorMessage = error.message || String(error)
+  
+  if (process.env.NODE_ENV === 'production') {
+    return errorMessage
+  }
+  
+  if (includeStack && error.stack) {
+    const firstStackLine = error.stack.split('\n')[1]?.trim()
+    return firstStackLine ? `${errorMessage} (${firstStackLine})` : errorMessage
+  }
+  
+  return errorMessage
+}
 import type {
   CreateWorkflowArgs,
   ExecuteWorkflowArgs,
@@ -16,7 +34,8 @@ import type {
 } from '../types/index.js'
 import process from 'node:process'
 import { z } from 'zod'
-import { n8nApi } from '../n8n/api.js'
+import { n8nApi, getN8NApiClient, refreshN8NApiClient, N8NApiClient, ensureN8NApiClient } from '../n8n/api.js'
+import { refreshConfig } from '../server/config.js'
 import { logger } from '../server/logger.js'
 import {
   CreateWorkflowArgsSchema,
@@ -884,9 +903,7 @@ export class N8NMCPTools {
       })
 
       // Return structured error response with sanitized stack trace
-      const sanitizedError = process.env.NODE_ENV === 'production' 
-        ? errorMessage  // Only message in production
-        : `${errorMessage}${errorStack ? ` (${errorStack.split('\n')[1]?.trim()})` : ''}`
+      const sanitizedError = sanitizeError(error instanceof Error ? error : new Error(errorMessage), true)
       
       return {
         success: false,
@@ -901,15 +918,42 @@ export class N8NMCPTools {
   }
 
   /**
+   * Ensure n8n API client is available by refreshing config if needed
+   */
+  private static ensureApiClient(): N8NApiClient | null {
+    // First check if we already have a client
+    let client = n8nApi
+    
+    // If no client and no environment variables, try refreshing
+    if (!client && !process.env.N8N_API_URL) {
+      logger.debug('n8n API client not available, refreshing config...')
+      refreshConfig()
+      client = refreshN8NApiClient()
+      
+      if (client) {
+        logger.info('✅ n8n API client initialized after config refresh')
+      } else {
+        logger.debug('Environment variables still not available after refresh:', {
+          N8N_API_URL: process.env.N8N_API_URL || 'not set',
+          N8N_API_KEY: process.env.N8N_API_KEY ? '[REDACTED]' : 'not set'
+        })
+      }
+    }
+    
+    return client || n8nApi
+  }
+
+  /**
    * Search for n8n nodes
    */
   private static async searchNodes(args: SearchNodesArgs): Promise<unknown> {
-    if (!n8nApi) {
-      throw new Error('n8n API not available')
+    const client = this.ensureApiClient()
+    if (!client) {
+      throw new Error('n8n API not available - please check N8N_API_URL and N8N_API_KEY configuration')
     }
 
     try {
-      const nodes = await n8nApi.searchNodeTypes(args.query, args.category)
+      const nodes = await client.searchNodeTypes(args.query, args.category)
       
       // Ensure nodes is an array to prevent potential issues
       if (!Array.isArray(nodes)) {
@@ -928,14 +972,15 @@ export class N8NMCPTools {
    * Get workflows from n8n
    */
   private static async getWorkflows(args: GetWorkflowsArgs): Promise<unknown> {
-    if (!n8nApi) {
+    const client = this.ensureApiClient()
+    if (!client) {
       throw new Error(
         'n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.',
       )
     }
 
     try {
-      const workflows = await n8nApi.getWorkflows()
+      const workflows = await client.getWorkflows()
       
       // Fix the .slice() error by ensuring workflows is an array
       if (!Array.isArray(workflows)) {
@@ -1065,12 +1110,13 @@ export class N8NMCPTools {
   private static async getExecutions(
     args: GetExecutionsArgs,
   ): Promise<unknown> {
-    if (!n8nApi) {
+    const client = this.ensureApiClient()
+    if (!client) {
       throw new Error('n8n API not configured.')
     }
 
     try {
-      const executions = await n8nApi.getExecutions(args.workflowId)
+      const executions = await client.getExecutions(args.workflowId)
       
       // Fix potential .slice() error by ensuring executions is an array
       if (!Array.isArray(executions)) {
