@@ -216,7 +216,7 @@ export class StoryFileManager implements StoryFileOperations {
           validated.relatedStories ? JSON.stringify(validated.relatedStories) : null,
         )
       })
-      
+
       if (!insertResult) {
         throw new Error('Database not available')
       }
@@ -295,7 +295,7 @@ export class StoryFileManager implements StoryFileOperations {
           validated.id,
         )
       })
-      
+
       if (!updateResult) {
         throw new Error('Database not available')
       }
@@ -329,10 +329,10 @@ export class StoryFileManager implements StoryFileOperations {
 
         // Retrieve associated decisions
         const decisions = db.prepare('SELECT * FROM story_decisions WHERE story_id = ? ORDER BY timestamp').all(id) as DatabaseRow[]
-        
+
         return { row, decisions }
       })
-      
+
       if (!result || !result.row) {
         return null
       }
@@ -382,14 +382,14 @@ export class StoryFileManager implements StoryFileOperations {
         const decisionPromises = rowIds.map(id =>
           db.prepare('SELECT * FROM story_decisions WHERE story_id = ? ORDER BY timestamp').all(id) as DatabaseRow[],
         )
-        
+
         return { rows, decisionPromises }
       })
-      
+
       if (!result) {
         return []
       }
-      
+
       const { rows, decisionPromises } = result
 
       const stories: StoryFile[] = []
@@ -424,14 +424,14 @@ export class StoryFileManager implements StoryFileOperations {
         const decisionPromises = rowIds.map(id =>
           db.prepare('SELECT * FROM story_decisions WHERE story_id = ? ORDER BY timestamp').all(id) as DatabaseRow[],
         )
-        
+
         return { rows, decisionPromises }
       })
-      
+
       if (!result) {
         return []
       }
-      
+
       const { rows, decisionPromises } = result
 
       const stories: StoryFile[] = []
@@ -466,14 +466,14 @@ export class StoryFileManager implements StoryFileOperations {
         const decisionPromises = rowIds.map(id =>
           db.prepare('SELECT * FROM story_decisions WHERE story_id = ? ORDER BY timestamp').all(id) as DatabaseRow[],
         )
-        
+
         return { rows, decisionPromises }
       })
-      
+
       if (!result) {
         return []
       }
-      
+
       const { rows, decisionPromises } = result
 
       const stories: StoryFile[] = []
@@ -612,7 +612,7 @@ export class StoryFileManager implements StoryFileOperations {
           decision.outcome ? JSON.stringify(decision.outcome) : null,
         )
       })
-      
+
       if (!insertResult) {
         throw new Error('Database not available')
       }
@@ -667,14 +667,14 @@ export class StoryFileManager implements StoryFileOperations {
              OR (ttl IS NULL AND updated_at + ? < ?)
              OR status = ?
         `).all(now, defaultTtl, now, StoryStatus.ARCHIVED) as { id: string }[]
-        
+
         return { expiredStories, now, defaultTtl }
       })
-      
+
       if (!result) {
         return 0
       }
-      
+
       const { expiredStories } = result
 
       // Optimize: Use Promise.all for parallel deletion instead of sequential

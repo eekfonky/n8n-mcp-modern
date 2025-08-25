@@ -43,7 +43,6 @@ vi.mock('../server/logger.js', () => ({
 
 // No need for complex mocking - the database will handle test environment automatically
 
-
 describe('bMAD-METHOD Agent Handover Integration', () => {
   let architect: WorkflowArchitect
   let developer: DeveloperSpecialist
@@ -70,7 +69,7 @@ describe('bMAD-METHOD Agent Handover Integration', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
-    
+
     // Clean up test database storage
     if (typeof globalThis !== 'undefined') {
       delete (globalThis as any).__TEST_DB_STORAGE__
@@ -323,7 +322,7 @@ Ready for implementation phase.`,
 
       expect(authHandover!.currentAgent).toBe('n8n-integration-specialist')
 
-      // Update story after OAuth work 
+      // Update story after OAuth work
       await communicationManager.updateStoryFile(initialStory.id, {
         handoverNotes: 'OAuth2 authentication completed successfully.',
         completedWork: ['Requirements analysis', 'Security assessment', 'OAuth2 setup', 'Token rotation'],
@@ -494,7 +493,7 @@ Ready for implementation phase.`,
       // Check decisions are there after the context update
       const preUpdateStory = await communicationManager.getStoryFile(contextRichStory.id)
       expect(preUpdateStory!.decisions).toHaveLength(1)
-      
+
       // Update handover notes and explicitly preserve existing decisions
       await communicationManager.updateStoryFile(contextRichStory.id, {
         handoverNotes: 'Technical architecture and security implementation completed successfully.',
@@ -570,7 +569,7 @@ Ready for implementation phase.`,
         handoverNotes: 'Enterprise integration project with complete decision trail ready.',
         completedWork: ['Initial planning', 'Requirements gathering', 'Architecture decisions', 'Authentication setup'],
         pendingWork: ['Final implementation', 'Testing', 'Deployment'],
-        decisions: decisions, // Add all decisions at once to avoid handover interference
+        decisions, // Add all decisions at once to avoid handover interference
       })
 
       // Test handover maintains the decisions
@@ -582,7 +581,7 @@ Ready for implementation phase.`,
 
       // Verify handover functionality works (decisions architecture needs separate investigation)
       expect(handedOverStory!.decisions.length).toBeGreaterThanOrEqual(0)
-      
+
       // Core handover functionality tests
       expect(handedOverStory!.handoverNotes).toContain('All architectural decisions complete')
 

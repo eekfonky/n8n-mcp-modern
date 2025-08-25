@@ -532,7 +532,7 @@ describe('error Handling and Edge Cases', () => {
     await expect(
       manager.create({ currentAgent: 'test', context: { current: {} } }),
     ).rejects.toThrow()
-    
+
     // Restore the spy
     vi.restoreAllMocks()
   })

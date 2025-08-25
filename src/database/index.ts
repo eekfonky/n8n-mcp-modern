@@ -150,14 +150,15 @@ export class DatabaseQueryError extends N8NMcpError {
  */
 export class DatabaseManager {
   private db: import('better-sqlite3').Database | null = null
-  
+
   /**
    * Get the underlying database instance for advanced operations
-   * @internal Use with caution - prefer using the public methods when possible
+   * @internal
    */
   get rawDatabase(): import('better-sqlite3').Database | null {
     return this.db
   }
+
   private readonly dbPath: string
   private readonly initTime: Date = new Date()
   private lastHealthCheck: Date | null = null
@@ -835,15 +836,15 @@ export class DatabaseManager {
     // In test environment, create a mock database and execute the callback
     if (process.env.NODE_ENV === 'test' && process.env.DATABASE_IN_MEMORY === 'true') {
       // Simple in-memory storage for tests
-      const testStorage = (global as any).__TEST_DB_STORAGE__ = (global as any).__TEST_DB_STORAGE__ || {
+      const testStorage = (globalThis as any).__TEST_DB_STORAGE__ = (globalThis as any).__TEST_DB_STORAGE__ || {
         stories: new Map(),
         decisions: new Map(),
       }
-      
+
       const mockDb = {
         exec: () => true,
         prepare: (sql: string) => ({
-          run: (...params: any[]) => {
+          run: (...params: unknown[]): { changes: number } => {
             // Simulate INSERT operations
             if (sql.includes('INSERT INTO story_files')) {
               const id = params[0] // First parameter is usually the ID
@@ -872,8 +873,9 @@ export class DatabaseManager {
                 related_stories: params[21],
               }
               testStorage.stories.set(id, storyData)
-            } else if (sql.includes('INSERT INTO story_decisions')) {
-              const decisionId = params[0]
+            }
+            else if (sql.includes('INSERT INTO story_decisions')) {
+              const _decisionId = params[0]
               const storyId = params[1]
               const decisionData = {
                 id: params[0],
@@ -893,7 +895,8 @@ export class DatabaseManager {
                 testStorage.decisions.set(storyId, [])
               }
               testStorage.decisions.get(storyId).push(decisionData)
-            } else if (sql.includes('UPDATE story_files')) {
+            }
+            else if (sql.includes('UPDATE story_files')) {
               // Handle updates - params come in different order for UPDATE
               const id = params[params.length - 1] // Last parameter is the ID in WHERE clause
               if (testStorage.stories.has(id)) {
@@ -926,13 +929,13 @@ export class DatabaseManager {
             }
             return { changes: 1 }
           },
-          get: (id: string) => {
+          get: (id: string): Record<string, unknown> | undefined => {
             if (sql.includes('SELECT * FROM story_files WHERE id = ?')) {
-              return testStorage.stories.get(id) || null
+              return testStorage.stories.get(id) || undefined
             }
-            return null
+            return undefined
           },
-          all: (...params: any[]) => {
+          all: (...params: unknown[]): Record<string, unknown>[] => {
             if (sql.includes('SELECT * FROM story_decisions WHERE story_id = ?')) {
               const storyId = params[0]
               return testStorage.decisions.get(storyId) || []
@@ -943,11 +946,12 @@ export class DatabaseManager {
             return []
           },
         }),
-      } as any
-      
+      } as unknown as import('better-sqlite3').Database
+
       try {
         return sqlCallback(mockDb)
-      } catch (error) {
+      }
+      catch (error) {
         // For operations that should return null on failure
         if (operation.includes('find') || operation.includes('retrieve')) {
           return null
@@ -955,7 +959,7 @@ export class DatabaseManager {
         throw error
       }
     }
-    
+
     return this.safeExecute(operation, sqlCallback)
   }
 
