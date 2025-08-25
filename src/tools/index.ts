@@ -90,6 +90,18 @@ export interface McpToolResponse {
   error?: string
 }
 
+/**
+ * Performance statistics interface for better type safety
+ */
+export interface PerformanceStats {
+  [toolName: string]: {
+    count: number
+    totalTime: number
+    averageTime: number
+    errors: number
+  }
+}
+
 // Use schemas from types file - no duplicates needed
 
 /**
@@ -97,48 +109,66 @@ export interface McpToolResponse {
  */
 export class N8NMCPTools {
   /**
-   * Convert Zod schema to JSON schema (proper implementation)
+   * Convert Zod schema to JSON schema (proper implementation with error boundaries)
    */
   private static zodToJsonSchema(
     zodSchema: z.ZodSchema,
   ): Record<string, unknown> {
-    // Basic Zod to JSON Schema conversion
-    // For production use, integrate @anatine/zod-openapi library
-    if (zodSchema instanceof z.ZodObject) {
-      const shape = zodSchema.shape
-      const properties: Record<string, unknown> = {}
-      const required: string[] = []
+    try {
+      // Basic Zod to JSON Schema conversion
+      // For production use, integrate @anatine/zod-openapi library
+      if (zodSchema instanceof z.ZodObject) {
+        const shape = zodSchema.shape
+        const properties: Record<string, unknown> = {}
+        const required: string[] = []
 
-      for (const [key, value] of Object.entries(shape)) {
-        const zodValue = value as z.ZodTypeAny
-        if (zodValue instanceof z.ZodString) {
-          properties[key] = { type: 'string' }
-        }
-        else if (zodValue instanceof z.ZodNumber) {
-          properties[key] = { type: 'number' }
-        }
-        else if (zodValue instanceof z.ZodBoolean) {
-          properties[key] = { type: 'boolean' }
-        }
-        else if (zodValue instanceof z.ZodArray) {
-          properties[key] = { type: 'array', items: { type: 'object' } }
-        }
-        else if (zodValue instanceof z.ZodRecord) {
-          properties[key] = { type: 'object' }
-        }
-        else {
-          properties[key] = { type: 'object' }
+        for (const [key, value] of Object.entries(shape)) {
+          const zodValue = value as z.ZodTypeAny
+          
+          // Type guard to ensure we have proper Zod types
+          if (!zodValue || typeof zodValue !== 'object') {
+            logger.warn(`Invalid Zod value for key ${key}, skipping`)
+            continue
+          }
+
+          if (zodValue instanceof z.ZodString) {
+            properties[key] = { type: 'string' }
+          }
+          else if (zodValue instanceof z.ZodNumber) {
+            properties[key] = { type: 'number' }
+          }
+          else if (zodValue instanceof z.ZodBoolean) {
+            properties[key] = { type: 'boolean' }
+          }
+          else if (zodValue instanceof z.ZodArray) {
+            properties[key] = { type: 'array', items: { type: 'object' } }
+          }
+          else if (zodValue instanceof z.ZodRecord) {
+            properties[key] = { type: 'object' }
+          }
+          else {
+            properties[key] = { type: 'object' }
+          }
+
+          // Safe optional check
+          try {
+            if (!zodValue.isOptional()) {
+              required.push(key)
+            }
+          } catch {
+            // If isOptional() throws, treat as required for safety
+            required.push(key)
+          }
         }
 
-        if (!zodValue.isOptional()) {
-          required.push(key)
-        }
+        return { type: 'object', properties, required }
       }
 
-      return { type: 'object', properties, required }
+      return { type: 'object' }
+    } catch (error) {
+      logger.error('Error converting Zod schema to JSON schema:', error)
+      return { type: 'object' } // Safe fallback
     }
-
-    return { type: 'object' }
   }
 
   /**
@@ -555,7 +585,7 @@ export class N8NMCPTools {
     let success = false
 
     try {
-      logger.debug(`Executing tool: ${name}`, args)
+      logger.info(`🔧 Executing tool: ${name}`, { args, timestamp: new Date().toISOString() })
 
       let result: unknown
 
@@ -843,12 +873,24 @@ export class N8NMCPTools {
       }
     }
     catch (error) {
-      logger.error(`Tool execution failed: ${name}`, error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorStack = error instanceof Error ? error.stack : undefined
+      
+      logger.error(`❌ Tool execution failed: ${name}`, {
+        error: errorMessage,
+        stack: errorStack?.split('\n').slice(0, 5).join('\n'), // First 5 lines of stack
+        args,
+        timestamp: new Date().toISOString()
+      })
 
-      // Return structured error response
+      // Return structured error response with sanitized stack trace
+      const sanitizedError = process.env.NODE_ENV === 'production' 
+        ? errorMessage  // Only message in production
+        : `${errorMessage}${errorStack ? ` (${errorStack.split('\n')[1]?.trim()})` : ''}`
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: sanitizedError,
       }
     }
     finally {
@@ -862,12 +904,24 @@ export class N8NMCPTools {
    * Search for n8n nodes
    */
   private static async searchNodes(args: SearchNodesArgs): Promise<unknown> {
-    if (!n8nApi)
+    if (!n8nApi) {
       throw new Error('n8n API not available')
+    }
 
-    const nodes = await n8nApi.searchNodeTypes(args.query, args.category)
-
-    return nodes
+    try {
+      const nodes = await n8nApi.searchNodeTypes(args.query, args.category)
+      
+      // Ensure nodes is an array to prevent potential issues
+      if (!Array.isArray(nodes)) {
+        logger.warn('n8n API returned non-array nodes data:', nodes)
+        return []
+      }
+      
+      return nodes
+    } catch (error) {
+      logger.error('Error searching n8n nodes:', error)
+      throw new Error(`Failed to search nodes: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   /**
@@ -880,8 +934,21 @@ export class N8NMCPTools {
       )
     }
 
-    const workflows = await n8nApi.getWorkflows()
-    return workflows.slice(0, args.limit)
+    try {
+      const workflows = await n8nApi.getWorkflows()
+      
+      // Fix the .slice() error by ensuring workflows is an array
+      if (!Array.isArray(workflows)) {
+        logger.warn('n8n API returned non-array workflows data:', workflows)
+        return []
+      }
+      
+      const limit = args.limit || 10
+      return workflows.slice(0, limit)
+    } catch (error) {
+      logger.error('Error fetching workflows from n8n API:', error)
+      throw new Error(`Failed to fetch workflows: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   /**
@@ -1002,8 +1069,21 @@ export class N8NMCPTools {
       throw new Error('n8n API not configured.')
     }
 
-    const executions = await n8nApi.getExecutions(args.workflowId)
-    return executions.slice(0, args.limit || 20)
+    try {
+      const executions = await n8nApi.getExecutions(args.workflowId)
+      
+      // Fix potential .slice() error by ensuring executions is an array
+      if (!Array.isArray(executions)) {
+        logger.warn('n8n API returned non-array executions data:', executions)
+        return []
+      }
+      
+      const limit = args.limit || 20
+      return executions.slice(0, limit)
+    } catch (error) {
+      logger.error('Error fetching executions from n8n API:', error)
+      throw new Error(`Failed to fetch executions: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   /**
