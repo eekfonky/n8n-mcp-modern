@@ -14,6 +14,7 @@
 import type { Agent, AgentContext, EscalationRequest, EscalationResult } from './index.js'
 import type { StoryFile, StoryMetrics } from './story-files.js'
 import { performance } from 'node:perf_hooks'
+import { shouldLimitMemoryArrays } from '../server/feature-flags.js'
 import { logger } from '../server/logger.js'
 import { StoryStatus } from './story-files.js'
 import { storyManager } from './story-manager.js'
@@ -785,9 +786,13 @@ export class CommunicationManager {
     const metrics = type === 'routing' ? this.metrics.routingLatency : this.metrics.escalationLatency
     metrics.push(latency)
 
-    // Keep only last 1000 measurements
-    if (metrics.length > 1000) {
-      metrics.shift()
+    // Apply feature-flag based memory management
+    const maxSize = shouldLimitMemoryArrays() ? 50 : 1000
+
+    // Keep only recent measurements to prevent memory growth
+    if (metrics.length > maxSize) {
+      // Remove oldest measurements to maintain bounds
+      metrics.splice(0, metrics.length - maxSize)
     }
   }
 

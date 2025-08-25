@@ -1,7 +1,7 @@
 {
   "name": "@eekfonky/n8n-mcp-modern",
-  "version": "6.0.0",
-  "description": "Modern n8n MCP server with Phase 2 orchestration - intelligent agent coordination, session management, and advanced workflow automation",
+  "version": "6.1.0",
+  "description": "Modern n8n MCP server with BMAD-method agent handovers - intelligent complexity assessment, collaborative multi-agent workflows, and context preservation for complex n8n integrations",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

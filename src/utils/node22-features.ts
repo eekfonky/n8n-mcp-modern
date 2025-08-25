@@ -153,6 +153,23 @@ class PerformanceMonitor {
   }
 
   /**
+   * Record error for performance tracking
+   */
+  recordError(toolName: string): void {
+    // For now, we'll track errors as negative performance metrics
+    // This allows error-aware performance monitoring
+    const existing = this.metrics.get(`${toolName}-errors`) ?? []
+    existing.push(-1) // Negative value to indicate error
+
+    // Keep only last 100 error records
+    if (existing.length > 100) {
+      existing.shift()
+    }
+
+    this.metrics.set(`${toolName}-errors`, existing)
+  }
+
+  /**
    * Clear all metrics
    */
   clearMetrics(): void {

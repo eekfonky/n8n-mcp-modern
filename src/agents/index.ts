@@ -252,6 +252,18 @@ export interface AgentContext {
   requiresOrchestration?: boolean
   escalationHistory?: EscalationRequest[]
   originalAgent?: string
+  
+  // Extended properties for complexity assessment
+  nodeCount?: number
+  integrations?: string[]
+  customCode?: string
+  securityRisk?: 'low' | 'medium' | 'high'
+  userRequest?: string
+  requirements?: string[]
+  constraints?: string[]
+  executionTime?: number
+  memoryUsage?: number
+  cpuUsage?: number
 }
 
 /**

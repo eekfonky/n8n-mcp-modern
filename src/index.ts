@@ -20,6 +20,8 @@ import { AgentContextBuilder, agentRouter } from './agents/index.js'
 import { database } from './database/index.js'
 import { n8nApi } from './n8n/api.js'
 import { config } from './server/config.js'
+import { EnhancedErrorHandler, EnhancedMcpError, ErrorCategory, ErrorSeverity, executeToolWithErrorHandling, executeWithErrorHandling } from './server/enhanced-error-handler.js'
+import { featureFlags, isSimplifiedPipelineEnabled } from './server/feature-flags.js'
 import { logger } from './server/logger.js'
 import { initializeResilience } from './server/resilience.js'
 import {
@@ -30,6 +32,7 @@ import {
   SecurityEventType,
   validateToolAccess,
 } from './server/security.js'
+import { createSimpleNodeContext, SimplifiedNodeRecommender } from './server/simplified-node-data.js'
 import { initializeAgentTools } from './tools/agent-tool-handler.js'
 import { N8NMCPTools } from './tools/index.js'
 import { N8NConnectionsSchema, N8NWorkflowNodeSchema } from './types/index.js'
@@ -178,235 +181,261 @@ getToolCount().then((count) => {
  */
 class N8NMcpServer {
   private server: McpServer
+  // Dynamic tool management - store references for runtime manipulation
+  private dynamicTools: Map<string, ReturnType<McpServer['tool']>> = new Map()
 
   constructor() {
+    // Initialize MCP server with notification debouncing optimization
     this.server = new McpServer({
       name: '@eekfonky/n8n-mcp-modern',
       version: PACKAGE_VERSION,
+    }, {
+      // Enable notification debouncing for high-frequency updates
+      // This coalesces rapid calls into single messages, reducing network traffic
+      debouncedNotificationMethods: [
+        'notifications/tools/list_changed',
+        'notifications/resources/list_changed',
+        'notifications/prompts/list_changed',
+      ],
     })
 
     this.setupTools()
     this.setupErrorHandlers()
+    this.configureDynamicTools()
   }
 
   private setupTools(): void {
     logger.info('Setting up n8n MCP tools...')
 
-    // Register each tool individually using the MCP SDK pattern
-    this.registerN8NTools()
+    // Optimized batch tool registration
+    this.registerN8NToolsBatch()
+
+    // Dynamic n8n API-dependent tools
+    this.setupDynamicN8NApiTools()
 
     logger.info('Registered MCP tools with agent routing system')
   }
 
-  private registerN8NTools(): void {
-    // Search n8n nodes
-    this.server.registerTool(
-      'search_n8n_nodes',
+  /**
+   * Optimized batch tool registration using efficient patterns
+   */
+  private registerN8NToolsBatch(): void {
+    // Define tool configurations in a batch for better performance
+    const staticToolConfigs = [
       {
+        name: 'search_n8n_nodes',
         title: 'Search n8n Nodes',
-        description:
-          'Search for available n8n nodes by name, description, or category',
+        description: 'Search for available n8n nodes by name, description, or category',
         inputSchema: {
           query: z.string().describe('Search term for n8n nodes'),
           category: z.string().optional().describe('Filter by node category'),
         },
       },
-      async (args: Record<string, unknown>) =>
-        this.executeToolWithRouting('search_n8n_nodes', args),
-    )
-
-    // Get n8n workflows
-    this.server.registerTool(
-      'get_n8n_workflows',
       {
-        title: 'Get n8n Workflows',
-        description: 'Retrieve all workflows from n8n instance',
-        inputSchema: {
-          limit: z
-            .number()
-            .optional()
-            .default(10)
-            .describe('Maximum number of workflows to return'),
-        },
-      },
-      async (args: Record<string, unknown>) =>
-        this.executeToolWithRouting('get_n8n_workflows', args),
-    )
-
-    // Get specific workflow
-    this.server.registerTool(
-      'get_n8n_workflow',
-      {
+        name: 'get_n8n_workflow',
         title: 'Get n8n Workflow',
         description: 'Get a specific workflow by ID',
         inputSchema: {
           id: z.string().describe('Workflow ID'),
         },
       },
-      async (args: Record<string, unknown>) =>
-        this.executeToolWithRouting('get_n8n_workflow', args),
-    )
-
-    // Create workflow
-    this.server.registerTool(
-      'create_n8n_workflow',
       {
-        title: 'Create n8n Workflow',
-        description: 'Create a new workflow in n8n',
-        inputSchema: {
-          name: z.string().describe('Workflow name'),
-          nodes: z
-            .array(N8NWorkflowNodeSchema)
-            .describe('Array of workflow nodes'),
-          connections: N8NConnectionsSchema.describe('Node connections'),
-          active: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe('Whether to activate the workflow'),
-        },
-      },
-      async (args: Record<string, unknown>) =>
-        this.executeToolWithRouting('create_n8n_workflow', args),
-    )
-
-    // Execute workflow
-    this.server.registerTool(
-      'execute_n8n_workflow',
-      {
-        title: 'Execute n8n Workflow',
-        description: 'Execute a workflow in n8n',
-        inputSchema: {
-          id: z.string().describe('Workflow ID to execute'),
-          data: z
-            .record(z.unknown())
-            .optional()
-            .describe('Input data for the workflow'),
-        },
-      },
-      async (args: Record<string, unknown>) =>
-        this.executeToolWithRouting('execute_n8n_workflow', args),
-    )
-
-    // Activate workflow
-    this.server.registerTool(
-      'activate_n8n_workflow',
-      {
+        name: 'activate_n8n_workflow',
         title: 'Activate n8n Workflow',
         description: 'Activate a workflow in n8n',
         inputSchema: {
           id: z.string().describe('Workflow ID to activate'),
         },
       },
-      async (args: Record<string, unknown>) =>
-        this.executeToolWithRouting('activate_n8n_workflow', args),
-    )
-
-    // Deactivate workflow
-    this.server.registerTool(
-      'deactivate_n8n_workflow',
       {
+        name: 'deactivate_n8n_workflow',
         title: 'Deactivate n8n Workflow',
         description: 'Deactivate a workflow in n8n',
         inputSchema: {
           id: z.string().describe('Workflow ID to deactivate'),
         },
       },
-      async (args: Record<string, unknown>) =>
-        this.executeToolWithRouting('deactivate_n8n_workflow', args),
-    )
-
-    // Get executions
-    this.server.registerTool(
-      'get_n8n_executions',
       {
+        name: 'get_n8n_executions',
         title: 'Get n8n Executions',
         description: 'Get workflow execution history',
         inputSchema: {
           workflowId: z.string().optional().describe('Filter by workflow ID'),
-          limit: z
-            .number()
-            .optional()
-            .default(10)
-            .describe('Maximum number of executions to return'),
+          limit: z.number().optional().default(10).describe('Maximum number of executions'),
         },
       },
-      async (args: Record<string, unknown>) =>
-        this.executeToolWithRouting('get_n8n_executions', args),
-    )
-
-    // Get workflow stats
-    this.server.registerTool(
-      'get_workflow_stats',
       {
+        name: 'get_workflow_stats',
         title: 'Get Workflow Statistics',
         description: 'Get execution statistics for a workflow',
         inputSchema: {
           id: z.string().describe('Workflow ID'),
         },
       },
-      async (args: Record<string, unknown>) =>
-        this.executeToolWithRouting('get_workflow_stats', args),
-    )
-
-    // Get tool usage stats
-    this.server.registerTool(
-      'get_tool_usage_stats',
       {
+        name: 'n8n_import_workflow',
+        title: 'Import n8n Workflow',
+        description: 'Import a workflow from JSON data',
+        inputSchema: {
+          workflowData: z.record(z.unknown()).describe('Workflow JSON data'),
+          name: z.string().optional().describe('Override workflow name'),
+        },
+      },
+      {
+        name: 'get_tool_usage_stats',
         title: 'Get Tool Usage Statistics',
         description: 'Get statistics about MCP tool usage',
         inputSchema: {
-          period: z
-            .string()
-            .optional()
-            .default('daily')
-            .describe('Time period (daily, weekly, monthly)'),
+          period: z.enum(['hour', 'day', 'week', 'month']).optional().default('day'),
         },
       },
-      async (args: Record<string, unknown>) =>
-        this.executeToolWithRouting('get_tool_usage_stats', args),
-    )
-
-    // List all available tools
-    this.server.registerTool(
-      'list_available_tools',
       {
+        name: 'list_available_tools',
         title: 'List Available Tools',
         description: `Get comprehensive list of all ${TOTAL_TOOLS.total} available tools with categories`,
         inputSchema: {
-          category: z
-            .string()
-            .optional()
-            .describe(
-              'Filter by category: core, code-generation, developer-workflows, performance-observability, comprehensive',
-            ),
+          category: z.string().optional().describe('Filter by tool category'),
+          search: z.string().optional().describe('Search term for tools'),
         },
       },
-      async (args: Record<string, unknown>) =>
-        this.executeToolWithRouting('list_available_tools', args),
-    )
-
-    // Validate MCP configuration
-    this.server.registerTool(
-      'validate_mcp_config',
       {
+        name: 'validate_mcp_config',
         title: 'Validate MCP Configuration',
-        description:
-          'Check .mcp.json configuration and environment setup for common issues',
+        description: 'Check .mcp.json configuration and environment setup for common issues',
         inputSchema: {
-          fix_issues: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe('Attempt to auto-fix common configuration issues'),
+          fix: z.boolean().optional().default(false).describe('Attempt to fix issues automatically'),
         },
       },
-      async (args: Record<string, unknown>) =>
-        this.executeToolWithRouting('validate_mcp_config', args),
-    )
+      {
+        name: 'recommend_n8n_nodes',
+        title: 'Recommend n8n Nodes',
+        description: 'Get intelligent node recommendations based on user requirements (type-safe simplified engine)',
+        inputSchema: {
+          userInput: z.string().describe('Describe what you want to achieve with n8n'),
+          complexity: z.enum(['simple', 'standard', 'advanced']).optional().describe('Preferred complexity level'),
+          providers: z.array(z.string()).optional().describe('Preferred service providers (e.g. gmail, slack, openai)'),
+        },
+      },
+      {
+        name: 'get_system_health',
+        title: 'Get System Health',
+        description: 'Get comprehensive system health including error statistics and performance metrics',
+        inputSchema: {
+          includeErrorDetails: z.boolean().optional().default(false).describe('Include detailed error breakdown'),
+        },
+      },
+    ] as const
+
+    // Register all tools in batch with shared handler pattern
+    staticToolConfigs.forEach((toolConfig) => {
+      this.server.registerTool(
+        toolConfig.name,
+        {
+          title: toolConfig.title,
+          description: toolConfig.description,
+          inputSchema: toolConfig.inputSchema,
+        },
+        async (args: Record<string, unknown>) => {
+          // Special handling for node recommendations using simplified engine
+          if (toolConfig.name === 'recommend_n8n_nodes') {
+            return this.handleNodeRecommendations(args)
+          }
+
+          // Special handling for system health monitoring
+          if (toolConfig.name === 'get_system_health') {
+            return this.handleSystemHealth(args)
+          }
+          // Default routing for all other tools
+          return this.executeToolWithRouting(toolConfig.name, args)
+        },
+      )
+    })
+
+    logger.debug(`Registered ${staticToolConfigs.length} static n8n tools`)
   }
 
   private async executeToolWithRouting(
+    toolName: string,
+    args: Record<string, unknown>,
+  ): Promise<{
+    content: Array<{ type: 'text', text: string }>
+    isError?: boolean
+  }> {
+    // Use simplified pipeline if feature flag is enabled
+    if (isSimplifiedPipelineEnabled()) {
+      return this.executeToolSimplified(toolName, args)
+    }
+
+    // Original complex pipeline (for comparison and rollback safety)
+    return this.executeToolComplex(toolName, args)
+  }
+
+  /**
+   * Simplified tool execution pipeline (2-3 steps vs original 6+ steps)
+   * Used when featureFlags.architecture.useSimplifiedToolPipeline = true
+   */
+  private async executeToolSimplified(
+    toolName: string,
+    args: Record<string, unknown>,
+  ): Promise<{
+    content: Array<{ type: 'text', text: string }>
+    isError?: boolean
+  }> {
+    const startTime = performance.now()
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+    return executeWithErrorHandling(toolName, async () => {
+      // Step 1: Basic input sanitization (essential for security)
+      const sanitizedArgs = inputSanitizer.sanitizeObject(args) as Record<string, unknown>
+
+      // Step 2: Direct tool execution (skip complex routing and context building)
+      const result = await nodeAsyncUtils.raceWithTimeout(
+        N8NMCPTools.executeTool(toolName, sanitizedArgs),
+        config.mcpTimeout,
+        `Tool execution timeout for ${toolName}`,
+      )
+
+      // Step 3: Simple success logging
+      const executionTime = performance.now() - startTime
+
+      if (featureFlags.debugging.logPerformanceComparisons) {
+        logger.info(`🚀 Simplified execution completed: ${toolName}`, {
+          executionTime: `${executionTime.toFixed(2)}ms`,
+          requestId,
+          pipeline: 'simplified',
+          success: true,
+        })
+      }
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      }
+    }, requestId).catch((error: EnhancedMcpError) => {
+      // Enhanced error handling with structured logging
+      const executionTime = performance.now() - startTime
+      const logData = error.toLogFormat()
+
+      logger.error(`Enhanced simplified execution failed: ${toolName}`, {
+        ...logData.context,
+        executionTime: `${executionTime.toFixed(2)}ms`,
+        pipeline: 'simplified',
+      })
+
+      // Return user-friendly error response
+      return error.toUserResponse()
+    })
+  }
+
+  /**
+   * Original complex tool execution pipeline
+   * Preserved for comparison and rollback safety
+   */
+  private async executeToolComplex(
     toolName: string,
     args: Record<string, unknown>,
   ): Promise<{
@@ -865,6 +894,345 @@ class N8NMcpServer {
     }, 300000) // Log every 5 minutes
 
     logger.info('Server ready for Claude Code integration')
+  }
+
+  /**
+   * Setup dynamic n8n API-dependent tools
+   * These tools are enabled/disabled based on n8n API configuration
+   */
+  private setupDynamicN8NApiTools(): void {
+    const hasN8NApiConfig = config.n8nApiUrl && config.n8nApiKey
+
+    // Get n8n workflows - requires API access
+    const getWorkflowsTool = this.server.tool(
+      'get_n8n_workflows',
+      {
+        title: 'Get n8n Workflows',
+        description: 'Retrieve all workflows from n8n instance',
+        inputSchema: {
+          limit: z.number().optional().default(10).describe('Maximum number of workflows to return'),
+        },
+      },
+      async (args: Record<string, unknown>) =>
+        this.executeToolWithRouting('get_n8n_workflows', args),
+    )
+    this.dynamicTools.set('get_n8n_workflows', getWorkflowsTool)
+
+    // Create workflow - requires API access
+    const createWorkflowTool = this.server.tool(
+      'create_n8n_workflow',
+      {
+        title: 'Create n8n Workflow',
+        description: 'Create a new workflow in n8n',
+        inputSchema: {
+          name: z.string().describe('Workflow name'),
+          nodes: z.array(N8NWorkflowNodeSchema).describe('Array of workflow nodes'),
+          connections: N8NConnectionsSchema.describe('Node connections'),
+          active: z.boolean().optional().default(false).describe('Whether to activate the workflow'),
+        },
+      },
+      async (args: Record<string, unknown>) =>
+        this.executeToolWithRouting('create_n8n_workflow', args),
+    )
+    this.dynamicTools.set('create_n8n_workflow', createWorkflowTool)
+
+    // Execute workflow - requires API access
+    const executeWorkflowTool = this.server.tool(
+      'execute_n8n_workflow',
+      {
+        title: 'Execute n8n Workflow',
+        description: 'Execute a workflow in n8n',
+        inputSchema: {
+          id: z.string().describe('Workflow ID to execute'),
+          data: z.record(z.unknown()).optional().describe('Input data for the workflow'),
+        },
+      },
+      async (args: Record<string, unknown>) =>
+        this.executeToolWithRouting('execute_n8n_workflow', args),
+    )
+    this.dynamicTools.set('execute_n8n_workflow', executeWorkflowTool)
+
+    // Configure initial state based on API availability
+    if (hasN8NApiConfig) {
+      logger.info('n8n API configured - enabling workflow management tools')
+      // Tools are enabled by default when created
+    }
+    else {
+      logger.warn('n8n API not configured - disabling workflow management tools')
+      getWorkflowsTool.disable()
+      createWorkflowTool.disable()
+      executeWorkflowTool.disable()
+    }
+  }
+
+  /**
+   * Configure dynamic tools based on runtime conditions
+   */
+  private configureDynamicTools(): void {
+    // Monitor feature flag changes and update tools accordingly
+    if (!featureFlags.intelligenceLayer.enabled) {
+      // If intelligence layer is disabled, we could disable certain advanced tools
+      logger.debug('Intelligence layer disabled - using simplified tool behavior')
+    }
+
+    // Example: Monitor performance and conditionally manage tools
+    // Note: Direct monitoring instead of event-based approach
+    const performanceStats = performanceMonitor.getAllStats()
+    if (Object.keys(performanceStats).length > 0) {
+      logger.debug('Performance monitoring active for dynamic tool management')
+    }
+  }
+
+  /**
+   * Runtime tool management - enable n8n API tools when configuration is updated
+   */
+  public enableN8NApiTools(): void {
+    const workflowTools = ['get_n8n_workflows', 'create_n8n_workflow', 'execute_n8n_workflow']
+
+    workflowTools.forEach((toolName) => {
+      const tool = this.dynamicTools.get(toolName)
+      if (tool) {
+        tool.enable()
+        logger.info(`Enabled ${toolName} - n8n API is now available`)
+      }
+    })
+  }
+
+  /**
+   * Runtime tool management - disable n8n API tools when configuration is lost
+   */
+  public disableN8NApiTools(): void {
+    const workflowTools = ['get_n8n_workflows', 'create_n8n_workflow', 'execute_n8n_workflow']
+
+    workflowTools.forEach((toolName) => {
+      const tool = this.dynamicTools.get(toolName)
+      if (tool) {
+        tool.disable()
+        logger.info(`Disabled ${toolName} - n8n API is not available`)
+      }
+    })
+  }
+
+  /**
+   * Update tool configuration at runtime
+   */
+  public updateToolConfiguration(toolName: string, updates: { description?: string }): void {
+    const tool = this.dynamicTools.get(toolName)
+    if (tool && updates.description) {
+      tool.update({
+        description: updates.description,
+      })
+      logger.debug(`Updated ${toolName} configuration`)
+    }
+  }
+
+  /**
+   * Handle node recommendations using the simplified, type-safe engine
+   */
+  private async handleNodeRecommendations(args: Record<string, unknown>): Promise<{
+    content: Array<{ type: 'text', text: string }>
+    isError?: boolean
+  }> {
+    return executeToolWithErrorHandling('recommend_n8n_nodes', async () => {
+      const { userInput, complexity, providers } = args as {
+        userInput: string
+        complexity?: 'simple' | 'standard' | 'advanced'
+        providers?: string[]
+      }
+
+      // Validate required input
+      if (!userInput || typeof userInput !== 'string') {
+        throw new EnhancedMcpError(
+          'userInput is required and must be a string',
+          {
+            category: ErrorCategory.VALIDATION,
+            severity: ErrorSeverity.MEDIUM,
+            recoverable: true,
+            toolName: 'recommend_n8n_nodes',
+            metadata: { providedArgs: Object.keys(args) },
+          },
+        )
+      }
+
+      // Initialize simplified node recommender with database
+      await SimplifiedNodeRecommender.initialize({ getAllNodes: () => Promise.resolve(database.getNodes()) })
+
+      // Create recommendation context
+      const context = createSimpleNodeContext(userInput, {
+        ...(complexity !== undefined && { complexity }),
+        ...(providers !== undefined && { providers }),
+      })
+
+      // Get recommendations using simplified engine
+      const recommendations = SimplifiedNodeRecommender.getRecommendations(context)
+
+      // Format recommendations for display
+      let responseText = `🎯 **Node Recommendations** (Simplified Engine)\n\n`
+      responseText += `**Input:** ${userInput}\n`
+      responseText += `**Complexity Level:** ${complexity || 'standard'}\n\n`
+
+      if (recommendations.length === 0) {
+        responseText += `No specific recommendations found. Try using these popular nodes:\n`
+        responseText += `• Manual Trigger (for starting workflows)\n`
+        responseText += `• HTTP Request (for API calls)\n`
+        responseText += `• Code (for custom logic)\n`
+      }
+      else {
+        responseText += `**Recommended Nodes:**\n\n`
+
+        recommendations.forEach((rec, index) => {
+          responseText += `${index + 1}. **${rec.displayName}**\n`
+          responseText += `   Category: ${rec.category}\n`
+          responseText += `   Confidence: ${(rec.confidence * 100).toFixed(0)}%\n`
+          responseText += `   Reason: ${rec.reasoning}\n`
+
+          if (rec.alternatives?.length) {
+            responseText += `   Alternatives: ${rec.alternatives.join(', ')}\n`
+          }
+
+          if (rec.isPopular) {
+            responseText += `   ⭐ Popular choice\n`
+          }
+
+          if (rec.isRecommended) {
+            responseText += `   ✅ Highly recommended\n`
+          }
+
+          responseText += `\n`
+        })
+      }
+
+      // Add performance note
+      responseText += `\n💡 **Engine:** Lightweight simplified recommendations (Phase 4 enhancement)\n`
+      responseText += `**Features:** Type-safe, memory-efficient, fast pattern matching`
+
+      return {
+        content: [{ type: 'text', text: responseText }],
+      }
+    })
+  }
+
+  /**
+   * Handle system health monitoring with comprehensive error statistics
+   */
+  private async handleSystemHealth(args: Record<string, unknown>): Promise<{
+    content: Array<{ type: 'text', text: string }>
+    isError?: boolean
+  }> {
+    return executeToolWithErrorHandling('get_system_health', async () => {
+      const { includeErrorDetails } = args as {
+        includeErrorDetails?: boolean
+      }
+
+      // Get error statistics
+      const errorStats = EnhancedErrorHandler.getErrorStats()
+
+      // Get performance metrics
+      const performanceStats = performanceMonitor.getAllStats()
+
+      // Get memory usage
+      const memoryUsage = process.memoryUsage()
+
+      // Get uptime
+      const uptimeMs = performance.now()
+      const uptimeMinutes = Math.floor(uptimeMs / 60000)
+
+      let responseText = `🏥 **System Health Report**\n\n`
+
+      // Overall health status
+      const healthScore = this.calculateHealthScore(errorStats, performanceStats, memoryUsage)
+      const healthIcon = healthScore >= 80 ? '🟢' : healthScore >= 60 ? '🟡' : '🔴'
+
+      responseText += `**Overall Health:** ${healthIcon} ${healthScore}/100\n`
+      responseText += `**Uptime:** ${uptimeMinutes} minutes\n\n`
+
+      // Error Statistics
+      responseText += `## 📊 Error Statistics\n`
+      responseText += `- **Total Error Types:** ${errorStats.totalErrors}\n`
+      responseText += `- **Recent Errors (1h):** ${errorStats.recentErrors}\n\n`
+
+      if (includeErrorDetails && Object.keys(errorStats.errorsByCategory).length > 0) {
+        responseText += `**Error Breakdown by Category:**\n`
+        Object.entries(errorStats.errorsByCategory).forEach(([category, count]) => {
+          responseText += `- ${category}: ${count}\n`
+        })
+        responseText += `\n`
+      }
+
+      // Performance Metrics
+      responseText += `## ⚡ Performance Metrics\n`
+      if (performanceStats && typeof performanceStats === 'object') {
+        Object.entries(performanceStats).forEach(([tool, stats]) => {
+          if (typeof stats === 'object' && stats !== null) {
+            responseText += `- **${tool}**: ${JSON.stringify(stats)}\n`
+          }
+        })
+      }
+      responseText += `\n`
+
+      // Memory Usage
+      responseText += `## 💾 Memory Usage\n`
+      responseText += `- **RSS:** ${Math.round(memoryUsage.rss / 1024 / 1024)}MB\n`
+      responseText += `- **Heap Used:** ${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB\n`
+      responseText += `- **Heap Total:** ${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB\n`
+      responseText += `- **External:** ${Math.round(memoryUsage.external / 1024 / 1024)}MB\n\n`
+
+      // Feature Flags Status
+      responseText += `## 🏁 Feature Flags\n`
+      responseText += `- **Intelligence Layer:** ${featureFlags.intelligenceLayer.enabled ? '✅' : '❌'}\n`
+      responseText += `- **Simplified Pipeline:** ${featureFlags.architecture.useSimplifiedToolPipeline ? '✅' : '❌'}\n`
+      responseText += `- **Memory Array Limits:** ${featureFlags.performance.limitMetricsArrays ? '✅' : '❌'}\n`
+      responseText += `- **Performance Logging:** ${featureFlags.debugging.logPerformanceComparisons ? '✅' : '❌'}\n\n`
+
+      // System Recommendations
+      responseText += `## 💡 Recommendations\n`
+      if (errorStats.recentErrors > 10) {
+        responseText += `⚠️ High error rate detected - consider investigating recent changes\n`
+      }
+      if (memoryUsage.heapUsed / memoryUsage.heapTotal > 0.8) {
+        responseText += `⚠️ High memory usage - consider enabling memory array limits\n`
+      }
+      if (healthScore < 60) {
+        responseText += `🔴 System health is degraded - check logs for details\n`
+      }
+      else if (healthScore >= 90) {
+        responseText += `✨ System is running optimally\n`
+      }
+
+      responseText += `\n📈 **Generated:** ${new Date().toISOString()}`
+
+      return {
+        content: [{ type: 'text', text: responseText }],
+      }
+    })
+  }
+
+  /**
+   * Calculate overall system health score (0-100)
+   */
+  private calculateHealthScore(
+    errorStats: ReturnType<typeof EnhancedErrorHandler.getErrorStats>,
+    performanceStats: any,
+    memoryUsage: NodeJS.MemoryUsage,
+  ): number {
+    let score = 100
+
+    // Deduct for recent errors
+    score -= Math.min(errorStats.recentErrors * 2, 30)
+
+    // Deduct for total error diversity
+    score -= Math.min(errorStats.totalErrors, 20)
+
+    // Deduct for high memory usage
+    const memoryUsageRatio = memoryUsage.heapUsed / memoryUsage.heapTotal
+    if (memoryUsageRatio > 0.8) {
+      score -= 20
+    }
+    else if (memoryUsageRatio > 0.6) {
+      score -= 10
+    }
+
+    return Math.max(0, Math.min(100, Math.round(score)))
   }
 }
 
