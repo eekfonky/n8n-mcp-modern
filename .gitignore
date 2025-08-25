@@ -23,12 +23,29 @@ coverage/
 # nyc test coverage
 .nyc_output
 
-# Environment variables
+# Environment variables and secrets
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.backup
+.env.*.backup
+
+# API Keys and Secrets
+*.key
+*.pem
+*.p12
+*.pfx
+config/secrets.json
+secrets.json
+.secrets/
+auth-tokens.json
+
+# GitHub tokens and credentials
+.github-auth
+.npmrc.backup
+credentials.json
 
 # OS files
 .DS_Store
