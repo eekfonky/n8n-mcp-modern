@@ -1373,17 +1373,26 @@ class N8NMcpServer {
     // Deduct for recent errors
     score -= Math.min(errorStats.recentErrors * 2, 30)
 
-    // Deduct for total error diversity
+    // Deduct for total error diversity  
     score -= Math.min(errorStats.totalErrors, 20)
 
-    // Deduct for high memory usage
+    // Use configurable memory thresholds for realistic scoring
     const memoryUsageRatio = memoryUsage.heapUsed / memoryUsage.heapTotal
-    if (memoryUsageRatio > 0.8) {
+    const warningThreshold = config.memoryThresholdWarning / 100 // Convert to ratio
+    const criticalThreshold = config.memoryThresholdCritical / 100 // Convert to ratio
+    
+    // More realistic memory usage scoring for Node.js applications
+    if (memoryUsageRatio > criticalThreshold) {
+      // Only penalize at critical levels (default 90%+)
       score -= 20
     }
-    else if (memoryUsageRatio > 0.6) {
-      score -= 10
+    else if (memoryUsageRatio > warningThreshold) {
+      // Light penalty at warning levels (default 80%+), scaled by proximity to critical
+      const warningRange = criticalThreshold - warningThreshold
+      const proximityToCritical = (memoryUsageRatio - warningThreshold) / warningRange
+      score -= Math.round(proximityToCritical * 10) // Max 10 point deduction
     }
+    // No penalty below warning threshold - normal Node.js operation
 
     return Math.max(0, Math.min(100, Math.round(score)))
   }

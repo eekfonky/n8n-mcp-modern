@@ -110,7 +110,7 @@ const envSchema = z.object({
         throw new Error(`Invalid MEMORY_THRESHOLD_WARNING: ${val} (must be 50-95)`)
       return num
     })
-    .default('80'),
+    .default('87'),
   MEMORY_THRESHOLD_CRITICAL: z
     .string()
     .transform((val): number => {
@@ -119,7 +119,7 @@ const envSchema = z.object({
         throw new Error(`Invalid MEMORY_THRESHOLD_CRITICAL: ${val} (must be 80-98)`)
       return num
     })
-    .default('90'),
+    .default('95'),
   GC_INTERVAL_MS: z
     .string()
     .transform((val): number => {
