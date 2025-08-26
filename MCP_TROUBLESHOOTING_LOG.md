@@ -23,7 +23,6 @@ Located at: `/home/chris/Code/west-linton-play-park/.mcp.json`
       "env": {
         "N8N_API_URL": "https://n8n.srv925321.hstgr.cloud",
         "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3NjYwNWZlZi0yMjdlLTQ4ZGEtODhkOC05ZTJkNGMwMTM2ZjIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzU1NTU1MDU5fQ.kUQtb9aLt1RFcO-azJIbXRyUriGMKCwo_djgWJP0QKo",
-        "OPENROUTER_API_KEY": "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",
         "ENABLE_AGENT_HANDOVERS": "true",
         "LOG_LEVEL": "info",
         "ENABLE_CACHE": "true"

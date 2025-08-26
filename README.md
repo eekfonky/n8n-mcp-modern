@@ -162,6 +162,8 @@ DISABLE_CONSOLE_OUTPUT=false     # Silent mode
 }
 ```
 
+> **🔒 Security Note**: Only `N8N_API_URL` and `N8N_API_KEY` are required. Do not add other API keys (like OpenRouter, OpenAI, etc.) to the MCP configuration - these should be configured within your n8n workflows themselves for better security and portability.
+
 ## 🎖️ Enterprise Features
 
 ### Agent Routing Intelligence
