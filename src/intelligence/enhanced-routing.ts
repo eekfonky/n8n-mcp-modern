@@ -9,15 +9,17 @@
  */
 
 import type { CommunicationManager } from '../agents/communication.js'
+
 import type { AgentContext, EscalationRequest, EscalationResult } from '../agents/index.js'
 import type { ComplexityAssessment } from './complexity-assessor.js'
-import type { ComplexityLevel, IntentClassificationResult } from './intent-classifier.js'
+import type { ComplexityLevel, IntentClassificationResult, WorkflowIntent } from './intent-classifier.js'
 import type { NodeRecommendation } from './node-recommender.js'
+
 import type { WorkflowTemplate } from './template-engine.js'
 import { performance } from 'node:perf_hooks'
 import { storyManager } from '../agents/story-manager.js'
 import { logger } from '../server/logger.js'
-import { complexityAssessor } from './complexity-assessor.js'
+import { complexityAssessor, RiskLevel } from './complexity-assessor.js'
 import { intentClassifier, RoutingStrategy } from './intent-classifier.js'
 import { nodeRecommender } from './node-recommender.js'
 import { templateEngine } from './template-engine.js'
@@ -57,6 +59,7 @@ export interface IntelligentRoutingResult {
   processingTime: number
   confidence: number
   reasoning: string[]
+  cacheHit?: boolean
 }
 
 export interface UserPreferences {
@@ -255,11 +258,9 @@ export class EnhancedIntelligentRouter {
       technicalContext: {
         ...request.technicalContext,
         ...(routingContext.complexity.estimatedDuration && {
-          performanceMetrics: {
-            executionTime: routingContext.complexity.estimatedDuration,
-          },
+          performanceImpact: routingContext.complexity.estimatedDuration > 30000 ? 'high' as const : 'low' as const,
         }),
-      } as any, // Extended technical context
+      },
     }
 
     // Use appropriate escalation strategy based on handover mode
@@ -548,7 +549,7 @@ export class EnhancedIntelligentRouter {
   private createFallbackResult(request: IntelligentRoutingRequest, processingTime: number): IntelligentRoutingResult {
     return {
       intent: {
-        intent: 'unknown' as any,
+        intent: 'unknown' as WorkflowIntent,
         confidence: 0.5,
         complexity: 'standard' as ComplexityLevel,
         complexityScore: 5,
@@ -570,7 +571,7 @@ export class EnhancedIntelligentRouter {
           governanceLevel: 'standard',
           monitoringLevel: 'enhanced',
         },
-        riskLevel: 'medium' as any,
+        riskLevel: RiskLevel.MEDIUM,
       },
       suggestedAgent: 'n8n-orchestrator',
       routingStrategy: RoutingStrategy.ORCHESTRATOR_REQUIRED,

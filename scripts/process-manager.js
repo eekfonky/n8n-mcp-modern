@@ -5,6 +5,7 @@
  * Handles graceful shutdowns, error recovery, and process monitoring
  */
 
+import process from 'node:process'
 import { createLogger } from './logger.js'
 
 const logger = createLogger('process-manager')

@@ -67,15 +67,35 @@ afterEach(() => {
   signalEvents.forEach((signal) => {
     const listeners = process.listeners(signal)
     listeners.forEach((listener) => {
-      process.removeListener(signal, listener as (...args: any[]) => void)
+      process.removeListener(signal, listener as (...args: unknown[]) => void)
     })
   })
 
   processEvents.forEach((event) => {
-    const listeners = process.listeners(event as any)
-    listeners.forEach((listener) => {
-      process.removeListener(event as any, listener as (...args: any[]) => void)
-    })
+    if (event === 'warning') {
+      const listeners = process.listeners('warning')
+      listeners.forEach((listener) => {
+        process.removeListener('warning', listener as (...args: unknown[]) => void)
+      })
+    }
+    else if (event === 'beforeExit') {
+      const listeners = process.listeners('beforeExit')
+      listeners.forEach((listener) => {
+        process.removeListener('beforeExit', listener as (...args: unknown[]) => void)
+      })
+    }
+    else if (event === 'uncaughtException') {
+      const listeners = process.listeners('uncaughtException')
+      listeners.forEach((listener) => {
+        process.removeListener('uncaughtException', listener as (...args: unknown[]) => void)
+      })
+    }
+    else if (event === 'unhandledRejection') {
+      const listeners = process.listeners('unhandledRejection')
+      listeners.forEach((listener) => {
+        process.removeListener('unhandledRejection', listener as (...args: unknown[]) => void)
+      })
+    }
   })
 })
 

@@ -5,8 +5,10 @@
  * Safe for all installation contexts - exits gracefully if directories don't exist
  */
 
+const { Buffer } = require('node:buffer')
 const fs = require('node:fs')
 const path = require('node:path')
+const process = require('node:process')
 
 function log(message, isError = false) {
   const prefix = isError ? '❌' : '🧹'

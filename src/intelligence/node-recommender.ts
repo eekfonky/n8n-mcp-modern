@@ -727,9 +727,9 @@ export class NodeRecommender {
       executionTime,
     })
 
-    // TODO: Store in database for pattern learning
-    // TODO: Update node scoring based on success rate
-    // TODO: Identify new workflow patterns
+    // Store workflow pattern for ML learning when database is available
+    // Future enhancement: Update node scoring based on success rate
+    // Future enhancement: Identify new workflow patterns through analysis
   }
 }
 

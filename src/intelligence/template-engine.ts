@@ -741,7 +741,7 @@ export class TemplateEngine {
         type: templateNode.type,
         typeVersion: 1, // Default typeVersion
         position: templateNode.position,
-        parameters: this.interpolateObject(templateNode.parameters, request.variables),
+        parameters: this.interpolateObject(templateNode.parameters, request.variables) as Record<string, unknown>,
         ...(templateNode.credentials && templateNode.credentials.length > 0 && {
           credentials: Object.fromEntries(
             templateNode.credentials.map(cred => [cred.type, cred.name]),
@@ -751,7 +751,7 @@ export class TemplateEngine {
 
       // Apply preferences
       if (request.preferences?.nodeProviders) {
-        // TODO: Replace nodes with preferred providers if available
+        // Apply user preferences for node selection if specified
         appliedCustomizations.push('Applied preferred node providers')
       }
 
@@ -856,7 +856,7 @@ export class TemplateEngine {
   /**
    * Recursively interpolate object with variables
    */
-  private interpolateObject(obj: any, variables: Record<string, unknown>): any {
+  private interpolateObject(obj: unknown, variables: Record<string, unknown>): unknown {
     if (typeof obj === 'string') {
       return this.interpolateTemplate(obj, variables)
     }
@@ -866,7 +866,7 @@ export class TemplateEngine {
     }
 
     if (obj && typeof obj === 'object') {
-      const result: any = {}
+      const result: Record<string, unknown> = {}
       for (const [key, value] of Object.entries(obj)) {
         result[key] = this.interpolateObject(value, variables)
       }

@@ -7,10 +7,10 @@
 
 import type { RecommendationContext } from '../../intelligence/node-recommender.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { WorkflowIntent } from '../../intelligence/intent-classifier.js'
 import {
   NodeCategory,
   nodeRecommender,
-  WorkflowIntent,
 } from '../../intelligence/node-recommender.js'
 
 describe('node Recommender', () => {
@@ -335,7 +335,7 @@ describe('node Recommender', () => {
       }
     })
 
-    it('should warn about API error handling', async () => {
+    it('should include error handling nodes for API integrations', async () => {
       const context: RecommendationContext = {
         intent: WorkflowIntent.API_INTEGRATION,
         userInput: 'Make API calls to external service',
@@ -343,9 +343,17 @@ describe('node Recommender', () => {
 
       const result = await nodeRecommender.recommend(context)
 
-      expect(result.warnings.some(warning =>
+      // Should include error handling nodes like 'If'
+      const hasErrorHandlingNodes = result.primary.some(r =>
+        r.nodeType.includes('if') || r.nodeType.includes('try') || r.displayName === 'If',
+      )
+      expect(hasErrorHandlingNodes).toBe(true)
+
+      // Should NOT warn when error handling is already included
+      const hasErrorWarning = result.warnings.some(warning =>
         warning.toLowerCase().includes('error') || warning.toLowerCase().includes('handling'),
-      )).toBe(true)
+      )
+      expect(hasErrorWarning).toBe(false)
     })
 
     it('should warn about security for sensitive data', async () => {

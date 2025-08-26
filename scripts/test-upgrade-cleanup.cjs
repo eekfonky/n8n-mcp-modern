@@ -6,6 +6,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const process = require('node:process')
 const { performUpgradeCleanup } = require('./upgrade-cleanup.cjs')
 
 function createTestFiles() {

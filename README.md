@@ -1,24 +1,25 @@
 # n8n-MCP Modern 🚀
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-6.0.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
+[![Version](https://img.shields.io/badge/version-6.2.0-blue.svg)](https://github.com/eekfonky/n8n-mcp-modern)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 
 **Modern n8n MCP server with agent handover system. Zero legacy dependencies, maximum performance.**
 
-## 🎯 What's New in v6.0.0
+## 🎯 What's New in v6.2.0
 
-**BREAKING CHANGE** - Complete agent handover integration:
-- ✅ **Story File System**: Rich context preservation with audit trails
-- ✅ **Two-Phase Workflows**: Planning → Implementation handovers  
-- ✅ **Decision Tracking**: Impact assessment and complete audit trails
-- ✅ **Agent Handovers**: Seamless context transitions between 6 specialized agents
+**LATEST RELEASE** - Enhanced intelligence and performance optimizations:
+- ✅ **126+ Advanced Tools**: Comprehensive workflow automation toolkit
+- ✅ **7-Agent Hierarchy**: Optimized specialist routing with enhanced performance
+- ✅ **Memory Optimization**: Array limits and intelligent monitoring
+- ✅ **Enhanced Routing**: Improved complexity assessment and agent selection
+- ✅ **Runtime Reliability**: Resolved critical MCP server runtime issues
 
-> **⚠️ IMPORTANT**: This is a breaking change. Existing installations require clean reinstall.
+> **✨ UPGRADE RECOMMENDED**: Clean performance improvements and expanded capabilities.
 
 ## 🚀 Installation
 
-### Fresh Installation (v6.0.0+)
+### Fresh Installation (v6.2.0+)
 
 ```bash
 # Method 1: Direct from GitHub (Recommended)
@@ -48,7 +49,7 @@ rm -rf ~/.claude/mcp/servers/n8n-mcp-modern
 # 2. Remove local data (saves new story file system)
 rm -rf data/n8n-mcp.db data/nodes.db
 
-# 3. Fresh install with v6.0.0
+# 3. Fresh install with v6.2.0
 claude mcp add n8n-mcp-modern \
   --env N8N_API_URL="https://your-n8n-instance.com" \
   --env N8N_API_KEY="your-api-key" \
@@ -59,20 +60,21 @@ claude mcp add n8n-mcp-modern \
 
 ## 🏗️ Architecture
 
-### 6-Agent Hierarchy with Agent Handovers
+### 7-Agent Hierarchy with Intelligent Routing
 
 ```
 TIER 1 - MASTER ORCHESTRATOR
-├─ n8n-orchestrator - Strategic planning & coordination
+├─ n8n-workflow-architect - Strategic planning & coordination
 
-TIER 2 - CORE SPECIALISTS  
-├─ n8n-connector - Authentication (525+ platforms)
-├─ n8n-builder - Code generation & DevOps
-├─ n8n-node-expert - 525+ nodes + AI/ML
-└─ n8n-scriptguard - JavaScript validation
+TIER 2 - CORE DOMAIN SPECIALISTS (5)
+├─ n8n-developer-specialist - Code generation, templates, DevOps
+├─ n8n-integration-specialist - Authentication, APIs, connectivity
+├─ n8n-node-specialist - 525+ nodes + AI/ML + community
+├─ n8n-javascript-specialist - JavaScript validation, optimization, security
+└─ n8n-performance-specialist - Monitoring, optimization, analytics
 
-TIER 3 - SUPPORT
-└─ n8n-guide - Documentation & tutorials
+TIER 3 - SUPPORT SPECIALIST
+└─ n8n-guidance-specialist - Documentation, tutorials, admin support
 ```
 
 ### Performance vs Legacy
@@ -93,10 +95,12 @@ TIER 3 - SUPPORT
 - **Two-Phase Flow**: Planning → Implementation workflows
 - **Validation**: Completeness scoring before handovers
 
-### 92 Advanced Tools
-- **12 Core MCP Tools**: Direct n8n API integration
-- **54 Execution-Routed**: Advanced workflow patterns  
-- **26 Specialized**: Agent-specific capabilities
+### 126+ Advanced Tools
+- **18 Core MCP Tools**: Direct n8n API integration with enhanced features
+- **12 Code Generation Tools**: Workflow templates, API integrations, Docker
+- **10 Developer Workflow Tools**: CI/CD, Git integration, deployment automation
+- **12 Performance & Observability Tools**: Monitoring, optimization, analytics
+- **87+ Comprehensive Tools**: Discovery, validation, management, and specialized operations
 
 ### Enterprise Security
 - ✅ Zero vulnerabilities (clean audit)

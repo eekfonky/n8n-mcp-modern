@@ -8,6 +8,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
+import process from 'node:process'
 
 /**
  * Log levels with numeric values for filtering

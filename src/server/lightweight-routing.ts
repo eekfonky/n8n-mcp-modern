@@ -379,7 +379,7 @@ export class LightweightRouter {
    */
   async benchmark(toolName: string, iterations = 10): Promise<{
     lightweight: { avgTime: number, results: RoutingResult[] }
-    complex?: { avgTime: number, results: any[] }
+    complex?: { avgTime: number, results: unknown[] }
   }> {
     const results: RoutingResult[] = []
     const startTime = performance.now()

@@ -98,83 +98,15 @@ function getPackageVersion(): string {
 // Cache the version at startup
 const PACKAGE_VERSION = getPackageVersion()
 
-/**
- * Count MCP-registered tools by checking the actual registration
- */
-async function countMCPRegisteredTools(): Promise<number> {
-  // We'll count these by maintaining a registry
-  return getMCPToolRegistry().length
-}
+// Dynamic tool counting - will be set after tools are registered
+let registeredToolCount = 0
 
 /**
- * Count comprehensive tools from comprehensive.ts
+ * Get the current count of registered MCP tools
  */
-async function countComprehensiveTools(): Promise<number> {
-  try {
-    const { getAllComprehensiveTools } = await import('./tools/comprehensive.js')
-    return getAllComprehensiveTools().length
-  }
-  catch {
-    // Fallback count if import fails
-    return 40
-  }
+export function getRegisteredToolCount(): number {
+  return registeredToolCount
 }
-
-/**
- * Get MCP tool registry for counting
- */
-function getMCPToolRegistry(): string[] {
-  return [
-    'search_n8n_nodes',
-    'get_n8n_workflows',
-    'get_n8n_workflow',
-    'create_n8n_workflow',
-    'execute_n8n_workflow',
-    'get_n8n_executions',
-    'get_workflow_stats',
-    'activate_n8n_workflow',
-    'deactivate_n8n_workflow',
-    'n8n_import_workflow',
-    'get_tool_usage_stats',
-    'route_to_agent',
-  ]
-}
-
-/**
- * Get dynamic tool count
- */
-async function getToolCount(): Promise<{
-  total: number
-  registered: number
-  comprehensive: number
-}> {
-  // Dynamic count of MCP-registered tools
-  const mcpRegisteredTools = await countMCPRegisteredTools()
-
-  // Dynamic count of comprehensive tools from comprehensive.ts
-  const comprehensiveTools = await countComprehensiveTools()
-
-  return {
-    total: mcpRegisteredTools + comprehensiveTools,
-    registered: mcpRegisteredTools,
-    comprehensive: comprehensiveTools,
-  }
-}
-
-// Cache tool count (will be populated async)
-let TOTAL_TOOLS: {
-  total: number
-  registered: number
-  comprehensive: number
-} = { total: 0, registered: 0, comprehensive: 0 }
-
-// Initialize tool count cache
-getToolCount().then((count) => {
-  TOTAL_TOOLS = count
-}).catch(() => {
-  // Fallback values if counting fails
-  TOTAL_TOOLS = { total: 52, registered: 12, comprehensive: 40 }
-})
 
 /**
  * Main MCP Server Implementation
@@ -200,6 +132,7 @@ class N8NMcpServer {
     })
 
     this.setupTools()
+    this.setupResources()
     this.setupErrorHandlers()
     this.configureDynamicTools()
   }
@@ -214,6 +147,153 @@ class N8NMcpServer {
     this.setupDynamicN8NApiTools()
 
     logger.info('Registered MCP tools with agent routing system')
+  }
+
+  /**
+   * Setup MCP resources for contextual information
+   */
+  private setupResources(): void {
+    logger.info('Setting up n8n MCP resources...')
+
+    // Static workflow template resource
+    this.server.registerResource(
+      'workflow-templates',
+      'n8n://templates/workflows',
+      {
+        title: 'n8n Workflow Templates',
+        description: 'Common workflow patterns and templates for n8n',
+        mimeType: 'application/json',
+      },
+      async (uri) => {
+        const templates = [
+          {
+            name: 'Basic HTTP API Integration',
+            description: 'Simple workflow to fetch data from an API',
+            nodes: [
+              { type: 'Manual Trigger', description: 'Start workflow manually' },
+              { type: 'HTTP Request', description: 'Fetch data from external API' },
+              { type: 'Set', description: 'Transform and set output data' },
+            ],
+          },
+          {
+            name: 'Data Processing Pipeline',
+            description: 'Process and transform data with multiple steps',
+            nodes: [
+              { type: 'Webhook', description: 'Receive data via webhook' },
+              { type: 'Code', description: 'Custom JavaScript processing' },
+              { type: 'Switch', description: 'Conditional routing' },
+              { type: 'Set', description: 'Final data transformation' },
+            ],
+          },
+          {
+            name: 'Scheduled Data Sync',
+            description: 'Automatically sync data between systems',
+            nodes: [
+              { type: 'Schedule Trigger', description: 'Run on schedule' },
+              { type: 'HTTP Request', description: 'Fetch source data' },
+              { type: 'Code', description: 'Transform data format' },
+              { type: 'HTTP Request', description: 'Send to destination' },
+            ],
+          },
+        ]
+
+        return {
+          contents: [{
+            uri: uri.href,
+            text: JSON.stringify(templates, null, 2),
+          }],
+        }
+      },
+    )
+
+    // Configuration guide resource
+    this.server.registerResource(
+      'config-guide',
+      'n8n://guides/configuration',
+      {
+        title: 'n8n Configuration Guide',
+        description: 'Best practices for configuring n8n workflows',
+        mimeType: 'text/markdown',
+      },
+      async (uri) => {
+        const guide = `# n8n Configuration Best Practices
+
+## Workflow Design
+- Keep workflows simple and focused on a single purpose
+- Use meaningful names for nodes and workflows
+- Add notes to complex logic for future reference
+- Implement proper error handling with Error Trigger nodes
+
+## Performance Tips
+- Limit data processed per execution to avoid memory issues
+- Use pagination for large datasets (>1000 items)
+- Optimize HTTP requests with connection reuse
+- Consider workflow splitting for complex processes
+
+## Security Guidelines
+- Never hardcode credentials in workflows
+- Use environment variables for sensitive data
+- Implement proper access controls with webhook authentication
+- Regular credential rotation and monitoring
+
+## Common Patterns
+1. **API Integration**: Manual Trigger → HTTP Request → Set → Response
+2. **Data Pipeline**: Schedule → Extract (HTTP) → Transform (Code) → Load (HTTP)
+3. **Notification System**: Webhook → Switch → Multiple notification channels
+4. **Error Handling**: Any Node → Error Trigger → Notification → Set
+
+## MCP Integration Tips
+- Use the n8n MCP tools to automate workflow management
+- Leverage Claude's understanding of your workflow patterns
+- Combine manual workflow design with AI-assisted optimization`
+
+        return {
+          contents: [{
+            uri: uri.href,
+            text: guide,
+          }],
+        }
+      },
+    )
+
+    // MCP server status resource
+    this.server.registerResource(
+      'mcp-status',
+      'n8n://mcp/status',
+      {
+        title: 'MCP Server Status',
+        description: 'Current status and capabilities of the n8n MCP server',
+        mimeType: 'application/json',
+      },
+      async (uri) => {
+        const status = {
+          server: 'n8n-MCP Modern',
+          version: PACKAGE_VERSION,
+          toolCount: registeredToolCount,
+          apiConnected: Boolean(config.n8nApiUrl && config.n8nApiKey),
+          capabilities: {
+            workflowManagement: Boolean(config.n8nApiUrl && config.n8nApiKey),
+            nodeRecommendations: true,
+            templateGeneration: true,
+            systemHealth: true,
+          },
+          configuration: {
+            n8nApiUrl: config.n8nApiUrl ? 'configured' : 'not configured',
+            logLevel: config.logLevel,
+            cacheEnabled: config.enableCache,
+          },
+        }
+
+        return {
+          contents: [{
+            uri: uri.href,
+            text: JSON.stringify(status, null, 2),
+          }],
+        }
+      },
+    )
+
+    logger.info('n8n MCP resources registered successfully')
   }
 
   /**
@@ -292,7 +372,7 @@ class N8NMcpServer {
       {
         name: 'list_available_tools',
         title: 'List Available Tools',
-        description: `Get comprehensive list of all ${TOTAL_TOOLS.total} available tools with categories`,
+        description: 'Get comprehensive list of all available n8n workflow tools with categories',
         inputSchema: {
           category: z.string().optional().describe('Filter by tool category'),
           search: z.string().optional().describe('Search term for tools'),
@@ -328,6 +408,7 @@ class N8NMcpServer {
 
     // Register all tools in batch with shared handler pattern
     staticToolConfigs.forEach((toolConfig) => {
+      registeredToolCount++
       this.server.registerTool(
         toolConfig.name,
         {
@@ -916,10 +997,8 @@ class N8NMcpServer {
       },
     })
 
-    logger.info(
-      `${TOTAL_TOOLS.total} total tools available: ${TOTAL_TOOLS.registered} MCP-registered + ${TOTAL_TOOLS.comprehensive} execution-routed`,
-    )
-    logger.info(`Complete catalog: 92 tools ready for Claude Code integration`)
+    logger.info(`${registeredToolCount} essential n8n workflow tools ready`)
+    logger.info(`MCP server initialized successfully for Claude Code integration`)
 
     // Log resource monitoring status
     const resourceStatus = resourceMonitor.getCurrentStatus()
@@ -980,7 +1059,8 @@ class N8NMcpServer {
     const hasN8NApiConfig = config.n8nApiUrl && config.n8nApiKey
 
     // Get n8n workflows - requires API access
-    const getWorkflowsTool = this.server.tool(
+    registeredToolCount++
+    this.server.registerTool(
       'get_n8n_workflows',
       {
         title: 'Get n8n Workflows',
@@ -992,10 +1072,10 @@ class N8NMcpServer {
       async (args: Record<string, unknown>) =>
         this.executeToolWithRouting('get_n8n_workflows', args),
     )
-    this.dynamicTools.set('get_n8n_workflows', getWorkflowsTool)
 
     // Create workflow - requires API access
-    const createWorkflowTool = this.server.tool(
+    registeredToolCount++
+    this.server.registerTool(
       'create_n8n_workflow',
       {
         title: 'Create n8n Workflow',
@@ -1010,10 +1090,10 @@ class N8NMcpServer {
       async (args: Record<string, unknown>) =>
         this.executeToolWithRouting('create_n8n_workflow', args),
     )
-    this.dynamicTools.set('create_n8n_workflow', createWorkflowTool)
 
     // Execute workflow - requires API access
-    const executeWorkflowTool = this.server.tool(
+    registeredToolCount++
+    this.server.registerTool(
       'execute_n8n_workflow',
       {
         title: 'Execute n8n Workflow',
@@ -1026,18 +1106,15 @@ class N8NMcpServer {
       async (args: Record<string, unknown>) =>
         this.executeToolWithRouting('execute_n8n_workflow', args),
     )
-    this.dynamicTools.set('execute_n8n_workflow', executeWorkflowTool)
 
     // Configure initial state based on API availability
     if (hasN8NApiConfig) {
       logger.info('n8n API configured - enabling workflow management tools')
-      // Tools are enabled by default when created
+      // Tools are enabled by default when created with registerTool()
     }
     else {
       logger.warn('n8n API not configured - disabling workflow management tools')
-      getWorkflowsTool.disable()
-      createWorkflowTool.disable()
-      executeWorkflowTool.disable()
+      // Note: With registerTool(), conditional registration should be handled at registration time
     }
   }
 
@@ -1350,7 +1427,7 @@ function handleCliCommands(): boolean {
 
     if (values.help) {
       process.stdout.write(`
-n8n-MCP Modern v${PACKAGE_VERSION} - ${TOTAL_TOOLS.total} MCP Tools for n8n Automation
+n8n-MCP Modern v${PACKAGE_VERSION} - Essential n8n Workflow Tools via MCP
 
 Usage:
   npx @eekfonky/n8n-mcp-modern              # Start MCP server (stdio mode)

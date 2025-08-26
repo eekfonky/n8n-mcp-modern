@@ -836,9 +836,18 @@ export class DatabaseManager {
     // In test environment, create a mock database and execute the callback
     if (process.env.NODE_ENV === 'test' && process.env.DATABASE_IN_MEMORY === 'true') {
       // Simple in-memory storage for tests
-      const testStorage = (globalThis as any).__TEST_DB_STORAGE__ = (globalThis as any).__TEST_DB_STORAGE__ || {
+      interface TestStorage {
+        stories: Map<string, Record<string, unknown>>
+        decisions: Map<string, Record<string, unknown>[]>
+      }
+
+      const testStorage = ((globalThis as Record<string, unknown>).__TEST_DB_STORAGE__ as TestStorage) || {
         stories: new Map(),
         decisions: new Map(),
+      } as TestStorage
+
+      if (!(globalThis as Record<string, unknown>).__TEST_DB_STORAGE__) {
+        (globalThis as Record<string, unknown>).__TEST_DB_STORAGE__ = testStorage
       }
 
       const mockDb = {
@@ -872,7 +881,7 @@ export class DatabaseManager {
                 tags: params[20],
                 related_stories: params[21],
               }
-              testStorage.stories.set(id, storyData)
+              testStorage.stories.set(String(id), storyData)
             }
             else if (sql.includes('INSERT INTO story_decisions')) {
               const _decisionId = params[0]
@@ -891,14 +900,17 @@ export class DatabaseManager {
                 dependencies: params[10],
                 outcome: params[11],
               }
-              if (!testStorage.decisions.has(storyId)) {
-                testStorage.decisions.set(storyId, [])
+              if (!testStorage.decisions.has(String(storyId))) {
+                testStorage.decisions.set(String(storyId), [] as Record<string, unknown>[])
               }
-              testStorage.decisions.get(storyId).push(decisionData)
+              const decisionList = testStorage.decisions.get(String(storyId))
+              if (decisionList && Array.isArray(decisionList)) {
+                decisionList.push(decisionData)
+              }
             }
             else if (sql.includes('UPDATE story_files')) {
               // Handle updates - params come in different order for UPDATE
-              const id = params[params.length - 1] // Last parameter is the ID in WHERE clause
+              const id = String(params[params.length - 1]) // Last parameter is the ID in WHERE clause
               if (testStorage.stories.has(id)) {
                 const existing = testStorage.stories.get(id)
                 const updated = {
@@ -929,16 +941,18 @@ export class DatabaseManager {
             }
             return { changes: 1 }
           },
-          get: (id: string): Record<string, unknown> | undefined => {
+          get: (...params: unknown[]): Record<string, unknown> | undefined => {
             if (sql.includes('SELECT * FROM story_files WHERE id = ?')) {
+              const id = String(params[0])
               return testStorage.stories.get(id) || undefined
             }
             return undefined
           },
           all: (...params: unknown[]): Record<string, unknown>[] => {
             if (sql.includes('SELECT * FROM story_decisions WHERE story_id = ?')) {
-              const storyId = params[0]
-              return testStorage.decisions.get(storyId) || []
+              const storyId = String(params[0])
+              const decisions = testStorage.decisions.get(storyId)
+              return Array.isArray(decisions) ? decisions : []
             }
             if (sql.includes('SELECT * FROM story_files')) {
               return Array.from(testStorage.stories.values())

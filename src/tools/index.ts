@@ -5,19 +5,20 @@
 
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import type { N8NApiClient } from '../n8n/api.js'
+import type { EnhancedN8NApi } from '../n8n/enhanced-api.js'
 import type {
   CreateWorkflowArgs,
   ExecuteWorkflowArgs,
   GetExecutionsArgs,
   GetWorkflowArgs,
   GetWorkflowsArgs,
-  N8NWorkflowNode,
   RouteToAgentArgs,
   SearchNodesArgs,
 } from '../types/index.js'
 import process from 'node:process'
 import { z } from 'zod'
 import { n8nApi, refreshN8NApiClient } from '../n8n/api.js'
+import { createEnhancedN8NApi } from '../n8n/enhanced-api.js'
 import { refreshConfig } from '../server/config.js'
 import { logger } from '../server/logger.js'
 import {
@@ -29,6 +30,7 @@ import {
   RouteToAgentArgsSchema,
   SearchNodesArgsSchema,
 } from '../types/index.js'
+import { EnhancedErrorHandler, ErrorUtils } from '../utils/enhanced-error-handler.js'
 import {
   APIIntegrationSchema,
   CodeGenerationTools,
@@ -216,6 +218,36 @@ export class N8NMCPTools {
             },
           },
           required: ['query'],
+        },
+      },
+      {
+        name: 'recommend_n8n_nodes',
+        description:
+          'Get intelligent node recommendations based on user input and workflow context',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            userInput: {
+              type: 'string',
+              description: 'Description of what you want to accomplish',
+            },
+            complexity: {
+              type: 'string',
+              description: 'Preferred complexity level (simple, standard, advanced)',
+              enum: ['simple', 'standard', 'advanced'],
+            },
+            providers: {
+              type: 'array',
+              description: 'Preferred service providers (optional)',
+              items: { type: 'string' },
+            },
+            workflowContext: {
+              type: 'array',
+              description: 'Existing workflow context for better recommendations (optional)',
+              items: { type: 'string' },
+            },
+          },
+          required: ['userInput'],
         },
       },
       {
@@ -479,6 +511,20 @@ export class N8NMCPTools {
         },
       },
       {
+        name: 'get_system_health',
+        description: 'Get comprehensive n8n system health status and diagnostics',
+        inputSchema: {
+          type: 'object' as const,
+          properties: {
+            includeDetails: {
+              type: 'boolean',
+              description: 'Include detailed system information',
+              default: false,
+            },
+          },
+        },
+      },
+      {
         name: 'routeToAgent',
         description:
           'Route a query to the most appropriate n8n agent specialist',
@@ -616,6 +662,15 @@ export class N8NMCPTools {
           result = await this.searchNodes(SearchNodesArgsSchema.parse(args))
           break
 
+        case 'recommend_n8n_nodes':
+          result = await this.recommendNodes(args as {
+            userInput: string
+            complexity?: 'simple' | 'standard' | 'advanced'
+            providers?: string[]
+            workflowContext?: string[]
+          })
+          break
+
         case 'get_n8n_workflows':
           result = await this.getWorkflows(GetWorkflowsArgsSchema.parse(args))
           break
@@ -662,6 +717,10 @@ export class N8NMCPTools {
 
         case 'get_tool_usage_stats':
           result = await this.getToolUsageStats()
+          break
+
+        case 'get_system_health':
+          result = await this.getSystemHealth(args as { includeDetails?: boolean })
           break
 
         case 'list_available_tools':
@@ -948,234 +1007,365 @@ export class N8NMCPTools {
   }
 
   /**
-   * Search for n8n nodes
+   * Create enhanced n8n API client for improved functionality
+   */
+  private static createEnhancedClient(): EnhancedN8NApi | null {
+    try {
+      return createEnhancedN8NApi()
+    }
+    catch (error) {
+      logger.error('Failed to create enhanced n8n API client:', error)
+      return null
+    }
+  }
+
+  /**
+   * Search for n8n nodes using enhanced API client
    */
   private static async searchNodes(args: SearchNodesArgs): Promise<unknown> {
-    const client = this.ensureApiClient()
-    if (!client) {
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
       throw new Error('n8n API not available - please check N8N_API_URL and N8N_API_KEY configuration')
     }
 
     try {
-      const nodes = await client.searchNodeTypes(args.query, args.category)
+      const result = await enhancedClient.searchNodes({
+        query: args.query,
+        ...(args.category && { category: args.category }),
+      })
 
-      // Ensure nodes is an array to prevent potential issues
-      if (!Array.isArray(nodes)) {
-        logger.warn('n8n API returned non-array nodes data:', nodes)
-        return []
+      return {
+        nodes: result.nodes || [],
+        total: result.total || 0,
+        categories: result.categories || [],
+        source: 'enhanced_api',
+        query: args.query,
+        category: args.category || 'all',
+        metadata: {
+          searchMethod: 'intelligent_matching',
+          cached: result.fromCache || false,
+        },
       }
-
-      return nodes
     }
     catch (error) {
-      logger.error('Error searching n8n nodes:', error)
+      logger.error('Error searching n8n nodes with enhanced API:', error)
       throw new Error(`Failed to search nodes: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
   /**
-   * Get workflows from n8n
+   * Recommend nodes using enhanced API client
+   */
+  private static async recommendNodes(args: {
+    userInput: string
+    complexity?: 'simple' | 'standard' | 'advanced'
+    providers?: string[]
+    workflowContext?: string[]
+  }): Promise<unknown> {
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
+      throw EnhancedErrorHandler.createApiNotConfiguredError('recommend_n8n_nodes')
+    }
+
+    return ErrorUtils.withEnhancedErrorHandling(
+      async () => {
+        const result = await enhancedClient.recommendNodes({
+          userInput: args.userInput,
+          ...(args.complexity && { complexity: args.complexity }),
+          ...(args.providers && { providers: args.providers }),
+          ...(args.workflowContext && { workflowContext: args.workflowContext }),
+        })
+
+        return {
+          recommendations: result.recommendations,
+          total: result.total,
+          categories: result.categories,
+          source: 'enhanced_api',
+          timestamp: new Date().toISOString(),
+          userInput: args.userInput,
+          complexity: args.complexity || 'standard',
+          metadata: {
+            recommendationEngine: 'intelligent_scoring',
+            scoringFactors: ['name_match', 'description_match', 'provider_preference', 'complexity_level'],
+          },
+        }
+      },
+      {
+        toolName: 'recommend_n8n_nodes',
+        operation: 'generate intelligent node recommendations',
+        args,
+        ...(process.env.N8N_API_URL && { apiUrl: process.env.N8N_API_URL }),
+      },
+    )
+  }
+
+  /**
+   * Get workflows from n8n using enhanced API client
    */
   private static async getWorkflows(args: GetWorkflowsArgs): Promise<unknown> {
-    const client = this.ensureApiClient()
-    if (!client) {
-      throw new Error(
-        'n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.',
-      )
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
+      throw EnhancedErrorHandler.createApiNotConfiguredError('get_n8n_workflows')
     }
 
-    try {
-      const workflows = await client.getWorkflows()
+    return ErrorUtils.withEnhancedErrorHandling(
+      async () => {
+        const result = await enhancedClient.getWorkflowsEnhanced({
+          limit: args.limit || 10,
+        })
 
-      // Fix the .slice() error by ensuring workflows is an array
-      if (!Array.isArray(workflows)) {
-        logger.warn('n8n API returned non-array workflows data:', workflows)
-        return []
-      }
-
-      const limit = args.limit || 10
-      return workflows.slice(0, limit)
-    }
-    catch (error) {
-      logger.error('Error fetching workflows from n8n API:', error)
-      throw new Error(`Failed to fetch workflows: ${error instanceof Error ? error.message : String(error)}`)
-    }
+        // Return enhanced workflow data with metadata
+        return {
+          workflows: result.workflows || [],
+          total: result.total || 0,
+          hasMore: result.hasMore || false,
+          source: 'enhanced_api',
+          timestamp: new Date().toISOString(),
+        }
+      },
+      {
+        toolName: 'get_n8n_workflows',
+        operation: 'fetch workflows from n8n instance',
+        args,
+        ...(process.env.N8N_API_URL && { apiUrl: process.env.N8N_API_URL }),
+      },
+    )
   }
 
   /**
-   * Get specific workflow
+   * Get specific workflow using enhanced API client
    */
   private static async getWorkflow(args: GetWorkflowArgs): Promise<unknown> {
-    if (!n8nApi) {
-      throw new Error('n8n API not configured.')
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
+      throw EnhancedErrorHandler.createApiNotConfiguredError('get_n8n_workflow')
     }
 
-    return await n8nApi.getWorkflow(args.id)
+    return ErrorUtils.withEnhancedErrorHandling(
+      async () => {
+        const workflow = await enhancedClient.getWorkflow(args.id)
+        return {
+          ...workflow,
+          source: 'enhanced_api',
+          timestamp: new Date().toISOString(),
+          metadata: {
+            nodeCount: workflow.nodes?.length || 0,
+            connectionCount: Object.keys(workflow.connections || {}).length,
+            lastUpdated: workflow.updatedAt || new Date().toISOString(),
+          },
+        }
+      },
+      {
+        toolName: 'get_n8n_workflow',
+        operation: 'fetch specific workflow by ID',
+        args,
+        ...(process.env.N8N_API_URL && { apiUrl: process.env.N8N_API_URL }),
+      },
+    )
   }
 
   /**
-   * Create new workflow
+   * Create new workflow using enhanced API client
    */
   private static async createWorkflow(
     args: CreateWorkflowArgs,
   ): Promise<unknown> {
-    if (!n8nApi) {
-      throw new Error('n8n API not configured.')
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
+      throw EnhancedErrorHandler.createApiNotConfiguredError('create_n8n_workflow')
     }
 
-    // Normalize nodes to handle exactOptionalPropertyTypes
-    const normalizedNodes = args.nodes.map((node) => {
-      const normalizedNode: N8NWorkflowNode = {
-        id: node.id,
-        name: node.name,
-        type: node.type,
-        typeVersion: node.typeVersion,
-        position: node.position,
-        parameters: node.parameters,
-      }
+    return ErrorUtils.withEnhancedErrorHandling(
+      async () => {
+        // Enhanced API client handles validation and normalization
+        const workflow = await enhancedClient.createWorkflow({
+          name: args.name,
+          nodes: args.nodes,
+          connections: args.connections,
+          ...(args.settings && { settings: args.settings }),
+          ...(args.tags && { tags: args.tags }),
+        })
 
-      // Only add optional properties if they have actual values
-      if (node.credentials !== undefined)
-        normalizedNode.credentials = node.credentials
-      if (node.disabled !== undefined)
-        normalizedNode.disabled = node.disabled
-      if (node.notes !== undefined)
-        normalizedNode.notes = node.notes
-      if (node.notesInFlow !== undefined)
-        normalizedNode.notesInFlow = node.notesInFlow
-      if (node.color !== undefined)
-        normalizedNode.color = node.color
-      if (node.continueOnFail !== undefined)
-        normalizedNode.continueOnFail = node.continueOnFail
-      if (node.alwaysOutputData !== undefined)
-        normalizedNode.alwaysOutputData = node.alwaysOutputData
-      if (node.executeOnce !== undefined)
-        normalizedNode.executeOnce = node.executeOnce
-      if (node.retryOnFail !== undefined)
-        normalizedNode.retryOnFail = node.retryOnFail
-      if (node.maxTries !== undefined)
-        normalizedNode.maxTries = node.maxTries
-      if (node.waitBetweenTries !== undefined)
-        normalizedNode.waitBetweenTries = node.waitBetweenTries
-      if (node.onError !== undefined)
-        normalizedNode.onError = node.onError
+        // Activate workflow if requested
+        if (args.active && workflow.id) {
+          await enhancedClient.activateWorkflow(workflow.id)
+        }
 
-      return normalizedNode
-    })
-
-    const workflowData: Omit<
-      import('../n8n/api.js').N8NWorkflow,
-      'id' | 'active'
-    > = {
-      name: args.name,
-      nodes: normalizedNodes,
-      connections: args.connections,
-      settings: args.settings ?? {
-        saveDataErrorExecution: 'all',
-        saveDataSuccessExecution: 'all',
-        saveManualExecutions: false,
-        timezone: 'America/New_York',
-        executionOrder: 'v1',
+        return {
+          ...workflow,
+          source: 'enhanced_api',
+          created: true,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            nodeCount: args.nodes.length,
+            activated: args.active || false,
+          },
+        }
       },
-    }
-
-    if (args.staticData !== undefined) {
-      workflowData.staticData = args.staticData
-    }
-    if (args.tags !== undefined) {
-      workflowData.tags = args.tags
-    }
-
-    const workflow = await n8nApi.createWorkflow(workflowData)
-
-    if (args.active) {
-      if (workflow.id) {
-        await n8nApi.activateWorkflow(workflow.id)
-      }
-    }
-
-    return workflow
+      {
+        toolName: 'create_n8n_workflow',
+        operation: 'create new workflow',
+        args,
+        ...(process.env.N8N_API_URL && { apiUrl: process.env.N8N_API_URL }),
+      },
+    )
   }
 
   /**
-   * Execute workflow
+   * Execute workflow using enhanced API client
    */
   private static async executeWorkflow(
     args: ExecuteWorkflowArgs,
   ): Promise<unknown> {
-    if (!n8nApi) {
-      throw new Error('n8n API not configured.')
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
+      throw EnhancedErrorHandler.createApiNotConfiguredError('execute_n8n_workflow')
     }
 
-    return await n8nApi.executeWorkflow(args.id, args.data)
+    return ErrorUtils.withEnhancedErrorHandling(
+      async () => {
+        const execution = await enhancedClient.executeWorkflow(args.id, args.data || {})
+
+        return {
+          ...execution,
+          source: 'enhanced_api',
+          executedAt: new Date().toISOString(),
+          timestamp: new Date().toISOString(),
+          metadata: {
+            workflowId: args.id,
+            hasInputData: !!args.data,
+          },
+        }
+      },
+      {
+        toolName: 'execute_n8n_workflow',
+        operation: 'execute workflow',
+        args,
+        ...(process.env.N8N_API_URL && { apiUrl: process.env.N8N_API_URL }),
+      },
+    )
   }
 
   /**
-   * Get executions
+   * Get executions using enhanced API client
    */
   private static async getExecutions(
     args: GetExecutionsArgs,
   ): Promise<unknown> {
-    const client = this.ensureApiClient()
-    if (!client) {
-      throw new Error('n8n API not configured.')
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
+      throw new Error('n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.')
     }
 
     try {
-      const executions = await client.getExecutions(args.workflowId)
+      // Use enhanced getExecutions method with comprehensive filtering
+      const result = await enhancedClient.getExecutionsEnhanced({
+        ...(args.workflowId && { workflowId: args.workflowId }),
+        limit: args.limit || 20,
+      })
 
-      // Fix potential .slice() error by ensuring executions is an array
-      if (!Array.isArray(executions)) {
-        logger.warn('n8n API returned non-array executions data:', executions)
-        return []
+      return {
+        executions: result.executions || [],
+        total: result.total || 0,
+        hasMore: result.hasMore || false,
+        source: 'enhanced_api',
+        metadata: {
+          workflowId: args.workflowId || 'all',
+          limit: args.limit || 20,
+        },
       }
-
-      const limit = args.limit || 20
-      return executions.slice(0, limit)
     }
     catch (error) {
-      logger.error('Error fetching executions from n8n API:', error)
+      logger.error('Error fetching executions from enhanced n8n API:', error)
       throw new Error(`Failed to fetch executions: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
   /**
-   * Get workflow statistics
+   * Get workflow statistics using enhanced API client
    */
   private static async getWorkflowStats(
     args: GetWorkflowArgs,
   ): Promise<unknown> {
-    if (!n8nApi) {
-      throw new Error('n8n API not configured.')
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
+      throw new Error('n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.')
     }
 
-    return await n8nApi.getWorkflowStats(args.id)
+    try {
+      const stats = await enhancedClient.getWorkflowStats(args.id)
+
+      return {
+        ...stats,
+        source: 'enhanced_api',
+        workflowId: args.id,
+        generatedAt: new Date().toISOString(),
+        metadata: {
+          calculationMethod: 'real_time_analysis',
+          dataSource: 'n8n_execution_history',
+        },
+      }
+    }
+    catch (error) {
+      logger.error('Error fetching workflow stats from enhanced n8n API:', error)
+      throw new Error(`Failed to fetch workflow statistics: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   /**
-   * Activate workflow
+   * Activate workflow using enhanced API client
    */
   private static async activateWorkflow(
     args: GetWorkflowArgs,
   ): Promise<unknown> {
-    if (!n8nApi) {
-      throw new Error('n8n API not configured.')
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
+      throw new Error('n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.')
     }
 
-    return await n8nApi.activateWorkflow(args.id)
+    try {
+      const result = await enhancedClient.activateWorkflow(args.id)
+
+      return {
+        ...result,
+        source: 'enhanced_api',
+        action: 'activate',
+        timestamp: new Date().toISOString(),
+        workflowId: args.id,
+      }
+    }
+    catch (error) {
+      logger.error('Error activating workflow with enhanced n8n API:', error)
+      throw new Error(`Failed to activate workflow: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   /**
-   * Deactivate workflow
+   * Deactivate workflow using enhanced API client
    */
   private static async deactivateWorkflow(
     args: GetWorkflowArgs,
   ): Promise<unknown> {
-    if (!n8nApi) {
-      throw new Error('n8n API not configured.')
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
+      throw new Error('n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.')
     }
 
-    return await n8nApi.deactivateWorkflow(args.id)
+    try {
+      const result = await enhancedClient.deactivateWorkflow(args.id)
+
+      return {
+        ...result,
+        source: 'enhanced_api',
+        action: 'deactivate',
+        timestamp: new Date().toISOString(),
+        workflowId: args.id,
+      }
+    }
+    catch (error) {
+      logger.error('Error deactivating workflow with enhanced n8n API:', error)
+      throw new Error(`Failed to deactivate workflow: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   /**
@@ -1205,23 +1395,107 @@ export class N8NMCPTools {
   }
 
   /**
-   * List all available tools with categories
+   * Get system health using enhanced API client
+   */
+  private static async getSystemHealth(args: { includeDetails?: boolean }): Promise<unknown> {
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
+      // For system health, return degraded status instead of throwing error
+      return {
+        status: 'degraded',
+        message: 'n8n API not configured - system health limited to MCP server only',
+        source: 'enhanced_api',
+        timestamp: new Date().toISOString(),
+        mcp_server: {
+          version: 'n8n_mcp_modern_v6.1.1',
+          status: 'healthy',
+          enhanced_features: ['caching', 'rate_limiting', 'intelligent_routing'],
+          configuration_status: 'n8n_api_not_configured',
+        },
+        n8n_instance: {
+          status: 'unknown',
+          message: 'API credentials not provided',
+        },
+      }
+    }
+
+    try {
+      const health = await enhancedClient.getSystemHealth({
+        cache: false,
+        ...(args.includeDetails && { includeMetadata: args.includeDetails }),
+      })
+      return {
+        ...health,
+        source: 'enhanced_api',
+        timestamp: new Date().toISOString(),
+        mcp_server: {
+          version: 'n8n_mcp_modern_v6.1.1',
+          status: 'healthy',
+          enhanced_features: ['caching', 'rate_limiting', 'intelligent_routing'],
+          configuration_status: 'fully_configured',
+        },
+      }
+    }
+    catch (error) {
+      // For system health, provide detailed error context instead of throwing
+      const errorContext = EnhancedErrorHandler.handleToolError(
+        error,
+        {
+          toolName: 'get_system_health',
+          operation: 'check system health',
+          args,
+          ...(process.env.N8N_API_URL && { apiUrl: process.env.N8N_API_URL }),
+        },
+        args.includeDetails || false,
+      )
+
+      return {
+        status: 'error',
+        source: 'enhanced_api',
+        timestamp: new Date().toISOString(),
+        mcp_server: {
+          version: 'n8n_mcp_modern_v6.1.1',
+          status: 'healthy',
+        },
+        n8n_instance: {
+          status: 'error',
+          error_details: errorContext,
+        },
+      }
+    }
+  }
+
+  /**
+   * List all available tools with categories using enhanced API client
    */
   private static async listAvailableTools(args: {
     category?: string
   }): Promise<unknown> {
+    // Import the dynamic count from the main server
+    const { getRegisteredToolCount } = await import('../index.js')
+    const toolCount = getRegisteredToolCount()
+
+    const enhancedClient = this.createEnhancedClient()
+    let nodeTypesCount = 0
+
+    if (enhancedClient) {
+      try {
+        const nodeTypes = await enhancedClient.getNodeTypes({ cache: true })
+        nodeTypesCount = nodeTypes.length
+      }
+      catch (error) {
+        logger.warn('Could not get node types count:', error)
+      }
+    }
+
     const categories = {
-      'core': 12, // MCP-registered tools
-      'code-generation': 12, // Phase 1 tools
-      'developer-workflows': 10, // Phase 2 tools
-      'performance-observability': 12, // Phase 3 tools
-      'comprehensive': 40, // Actual tools in comprehensive.ts
-      'other': 6, // Additional tools in executeTool
+      core: toolCount, // Essential n8n workflow tools
+      node_types: nodeTypesCount, // Available n8n node types
     }
 
     if (args.category) {
       const count = categories[args.category as keyof typeof categories]
-      if (!count) {
+      if (count === undefined) {
         return {
           error: `Unknown category: ${args.category}. Available: ${Object.keys(categories).join(', ')}`,
         }
@@ -1229,25 +1503,30 @@ export class N8NMCPTools {
       return {
         category: args.category,
         toolCount: count,
-        total: Object.values(categories).reduce((a, b) => a + b, 0),
+        total: toolCount,
+        source: 'enhanced_api',
       }
     }
 
     return {
       categories,
-      total: Object.values(categories).reduce((a, b) => a + b, 0),
-      breakdown: `12 MCP-registered + 80 execution-routed = ${12 + 80} total tools`,
+      total: toolCount,
+      nodeTypes: nodeTypesCount,
+      breakdown: `${toolCount} essential n8n workflow tools + ${nodeTypesCount} node types available`,
+      source: 'enhanced_api',
+      timestamp: new Date().toISOString(),
     }
   }
 
   /**
-   * Validate MCP configuration and provide diagnostics
+   * Validate MCP configuration using enhanced API client
    */
   private static async validateMcpConfig(args: {
     fix_issues?: boolean
   }): Promise<unknown> {
     const issues: string[] = []
     const fixes: string[] = []
+    const enhancedClient = this.createEnhancedClient()
 
     // Check Node.js version
     const nodeVersion = process.version
@@ -1282,17 +1561,18 @@ export class N8NMCPTools {
       logger.info('✅ N8N_API_KEY configured')
     }
 
-    // Test n8n API connection if credentials provided
+    // Test n8n API connection using enhanced client
     let apiStatus = 'not_tested'
-    if (process.env.N8N_API_URL && process.env.N8N_API_KEY && n8nApi) {
+    let systemHealth = null
+    if (enhancedClient) {
       try {
-        const connected = await n8nApi.testConnection()
-        apiStatus = connected ? 'connected' : 'connection_failed'
-        if (!connected) {
+        systemHealth = await enhancedClient.getSystemHealth({ cache: false })
+        apiStatus = systemHealth.status === 'ok' ? 'connected' : 'connection_failed'
+        if (systemHealth.status !== 'ok') {
           issues.push('N8N API connection test failed - check URL and API key')
         }
         else {
-          logger.info('✅ N8N API connection successful')
+          logger.info('✅ N8N API connection successful via enhanced client')
         }
       }
       catch (error) {
@@ -1307,6 +1587,7 @@ export class N8NMCPTools {
       status: issues.length === 0 ? 'healthy' : 'issues_found',
       nodeVersion,
       apiStatus,
+      systemHealth,
       issues,
       fixes: args.fix_issues ? fixes : [],
       recommendations: [
@@ -1314,125 +1595,176 @@ export class N8NMCPTools {
         'Use API keys with workflow management permissions',
         'Test connection with: curl -H "Authorization: Bearer YOUR_KEY" YOUR_N8N_URL/api/v1/workflows',
       ],
+      source: 'enhanced_api',
+      validatedAt: new Date().toISOString(),
     }
   }
 
   /**
-   * Import workflow from n8n workflow data
+   * Import workflow using enhanced API client
    */
   private static async importWorkflow(
     args: Record<string, unknown>,
   ): Promise<unknown> {
-    if (!n8nApi) {
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
       throw new Error(
         'n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.',
       )
     }
 
-    const workflow = await n8nApi.importWorkflow(
-      args.workflowData as Record<string, unknown>,
-    )
+    try {
+      const workflowData = args.workflowData as Record<string, unknown>
+      const workflow = await enhancedClient.importWorkflow(workflowData)
 
-    if (args.activate && workflow.id) {
-      await n8nApi.activateWorkflow(workflow.id)
+      if (args.activate && workflow.id) {
+        await enhancedClient.activateWorkflow(workflow.id)
+      }
+
+      return {
+        ...workflow,
+        source: 'enhanced_api',
+        imported: true,
+        activated: !!args.activate,
+        importedAt: new Date().toISOString(),
+      }
     }
-
-    return workflow
+    catch (error) {
+      logger.error('Error importing workflow with enhanced n8n API:', error)
+      throw new Error(`Failed to import workflow: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   /**
-   * Update existing workflow
+   * Update existing workflow using enhanced API client
    */
   private static async updateWorkflow(
     args: Record<string, unknown>,
   ): Promise<unknown> {
-    if (!n8nApi) {
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
       throw new Error(
         'n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.',
       )
     }
 
-    const updateData: Record<string, unknown> = {}
+    try {
+      const updateData: Record<string, unknown> = {}
 
-    // Only include provided fields in the update
-    if (args.name !== undefined)
-      updateData.name = args.name
-    if (args.nodes !== undefined)
-      updateData.nodes = args.nodes
-    if (args.connections !== undefined)
-      updateData.connections = args.connections
-    if (args.active !== undefined)
-      updateData.active = args.active
+      // Only include provided fields in the update
+      if (args.name !== undefined)
+        updateData.name = args.name
+      if (args.nodes !== undefined)
+        updateData.nodes = args.nodes
+      if (args.connections !== undefined)
+        updateData.connections = args.connections
+      if (args.active !== undefined)
+        updateData.active = args.active
 
-    const workflow = await n8nApi.updateWorkflow(args.id as string, updateData)
+      const workflow = await enhancedClient.updateWorkflow(args.id as string, updateData)
 
-    return workflow
+      return {
+        ...workflow,
+        source: 'enhanced_api',
+        action: 'update',
+        updatedAt: new Date().toISOString(),
+        changes: Object.keys(updateData),
+      }
+    }
+    catch (error) {
+      logger.error('Error updating workflow with enhanced API:', error)
+      throw new Error(`Failed to update workflow: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   /**
-   * Delete workflow
+   * Delete workflow using enhanced API client
    */
   private static async deleteWorkflow(
     args: Record<string, unknown>,
   ): Promise<unknown> {
-    if (!n8nApi) {
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
       throw new Error(
         'n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.',
       )
     }
 
-    await n8nApi.deleteWorkflow(args.id as string)
+    try {
+      await enhancedClient.deleteWorkflow(args.id as string)
 
-    return {
-      success: true,
-      message: `Workflow ${args.id} deleted successfully`,
-      workflowId: args.id,
+      return {
+        success: true,
+        message: `Workflow ${args.id} deleted successfully`,
+        workflowId: args.id,
+        source: 'enhanced_api',
+        action: 'delete',
+        deletedAt: new Date().toISOString(),
+      }
+    }
+    catch (error) {
+      logger.error('Error deleting workflow with enhanced API:', error)
+      throw new Error(`Failed to delete workflow: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
   /**
-   * Copy workflow
+   * Copy workflow using enhanced API client
    */
   private static async copyWorkflow(
     args: Record<string, unknown>,
   ): Promise<unknown> {
-    if (!n8nApi) {
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
       throw new Error(
         'n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.',
       )
     }
 
-    // Get the original workflow
-    const originalWorkflow = await n8nApi.getWorkflow(args.id as string)
+    try {
+      // Get the original workflow
+      const originalWorkflow = await enhancedClient.getWorkflow(args.id as string)
 
-    // Create a copy with the new name
-    const copiedWorkflow = await n8nApi.createWorkflow({
-      name: args.newName as string,
-      nodes: originalWorkflow.nodes,
-      connections: originalWorkflow.connections,
-      active: (args.activate as boolean) || false,
-      settings: originalWorkflow.settings,
-      staticData: originalWorkflow.staticData,
-      tags: originalWorkflow.tags,
-    })
+      // Create a copy with the new name
+      const copiedWorkflow = await enhancedClient.createWorkflow({
+        name: args.newName as string,
+        nodes: originalWorkflow.nodes,
+        connections: originalWorkflow.connections,
+        ...(originalWorkflow.settings && { settings: originalWorkflow.settings }),
+        ...(originalWorkflow.tags && { tags: originalWorkflow.tags }),
+      })
 
-    return {
-      success: true,
-      message: `Workflow copied successfully`,
-      originalId: args.id,
-      newId: copiedWorkflow.id,
-      newName: args.newName,
-      workflow: copiedWorkflow,
+      // Activate the copy if requested
+      if (args.activate && copiedWorkflow.id) {
+        await enhancedClient.activateWorkflow(copiedWorkflow.id)
+      }
+
+      return {
+        success: true,
+        message: `Workflow copied successfully`,
+        originalId: args.id,
+        newId: copiedWorkflow.id,
+        newName: args.newName,
+        workflow: copiedWorkflow,
+        source: 'enhanced_api',
+        action: 'copy',
+        copiedAt: new Date().toISOString(),
+      }
+    }
+    catch (error) {
+      logger.error('Error copying workflow with enhanced API:', error)
+      throw new Error(`Failed to copy workflow: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
   /**
-   * Bulk delete workflows
+   * Bulk delete workflows using enhanced API client
    */
   private static async bulkDeleteWorkflows(
     args: Record<string, unknown>,
   ): Promise<unknown> {
-    if (!n8nApi) {
+    const enhancedClient = this.createEnhancedClient()
+    if (!enhancedClient) {
       throw new Error(
         'n8n API not configured. Set N8N_API_URL and N8N_API_KEY environment variables.',
       )
@@ -1441,32 +1773,41 @@ export class N8NMCPTools {
     const ids = args.ids as string[]
     const results = []
 
-    for (const id of ids) {
-      try {
-        // Sequential deletion required to avoid API race conditions
-        // eslint-disable-next-line no-await-in-loop
-        await n8nApi.deleteWorkflow(id)
-        results.push({ id, success: true, message: 'Deleted successfully' })
+    try {
+      for (const id of ids) {
+        try {
+          // Sequential deletion required to avoid API race conditions
+          // eslint-disable-next-line no-await-in-loop
+          await enhancedClient.deleteWorkflow(id)
+          results.push({ id, success: true, message: 'Deleted successfully' })
+        }
+        catch (error) {
+          results.push({
+            id,
+            success: false,
+            message: error instanceof Error ? error.message : 'Unknown error',
+          })
+        }
       }
-      catch (error) {
-        results.push({
-          id,
-          success: false,
-          message: error instanceof Error ? error.message : 'Unknown error',
-        })
+
+      const successCount = results.filter(r => r.success).length
+      const failureCount = results.filter(r => !r.success).length
+
+      return {
+        success: failureCount === 0,
+        message: `Deleted ${successCount}/${ids.length} workflows successfully`,
+        totalRequested: ids.length,
+        successCount,
+        failureCount,
+        results,
+        source: 'enhanced_api',
+        action: 'bulk_delete',
+        processedAt: new Date().toISOString(),
       }
     }
-
-    const successCount = results.filter(r => r.success).length
-    const failureCount = results.filter(r => !r.success).length
-
-    return {
-      success: failureCount === 0,
-      message: `Deleted ${successCount}/${ids.length} workflows successfully`,
-      totalRequested: ids.length,
-      successCount,
-      failureCount,
-      results,
+    catch (error) {
+      logger.error('Error in bulk delete workflows with enhanced API:', error)
+      throw new Error(`Failed to bulk delete workflows: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 

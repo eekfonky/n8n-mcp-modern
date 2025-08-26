@@ -14,26 +14,19 @@ import type { CommunicationManager } from '../agents/communication.js'
 import type { AgentContext } from '../agents/index.js'
 
 import type { ComplexityAssessment } from './complexity-assessor.js'
-
 import type { HandoverMode, IntelligentRoutingRequest, IntelligentRoutingResult, RouteOptimizationMetrics } from './enhanced-routing.js'
 import type { ComplexityLevel, IntentClassificationResult, WorkflowIntent } from './intent-classifier.js'
 import type { NodeRecommendation } from './node-recommender.js'
+
 import type { CustomizationRequest, CustomizedWorkflow, WorkflowTemplate } from './template-engine.js'
 import { shouldLimitMemoryArrays } from '../server/feature-flags.js'
 import { logger } from '../server/logger.js'
-import {
-
-  complexityAssessor,
-} from './complexity-assessor.js'
-import {
-  EnhancedIntelligentRouter,
-
-} from './enhanced-routing.js'
+import { complexityAssessor, RiskLevel } from './complexity-assessor.js'
+import { EnhancedIntelligentRouter } from './enhanced-routing.js'
 // Intelligence Layer Components
 import {
-
   intentClassifier,
-
+  RoutingStrategy,
 } from './intent-classifier.js'
 import {
 
@@ -539,7 +532,7 @@ export class IntelligenceService {
         confidence: 0,
         complexity: 'standard' as ComplexityLevel,
         complexityScore: 0,
-        suggestedRoute: 'orchestrator-required' as any,
+        suggestedRoute: RoutingStrategy.ORCHESTRATOR_REQUIRED,
         estimatedNodes: [],
         keywords: [],
         reasoning: 'Intelligence service disabled',
@@ -557,9 +550,47 @@ export class IntelligenceService {
           governanceLevel: 'minimal',
           monitoringLevel: 'basic',
         },
-        riskLevel: 'low' as any,
+        riskLevel: RiskLevel.LOW,
       },
-      routing: {} as any,
+      routing: {
+        intent: {
+          intent: 'unknown' as WorkflowIntent,
+          confidence: 0.5,
+          complexity: 'standard' as ComplexityLevel,
+          complexityScore: 0,
+          suggestedRoute: RoutingStrategy.ORCHESTRATOR_REQUIRED,
+          estimatedNodes: [],
+          keywords: [],
+          reasoning: 'Intelligence service disabled',
+        },
+        complexity: {
+          level: 'standard' as ComplexityLevel,
+          score: 0,
+          factors: [],
+          recommendations: [],
+          estimatedDuration: 0,
+          resourceRequirements: {
+            agentTier: 1,
+            estimatedAgents: [],
+            storyFileRequired: false,
+            governanceLevel: 'minimal',
+            monitoringLevel: 'basic',
+          },
+          riskLevel: RiskLevel.LOW,
+        },
+        suggestedAgent: 'n8n-orchestrator',
+        routingStrategy: RoutingStrategy.ORCHESTRATOR_REQUIRED,
+        requiresOrchestration: false,
+        handoverMode: 'lightweight' as HandoverMode,
+        nodeRecommendations: [],
+        templateSuggestions: [],
+        processingTime: 0,
+        confidence: 0,
+        cacheHit: false,
+        storyFileRequired: false,
+        estimatedDuration: 0,
+        reasoning: [],
+      },
       nodeRecommendations: { primary: [], alternatives: [], warnings: [] },
       templateSuggestions: [],
       optimizations: [],
@@ -577,7 +608,7 @@ export class IntelligenceService {
         confidence: 0.5,
         complexity: 'standard' as ComplexityLevel,
         complexityScore: 5,
-        suggestedRoute: 'orchestrator-required' as any,
+        suggestedRoute: RoutingStrategy.ORCHESTRATOR_REQUIRED,
         estimatedNodes: [],
         keywords: [],
         reasoning: 'Fallback result due to processing error',
@@ -590,7 +621,7 @@ export class IntelligenceService {
           type: 'routing',
           title: 'Use Orchestrator',
           description: 'Route to orchestrator for safe handling',
-          priority: 'high' as any,
+          priority: 'high' as const,
         }],
         estimatedDuration: 900000,
         resourceRequirements: {
@@ -600,9 +631,47 @@ export class IntelligenceService {
           governanceLevel: 'standard',
           monitoringLevel: 'enhanced',
         },
-        riskLevel: 'medium' as any,
+        riskLevel: RiskLevel.MEDIUM,
       },
-      routing: {} as any,
+      routing: {
+        intent: {
+          intent: 'unknown' as WorkflowIntent,
+          confidence: 0.5,
+          complexity: 'standard' as ComplexityLevel,
+          complexityScore: 0,
+          suggestedRoute: RoutingStrategy.ORCHESTRATOR_REQUIRED,
+          estimatedNodes: [],
+          keywords: [],
+          reasoning: 'Intelligence service disabled',
+        },
+        complexity: {
+          level: 'standard' as ComplexityLevel,
+          score: 0,
+          factors: [],
+          recommendations: [],
+          estimatedDuration: 0,
+          resourceRequirements: {
+            agentTier: 1,
+            estimatedAgents: [],
+            storyFileRequired: false,
+            governanceLevel: 'minimal',
+            monitoringLevel: 'basic',
+          },
+          riskLevel: RiskLevel.LOW,
+        },
+        suggestedAgent: 'n8n-orchestrator',
+        routingStrategy: RoutingStrategy.ORCHESTRATOR_REQUIRED,
+        requiresOrchestration: false,
+        handoverMode: 'lightweight' as HandoverMode,
+        nodeRecommendations: [],
+        templateSuggestions: [],
+        processingTime: 0,
+        confidence: 0,
+        cacheHit: false,
+        storyFileRequired: false,
+        estimatedDuration: 0,
+        reasoning: [],
+      },
       nodeRecommendations: { primary: [], alternatives: [], warnings: ['Processing error occurred'] },
       templateSuggestions: [],
       optimizations: [],
@@ -617,7 +686,6 @@ export class IntelligenceService {
 // Re-export intelligence layer components
 export {
   complexityAssessor,
-  EnhancedIntelligentRouter,
   intentClassifier,
   nodeRecommender,
   templateEngine,
@@ -626,6 +694,7 @@ export {
 // Re-export types
 export type {
   ComplexityAssessment,
+  EnhancedIntelligentRouter,
   HandoverMode,
   IntelligentRoutingResult,
   IntentClassificationResult,

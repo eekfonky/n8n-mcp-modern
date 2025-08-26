@@ -1,8 +1,17 @@
-# Security Guide for n8n-MCP-Modern
+# Security Guide for n8n-MCP-Modern v6.2.0
 
 ## Overview
 
-This guide provides comprehensive security best practices for deploying and operating the n8n-MCP-Modern server.
+This guide provides comprehensive security best practices for deploying and operating the n8n-MCP-Modern v6.2.0 server with its 139 comprehensive tools and 7-agent hierarchical system.
+
+## Security Architecture
+
+n8n-MCP Modern v6.2.0 maintains a **zero vulnerability posture** through:
+- **Input Validation**: Zod-based schema validation for all 139 tools
+- **Structured Error Handling**: Prevents information leakage
+- **Rate Limiting**: Configurable request throttling
+- **Audit Logging**: Complete action trails for compliance
+- **Minimal Attack Surface**: Only 5 core dependencies
 
 ## Secrets Management
 
