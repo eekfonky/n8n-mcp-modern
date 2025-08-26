@@ -4,24 +4,7 @@
  */
 
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
-
-/**
- * Centralized error sanitization utility
- */
-function sanitizeError(error: Error, includeStack = false): string {
-  const errorMessage = error.message || String(error)
-  
-  if (process.env.NODE_ENV === 'production') {
-    return errorMessage
-  }
-  
-  if (includeStack && error.stack) {
-    const firstStackLine = error.stack.split('\n')[1]?.trim()
-    return firstStackLine ? `${errorMessage} (${firstStackLine})` : errorMessage
-  }
-  
-  return errorMessage
-}
+import type { N8NApiClient } from '../n8n/api.js'
 import type {
   CreateWorkflowArgs,
   ExecuteWorkflowArgs,
@@ -34,7 +17,7 @@ import type {
 } from '../types/index.js'
 import process from 'node:process'
 import { z } from 'zod'
-import { n8nApi, getN8NApiClient, refreshN8NApiClient, N8NApiClient, ensureN8NApiClient } from '../n8n/api.js'
+import { n8nApi, refreshN8NApiClient } from '../n8n/api.js'
 import { refreshConfig } from '../server/config.js'
 import { logger } from '../server/logger.js'
 import {
@@ -101,6 +84,24 @@ import {
 } from './performance-observability.js'
 
 /**
+ * Centralized error sanitization utility
+ */
+function sanitizeError(error: Error, includeStack = false): string {
+  const errorMessage = error.message || String(error)
+
+  if (process.env.NODE_ENV === 'production') {
+    return errorMessage
+  }
+
+  if (includeStack && error.stack) {
+    const firstStackLine = error.stack.split('\n')[1]?.trim()
+    return firstStackLine ? `${errorMessage} (${firstStackLine})` : errorMessage
+  }
+
+  return errorMessage
+}
+
+/**
  * Standardized MCP tool response format
  */
 export interface McpToolResponse {
@@ -143,7 +144,7 @@ export class N8NMCPTools {
 
         for (const [key, value] of Object.entries(shape)) {
           const zodValue = value as z.ZodTypeAny
-          
+
           // Type guard to ensure we have proper Zod types
           if (!zodValue || typeof zodValue !== 'object') {
             logger.warn(`Invalid Zod value for key ${key}, skipping`)
@@ -174,7 +175,8 @@ export class N8NMCPTools {
             if (!zodValue.isOptional()) {
               required.push(key)
             }
-          } catch {
+          }
+          catch {
             // If isOptional() throws, treat as required for safety
             required.push(key)
           }
@@ -184,7 +186,8 @@ export class N8NMCPTools {
       }
 
       return { type: 'object' }
-    } catch (error) {
+    }
+    catch (error) {
       logger.error('Error converting Zod schema to JSON schema:', error)
       return { type: 'object' } // Safe fallback
     }
@@ -894,17 +897,17 @@ export class N8NMCPTools {
     catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
       const errorStack = error instanceof Error ? error.stack : undefined
-      
+
       logger.error(`❌ Tool execution failed: ${name}`, {
         error: errorMessage,
         stack: errorStack?.split('\n').slice(0, 5).join('\n'), // First 5 lines of stack
         args,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       })
 
       // Return structured error response with sanitized stack trace
       const sanitizedError = sanitizeError(error instanceof Error ? error : new Error(errorMessage), true)
-      
+
       return {
         success: false,
         error: sanitizedError,
@@ -923,23 +926,24 @@ export class N8NMCPTools {
   private static ensureApiClient(): N8NApiClient | null {
     // First check if we already have a client
     let client = n8nApi
-    
+
     // If no client and no environment variables, try refreshing
     if (!client && !process.env.N8N_API_URL) {
       logger.debug('n8n API client not available, refreshing config...')
       refreshConfig()
       client = refreshN8NApiClient()
-      
+
       if (client) {
         logger.info('✅ n8n API client initialized after config refresh')
-      } else {
+      }
+      else {
         logger.debug('Environment variables still not available after refresh:', {
           N8N_API_URL: process.env.N8N_API_URL || 'not set',
-          N8N_API_KEY: process.env.N8N_API_KEY ? '[REDACTED]' : 'not set'
+          N8N_API_KEY: process.env.N8N_API_KEY ? '[REDACTED]' : 'not set',
         })
       }
     }
-    
+
     return client || n8nApi
   }
 
@@ -954,15 +958,16 @@ export class N8NMCPTools {
 
     try {
       const nodes = await client.searchNodeTypes(args.query, args.category)
-      
+
       // Ensure nodes is an array to prevent potential issues
       if (!Array.isArray(nodes)) {
         logger.warn('n8n API returned non-array nodes data:', nodes)
         return []
       }
-      
+
       return nodes
-    } catch (error) {
+    }
+    catch (error) {
       logger.error('Error searching n8n nodes:', error)
       throw new Error(`Failed to search nodes: ${error instanceof Error ? error.message : String(error)}`)
     }
@@ -981,16 +986,17 @@ export class N8NMCPTools {
 
     try {
       const workflows = await client.getWorkflows()
-      
+
       // Fix the .slice() error by ensuring workflows is an array
       if (!Array.isArray(workflows)) {
         logger.warn('n8n API returned non-array workflows data:', workflows)
         return []
       }
-      
+
       const limit = args.limit || 10
       return workflows.slice(0, limit)
-    } catch (error) {
+    }
+    catch (error) {
       logger.error('Error fetching workflows from n8n API:', error)
       throw new Error(`Failed to fetch workflows: ${error instanceof Error ? error.message : String(error)}`)
     }
@@ -1117,16 +1123,17 @@ export class N8NMCPTools {
 
     try {
       const executions = await client.getExecutions(args.workflowId)
-      
+
       // Fix potential .slice() error by ensuring executions is an array
       if (!Array.isArray(executions)) {
         logger.warn('n8n API returned non-array executions data:', executions)
         return []
       }
-      
+
       const limit = args.limit || 20
       return executions.slice(0, limit)
-    } catch (error) {
+    }
+    catch (error) {
       logger.error('Error fetching executions from n8n API:', error)
       throw new Error(`Failed to fetch executions: ${error instanceof Error ? error.message : String(error)}`)
     }

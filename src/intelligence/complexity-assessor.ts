@@ -390,7 +390,7 @@ export class ComplexityAssessor {
           monitoringLevel: 'basic',
         }
 
-      case ComplexityLevel.STANDARD:
+      case ComplexityLevel.STANDARD: {
         const standardAgents = ['n8n-builder']
 
         if (hasAI || intent === WorkflowIntent.AI_WORKFLOW) {
@@ -407,8 +407,9 @@ export class ComplexityAssessor {
           governanceLevel: 'standard',
           monitoringLevel: 'enhanced',
         }
+      }
 
-      case ComplexityLevel.ENTERPRISE:
+      case ComplexityLevel.ENTERPRISE: {
         const enterpriseAgents = ['n8n-orchestrator']
 
         if (hasAI || intent === WorkflowIntent.AI_WORKFLOW) {
@@ -426,6 +427,7 @@ export class ComplexityAssessor {
           governanceLevel: hasCompliance ? 'enterprise' : 'standard',
           monitoringLevel: 'comprehensive',
         }
+      }
 
       default:
         return {
@@ -479,7 +481,7 @@ export class ComplexityAssessor {
   private generateRecommendations(
     level: ComplexityLevel,
     factors: ComplexityFactor[],
-    intent: WorkflowIntent,
+    _intent: WorkflowIntent,
   ): ComplexityRecommendation[] {
     const recommendations: ComplexityRecommendation[] = []
 

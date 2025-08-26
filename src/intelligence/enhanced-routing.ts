@@ -331,7 +331,7 @@ export class EnhancedIntelligentRouter {
           requiresOrchestration: false,
         }
 
-      case 'standard':
+      case 'standard': {
         // Choose specialist based on intent
         let specialist = 'n8n-builder'
 
@@ -347,6 +347,7 @@ export class EnhancedIntelligentRouter {
           strategy: RoutingStrategy.NODE_EXPERT_FIRST,
           requiresOrchestration: false,
         }
+      }
 
       case 'enterprise':
         return {
@@ -475,7 +476,8 @@ export class EnhancedIntelligentRouter {
   ): number {
     const intentConf = intent.confidence
     const complexityConf = complexity.factors.filter(f => f.detected).length > 0 ? 0.8 : 0.6
-    const nodeConf = nodeRecs.primary.length > 0 ? nodeRecs.primary[0]!.confidence : 0.5
+    const firstNode = nodeRecs.primary[0]
+    const nodeConf = nodeRecs.primary.length > 0 && firstNode ? firstNode.confidence : 0.5
 
     return (intentConf + complexityConf + nodeConf) / 3
   }

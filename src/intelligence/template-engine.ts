@@ -766,16 +766,23 @@ export class TemplateEngine {
       }
 
       const sourceIndex = conn.sourceIndex || 0
-      const mainConnections = connections[conn.source]!.main
-      if (!mainConnections![sourceIndex]) {
-        mainConnections![sourceIndex] = []
+      const sourceConnections = connections[conn.source]
+      if (!sourceConnections?.main) {
+        continue
+      }
+      const mainConnections = sourceConnections.main
+      if (!mainConnections[sourceIndex]) {
+        mainConnections[sourceIndex] = []
       }
 
-      mainConnections![sourceIndex]!.push({
-        node: conn.target,
-        type: conn.type || 'main',
-        index: conn.targetIndex || 0,
-      })
+      const targetConnections = mainConnections[sourceIndex]
+      if (targetConnections) {
+        targetConnections.push({
+          node: conn.target,
+          type: conn.type || 'main',
+          index: conn.targetIndex || 0,
+        })
+      }
     }
     workflow.connections = connections
 

@@ -195,7 +195,7 @@ export class LightweightRouter {
   /**
    * Pattern-based routing for unmapped tools
    */
-  private routeByPattern(toolName: string, context?: SimpleRoutingContext): RoutingResult {
+  private routeByPattern(toolName: string, _context?: SimpleRoutingContext): RoutingResult {
     // Workflow-related patterns
     if (toolName.includes('workflow') || toolName.includes('execute')) {
       const agent = LIGHTWEIGHT_AGENTS['n8n-builder']

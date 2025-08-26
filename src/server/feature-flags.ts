@@ -7,6 +7,8 @@
  * Philosophy: Progressive feature rollback with safety mechanisms
  */
 
+import process from 'node:process'
+
 export interface FeatureFlags {
   // Intelligence Layer Controls
   intelligenceLayer: {
@@ -214,7 +216,7 @@ export function applyPhaseConfiguration(phase: keyof typeof PHASE_CONFIGURATIONS
   const phaseConfig = PHASE_CONFIGURATIONS[phase]
   Object.assign(featureFlags, phaseConfig)
 
-  console.log(`Applied ${phase} configuration:`, {
+  console.error(`Applied ${phase} configuration:`, {
     intelligenceEnabled: featureFlags.intelligenceLayer.enabled,
     simplifiedPipeline: featureFlags.architecture.useSimplifiedToolPipeline,
     reducedMonitoring: featureFlags.architecture.reducedMonitoring,
@@ -242,7 +244,7 @@ export function logPerformanceComparison(
     return
 
   const improvement = ((beforeTime - afterTime) / beforeTime * 100).toFixed(1)
-  console.log(`🚀 Performance: ${operation}`, {
+  console.error(`🚀 Performance: ${operation}`, {
     before: `${beforeTime.toFixed(2)}ms`,
     after: `${afterTime.toFixed(2)}ms`,
     improvement: `${improvement}%`,

@@ -441,7 +441,7 @@ export class IntelligenceService {
   private generateOptimizations(
     routing: IntelligentRoutingResult,
     nodeRecommendations: { primary: NodeRecommendation[], alternatives: NodeRecommendation[] },
-    request: WorkflowOptimizationRequest,
+    _request: WorkflowOptimizationRequest,
   ): WorkflowOptimization[] {
     const optimizations: WorkflowOptimization[] = []
 
@@ -482,7 +482,8 @@ export class IntelligenceService {
     }
 
     // Node selection optimizations
-    if (nodeRecommendations.primary.length > 0 && nodeRecommendations.primary[0]!.confidence < 0.8) {
+    const primaryNode = nodeRecommendations.primary[0]
+    if (nodeRecommendations.primary.length > 0 && primaryNode && primaryNode.confidence < 0.8) {
       optimizations.push({
         type: 'maintainability',
         title: 'Review Node Selection',
@@ -501,7 +502,7 @@ export class IntelligenceService {
     nodeRecommendations: { primary: NodeRecommendation[] },
     existingWorkflow?: { executionTime?: number },
   ): { executionTime: number, reliability: number, maintainability: number } {
-    const baseExecutionTime = existingWorkflow?.executionTime || routing.estimatedDuration
+    const _baseExecutionTime = existingWorkflow?.executionTime || routing.estimatedDuration
 
     // Estimate improvements based on recommendations
     let executionTimeImprovement = 0
@@ -531,7 +532,7 @@ export class IntelligenceService {
     }
   }
 
-  private createDisabledResult(request: WorkflowOptimizationRequest): WorkflowOptimizationResult {
+  private createDisabledResult(_request: WorkflowOptimizationRequest): WorkflowOptimizationResult {
     return {
       intent: {
         intent: 'unknown' as WorkflowIntent,

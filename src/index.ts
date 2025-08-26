@@ -338,7 +338,7 @@ class N8NMcpServer {
         async (args: Record<string, unknown>) => {
           try {
             logger.debug(`🔧 Tool called: ${toolConfig.name}`, { args })
-            
+
             // Special handling for node recommendations using simplified engine
             if (toolConfig.name === 'recommend_n8n_nodes') {
               return this.handleNodeRecommendations(args)
@@ -348,31 +348,32 @@ class N8NMcpServer {
             if (toolConfig.name === 'get_system_health') {
               return this.handleSystemHealth(args)
             }
-            
+
             // Default routing for all other tools
             const result = await this.executeToolWithRouting(toolConfig.name, args)
             logger.debug(`✅ Tool completed: ${toolConfig.name}`)
-            
+
             // Ensure proper MCP response format
             if (result && typeof result === 'object' && 'content' in result) {
               return result
             }
-            
+
             // Convert to MCP format if not already formatted
             return {
               content: [{
                 type: 'text' as const,
-                text: JSON.stringify(result, null, 2)
-              }]
+                text: JSON.stringify(result, null, 2),
+              }],
             }
-          } catch (error) {
+          }
+          catch (error) {
             logger.error(`❌ Tool failed: ${toolConfig.name}`, error)
             return {
               content: [{
                 type: 'text' as const,
-                text: `Error executing ${toolConfig.name}: ${error instanceof Error ? error.message : String(error)}`
+                text: `Error executing ${toolConfig.name}: ${error instanceof Error ? error.message : String(error)}`,
               }],
-              isError: true
+              isError: true,
             }
           }
         },
@@ -439,22 +440,22 @@ class N8NMcpServer {
       // Convert McpToolResponse to MCP format
       if (result && typeof result === 'object' && 'success' in result) {
         const mcpResult = result as { success: boolean, data?: unknown, error?: string }
-        
+
         if (!mcpResult.success) {
           return {
             content: [{
               type: 'text' as const,
-              text: mcpResult.error || 'Tool execution failed'
+              text: mcpResult.error || 'Tool execution failed',
             }],
-            isError: true
+            isError: true,
           }
         }
-        
+
         return {
           content: [{
             type: 'text' as const,
-            text: JSON.stringify(mcpResult.data, null, 2)
-          }]
+            text: JSON.stringify(mcpResult.data, null, 2),
+          }],
         }
       }
 
@@ -581,22 +582,22 @@ class N8NMcpServer {
         // Convert McpToolResponse to MCP format
         if (result && typeof result === 'object' && 'success' in result) {
           const mcpResult = result as { success: boolean, data?: unknown, error?: string }
-          
+
           if (!mcpResult.success) {
             return {
               content: [{
                 type: 'text' as const,
-                text: mcpResult.error || 'Tool execution failed'
+                text: mcpResult.error || 'Tool execution failed',
               }],
-              isError: true
+              isError: true,
             }
           }
-          
+
           return {
             content: [{
               type: 'text' as const,
-              text: JSON.stringify(mcpResult.data, null, 2)
-            }]
+              text: JSON.stringify(mcpResult.data, null, 2),
+            }],
           }
         }
 

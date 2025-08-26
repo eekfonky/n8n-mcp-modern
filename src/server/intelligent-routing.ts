@@ -1,23 +1,21 @@
 /**
  * Intelligent Agent Routing System
- * 
+ *
  * Bridges the gap between simple routing and agent handovers.
  * Automatically determines when to use collaborative multi-agent approach
  * versus single-agent simple routing based on complexity and user preferences.
  */
 
-import { logger } from './logger.js'
-import { agentRouter } from '../agents/index.js'
 import type { Agent, AgentContext } from '../agents/index.js'
-import { 
-  shouldTriggerHandover, 
+import { CommunicationManager } from '../agents/communication.js'
+import { agentRouter } from '../agents/index.js'
+import { storyManager } from '../agents/story-manager.js'
+import {
   assessWorkflowComplexity,
   handoverConfig,
-  isHandoverDisabledByUser 
+  isHandoverDisabledByUser,
 } from './handover-features.js'
-import { CommunicationManager } from '../agents/communication.js'
-import { storyManager } from '../agents/story-manager.js'
-import type { StoryFile } from '../agents/story-files.js'
+import { logger } from './logger.js'
 
 // === Routing Decision Types ===
 
@@ -62,21 +60,21 @@ export class IntelligentRouter {
    * Main routing decision point - chooses between simple and handover approaches
    */
   async routeWithIntelligence(
-    toolName: string, 
-    context: RoutingContext
+    toolName: string,
+    context: RoutingContext,
   ): Promise<RoutingDecision> {
     const startTime = performance.now()
-    
+
     try {
-      logger.debug(`Intelligent routing request for ${toolName}`, { 
+      logger.debug(`Intelligent routing request for ${toolName}`, {
         complexity: context.complexity,
         integrations: context.integrations?.length,
-        customCode: !!context.customCode 
+        customCode: !!context.customCode,
       })
 
       // Step 1: Assess complexity
       const complexityAssessment = assessWorkflowComplexity(context)
-      
+
       // Step 2: Check user preferences and system configuration
       const userHandoversDisabled = isHandoverDisabledByUser(context.userId)
       const globalHandoversDisabled = !handoverConfig.enableHandovers
@@ -85,11 +83,11 @@ export class IntelligentRouter {
       // Step 3: Make routing decision
       let approach: 'simple' | 'handover' | 'emergency' = 'simple'
       let reasoning = 'Default simple routing'
-      
+
       // Emergency escalation takes priority
-      if (complexityAssessment.recommendation === 'emergency' && 
-          handoverConfig.emergencyEscalation && 
-          !globalHandoversDisabled) {
+      if (complexityAssessment.recommendation === 'emergency'
+        && handoverConfig.emergencyEscalation
+        && !globalHandoversDisabled) {
         approach = 'emergency'
         reasoning = 'Emergency escalation required for security/performance'
       }
@@ -98,10 +96,12 @@ export class IntelligentRouter {
         if (globalHandoversDisabled) {
           approach = 'simple'
           reasoning = 'Handovers recommended but disabled globally'
-        } else if (userHandoversDisabled && !userPreference) {
+        }
+        else if (userHandoversDisabled && !userPreference) {
           approach = 'simple'
           reasoning = 'Handovers recommended but disabled by user'
-        } else {
+        }
+        else {
           approach = 'handover'
           reasoning = `High complexity (${complexityAssessment.score}/100) triggers handover system`
         }
@@ -119,7 +119,8 @@ export class IntelligentRouter {
 
       if (approach === 'simple') {
         agent = await agentRouter.routeTool(toolName, context)
-      } else {
+      }
+      else {
         // Use handover system
         const handoverResult = await this.routeWithHandovers(toolName, context, approach)
         agent = handoverResult.agent
@@ -152,10 +153,10 @@ export class IntelligentRouter {
       }
 
       return decision
-
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(`Intelligent routing failed for ${toolName}:`, error)
-      
+
       // Fallback to simple routing
       const fallbackAgent = await agentRouter.routeTool(toolName, context)
       return {
@@ -172,19 +173,19 @@ export class IntelligentRouter {
    * Route using handover system with story files
    */
   private async routeWithHandovers(
-    toolName: string, 
-    context: RoutingContext, 
-    approach: 'handover' | 'emergency'
+    toolName: string,
+    context: RoutingContext,
+    approach: 'handover' | 'emergency',
   ): Promise<{
     agent: Agent
     storyFileId?: string
     suggestedAgentChain?: string[]
   }> {
     const complexityAssessment = assessWorkflowComplexity(context)
-    
+
     // Determine initial agent based on tool
     const initialAgent = await agentRouter.routeTool(toolName, context)
-    
+
     // Create story file for handover tracking
     const storyFile = await storyManager.create({
       currentAgent: initialAgent.name,
@@ -250,9 +251,9 @@ export class IntelligentRouter {
    * Generate initial work items based on tool and complexity
    */
   private generateInitialWorkItems(
-    toolName: string, 
-    context: RoutingContext, 
-    complexity: ReturnType<typeof assessWorkflowComplexity>
+    toolName: string,
+    context: RoutingContext,
+    complexity: ReturnType<typeof assessWorkflowComplexity>,
   ): string[] {
     const workItems: string[] = []
 
@@ -296,28 +297,28 @@ export class IntelligentRouter {
     toolName: string,
     context: RoutingContext,
     complexity: ReturnType<typeof assessWorkflowComplexity>,
-    approach: 'handover' | 'emergency'
+    approach: 'handover' | 'emergency',
   ): string {
     const notes = [`${approach === 'emergency' ? 'EMERGENCY' : 'Complex'} ${toolName} request initiated.`]
-    
+
     notes.push(`Complexity Score: ${complexity.score}/100`)
-    
+
     if (complexity.factors.nodeCount > 0) {
       notes.push(`Workflow size: ${complexity.factors.nodeCount} nodes`)
     }
-    
+
     if (complexity.factors.integrationCount > 0) {
       notes.push(`Integrations: ${context.integrations?.join(', ') ?? 'multiple'}`)
     }
-    
+
     if (complexity.factors.customCodePresent) {
       notes.push('Contains custom JavaScript - security review required')
     }
-    
+
     if (complexity.factors.authenticationRequired) {
       notes.push('Complex authentication setup needed')
     }
-    
+
     if (complexity.factors.performanceCritical) {
       notes.push('Performance optimization required')
     }
@@ -332,7 +333,7 @@ export class IntelligentRouter {
    */
   private suggestAgentChain(
     toolName: string,
-    complexity: ReturnType<typeof assessWorkflowComplexity>
+    complexity: ReturnType<typeof assessWorkflowComplexity>,
   ): string[] {
     const chain: string[] = []
 
@@ -376,7 +377,7 @@ export class IntelligentRouter {
    */
   private estimateSteps(
     complexity: ReturnType<typeof assessWorkflowComplexity>,
-    approach: 'simple' | 'handover' | 'emergency'
+    approach: 'simple' | 'handover' | 'emergency',
   ): number {
     if (approach === 'simple') {
       return 1
@@ -385,14 +386,20 @@ export class IntelligentRouter {
     let steps = 2 // Minimum for handover approach
 
     // Add steps based on complexity factors
-    if (complexity.factors.authenticationRequired) steps += 1
-    if (complexity.factors.customCodePresent) steps += 1
-    if (complexity.factors.performanceCritical) steps += 1
-    if (complexity.factors.integrationCount > 3) steps += 1
+    if (complexity.factors.authenticationRequired)
+      steps += 1
+    if (complexity.factors.customCodePresent)
+      steps += 1
+    if (complexity.factors.performanceCritical)
+      steps += 1
+    if (complexity.factors.integrationCount > 3)
+      steps += 1
 
     // Score-based adjustment
-    if (complexity.score > 80) steps += 1
-    if (complexity.score > 90) steps += 1
+    if (complexity.score > 80)
+      steps += 1
+    if (complexity.score > 90)
+      steps += 1
 
     return Math.min(steps, handoverConfig.maxHandoverChain)
   }
@@ -403,7 +410,7 @@ export class IntelligentRouter {
   private recordRoutingDecision(
     toolName: string,
     decision: RoutingDecision,
-    processingTimeMs: number
+    processingTimeMs: number,
   ): void {
     this.routingHistory.push({
       timestamp: Date.now(),
@@ -412,7 +419,7 @@ export class IntelligentRouter {
       success: true, // Will be updated based on actual execution results
       complexityScore: decision.complexity,
       ...(decision.suggestedAgentChain?.length !== undefined && {
-        handoverChainLength: decision.suggestedAgentChain.length
+        handoverChainLength: decision.suggestedAgentChain.length,
       }),
     })
 
@@ -451,10 +458,11 @@ export class IntelligentRouter {
     for (const record of this.routingHistory) {
       approachDistribution[record.approach] = (approachDistribution[record.approach] || 0) + 1
       totalComplexity += record.complexityScore
-      
+
       if (record.approach !== 'simple') {
         totalHandovers++
-        if (record.success) handoverSuccesses++
+        if (record.success)
+          handoverSuccesses++
       }
 
       toolCounts[record.toolName] = (toolCounts[record.toolName] || 0) + 1
@@ -495,15 +503,19 @@ export function quickComplexityCheck(context: AgentContext): {
   if (assessment.factors.nodeCount > handoverConfig.nodeCountThreshold) {
     factors.push(`${assessment.factors.nodeCount} nodes`)
   }
-  
+
   if (assessment.factors.integrationCount > handoverConfig.integrationCountThreshold) {
     factors.push(`${assessment.factors.integrationCount} integrations`)
   }
-  
-  if (assessment.factors.customCodePresent) factors.push('custom code')
-  if (assessment.factors.authenticationRequired) factors.push('authentication')
-  if (assessment.factors.performanceCritical) factors.push('performance')
-  if (assessment.factors.securitySensitive) factors.push('security')
+
+  if (assessment.factors.customCodePresent)
+    factors.push('custom code')
+  if (assessment.factors.authenticationRequired)
+    factors.push('authentication')
+  if (assessment.factors.performanceCritical)
+    factors.push('performance')
+  if (assessment.factors.securitySensitive)
+    factors.push('security')
 
   return {
     isComplex: assessment.score >= handoverConfig.complexityThreshold,

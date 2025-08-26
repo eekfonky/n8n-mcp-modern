@@ -286,7 +286,7 @@ export class N8NApiClient {
     responseSchema?: z.ZodSchema<T>,
   ): Promise<T> {
     this.validateConfiguration()
-    
+
     // Use enhanced client if enabled
     if (this.useEnhancedClient) {
       const enhancedOptions: {
@@ -302,7 +302,8 @@ export class N8NApiClient {
       if (options.body) {
         try {
           enhancedOptions.body = JSON.parse(options.body as string)
-        } catch (error) {
+        }
+        catch (error) {
           throw new ApiValidationError(
             'Invalid JSON in request body',
             endpoint,
@@ -315,7 +316,7 @@ export class N8NApiClient {
                 path: [],
               },
             ]),
-            0
+            0,
           )
         }
       }
@@ -1260,9 +1261,9 @@ export function createN8NApiClient(): N8NApiClient | null {
       N8N_API_KEY: !!process.env.N8N_API_KEY,
       hasN8nConfig: !!(config.n8nApiUrl && config.n8nApiKey),
       configUrl: config.n8nApiUrl ? 'configured' : 'missing',
-      configKey: config.n8nApiKey ? 'configured' : 'missing'
+      configKey: config.n8nApiKey ? 'configured' : 'missing',
     })
-    
+
     return new N8NApiClient()
   }
   catch (error) {
@@ -1278,7 +1279,7 @@ export function createN8NApiClient(): N8NApiClient | null {
       N8N_API_URL: process.env.N8N_API_URL || 'not set',
       N8N_API_KEY: process.env.N8N_API_KEY ? '[REDACTED]' : 'not set',
       configUrl: config.n8nApiUrl || 'not set',
-      configKey: config.n8nApiKey ? '[REDACTED]' : 'not set'
+      configKey: config.n8nApiKey ? '[REDACTED]' : 'not set',
     })
     return null
   }
@@ -1304,15 +1305,15 @@ export function refreshN8NApiClient(): N8NApiClient | null {
 }
 
 // Export singleton with proper typing - will be null until first successful initialization
-export let n8nApi: N8NApiClient | null = null
+let _n8nApiSingleton: N8NApiClient | null = getN8NApiClient()
 
 // Initialize on first access
 export function ensureN8NApiClient(): N8NApiClient | null {
-  if (!n8nApi) {
-    n8nApi = getN8NApiClient()
+  if (!_n8nApiSingleton) {
+    _n8nApiSingleton = getN8NApiClient()
   }
-  return n8nApi
+  return _n8nApiSingleton
 }
 
-// Update the singleton reference
-n8nApi = getN8NApiClient()
+// Immutable export - use ensureN8NApiClient() for updates
+export const n8nApi: N8NApiClient | null = _n8nApiSingleton

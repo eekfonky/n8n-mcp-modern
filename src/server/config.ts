@@ -251,14 +251,14 @@ export function refreshConfig(): Config {
 
 // Export lazy singleton config
 export const config = new Proxy({} as Config, {
-  get(_target, prop: string | symbol) {
+  get(_target, prop: string | symbol): unknown {
     const configInstance = getConfig()
     return configInstance[prop as keyof Config]
   },
-  has(_target, prop: string | symbol) {
+  has(_target, prop: string | symbol): boolean {
     const configInstance = getConfig()
     return prop in configInstance
-  }
+  },
 })
 
 // Helper function for runtime config updates
