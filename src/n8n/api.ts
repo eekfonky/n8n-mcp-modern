@@ -9,6 +9,7 @@ import type {
 } from '../types/api-payloads.js'
 import type { N8NNodeAPI, N8NWorkflowNode } from '../types/core.js'
 import type { EnhancedRequestOptions } from '../utils/enhanced-http-client.js'
+import { Buffer } from 'node:buffer'
 import process from 'node:process'
 
 import { fetch, Headers } from 'undici'
@@ -282,7 +283,7 @@ export class N8NApiClient {
    */
   private async request<T = unknown>(
     endpoint: string,
-    options: globalThis.RequestInit = {},
+    options: globalThis.RequestInit & { timeout?: number } = {},
     responseSchema?: z.ZodSchema<T>,
   ): Promise<T> {
     this.validateConfiguration()
@@ -294,9 +295,15 @@ export class N8NApiClient {
         body?: unknown
         headers?: Record<string, string>
         cache?: boolean
+        timeout?: number
       } = {
         method: (options.method as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH') ?? 'GET',
         cache: true,
+      }
+
+      // Add timeout if provided
+      if (options.timeout) {
+        enhancedOptions.timeout = options.timeout
       }
 
       if (options.body) {
@@ -1104,18 +1111,43 @@ export class N8NApiClient {
   async importWorkflow(
     workflowData: Record<string, unknown>,
   ): Promise<N8NWorkflow> {
-    const response = await this.request(
-      '/workflows/import',
-      {
-        method: 'POST',
-        body: JSON.stringify(workflowData),
-      },
-      N8NWorkflowResponseSchema,
+    // Calculate payload-aware timeout based on workflow size
+    const workflowJson = JSON.stringify(workflowData)
+    const payloadSizeKB = Buffer.byteLength(workflowJson, 'utf8') / 1024
+
+    // Dynamic timeout: base 30s + 2s per KB, max 5 minutes
+    const dynamicTimeout = Math.min(
+      30000 + (payloadSizeKB * 2000),
+      300000, // 5 minute maximum
     )
 
-    const workflow = response as N8NWorkflow
-    logger.info(`Imported workflow: ${workflow.name} (ID: ${workflow.id})`)
-    return workflow
+    // Pre-operation connection validation for large payloads (>10KB)
+    if (payloadSizeKB > 10) {
+      logger.info(`Large payload detected (${Math.round(payloadSizeKB * 100) / 100}KB), validating connection health`)
+      await this.validateConnectionHealth()
+    }
+
+    logger.info(`Importing workflow with payload-aware timeout`, {
+      payloadSizeKB: Math.round(payloadSizeKB * 100) / 100,
+      timeoutMs: dynamicTimeout,
+    })
+
+    // Retry logic for large payloads with exponential backoff
+    return await this.executeWithRetry(async () => {
+      const response = await this.request(
+        '/workflows/import',
+        {
+          method: 'POST',
+          body: workflowJson,
+          timeout: dynamicTimeout,
+        },
+        N8NWorkflowResponseSchema,
+      )
+
+      const workflow = response as N8NWorkflow
+      logger.info(`Imported workflow: ${workflow.name} (ID: ${workflow.id})`)
+      return workflow
+    }, payloadSizeKB > 10 ? 3 : 1)
   }
 
   /**
@@ -1227,6 +1259,87 @@ export class N8NApiClient {
     settings: Record<string, unknown>,
   ): Promise<N8NSettings> {
     return await this.updateSettings(settings as Partial<N8NSettings>)
+  }
+
+  /**
+   * Validate connection health before large operations
+   */
+  private async validateConnectionHealth(): Promise<void> {
+    try {
+      const start = performance.now()
+      await this.getHealthStatus()
+      const latency = performance.now() - start
+
+      if (latency > 5000) {
+        logger.warn(`High connection latency detected: ${Math.round(latency)}ms`)
+      }
+
+      logger.debug(`Connection health validated (${Math.round(latency)}ms)`)
+    }
+    catch (error) {
+      logger.error('Connection health validation failed:', error)
+      throw new Error(`Connection unhealthy: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  /**
+   * Execute operation with exponential backoff retry logic
+   */
+  private async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+  ): Promise<T> {
+    return this.executeWithRetryAttempt(operation, 1, maxRetries)
+  }
+
+  /**
+   * Internal recursive retry implementation to avoid await-in-loop issues
+   */
+  private async executeWithRetryAttempt<T>(
+    operation: () => Promise<T>,
+    attempt: number,
+    maxRetries: number,
+  ): Promise<T> {
+    try {
+      return await operation()
+    }
+    catch (error) {
+      if (attempt >= maxRetries) {
+        throw new Error(`Operation failed after ${maxRetries} attempts: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+
+      // Check if it's a retryable error
+      if (!this.isRetryableError(error)) {
+        // Non-retryable error, fail immediately
+        throw error
+      }
+
+      const backoffMs = Math.min(1000 * 2 ** (attempt - 1), 10000) // Cap at 10s
+      logger.warn(`Operation failed (attempt ${attempt}/${maxRetries}), retrying in ${backoffMs}ms:`, (error as Error).message)
+
+      // Use explicit Promise to avoid executor return issues
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          resolve()
+        }, backoffMs)
+      })
+
+      return this.executeWithRetryAttempt(operation, attempt + 1, maxRetries)
+    }
+  }
+
+  /**
+   * Check if error is retryable (timeout, network issues, 5xx errors)
+   */
+  private isRetryableError(error: unknown): boolean {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase()
+      return message.includes('timeout')
+        || message.includes('network')
+        || message.includes('connection')
+        || message.includes('5') // 5xx errors
+    }
+    return false
   }
 }
 

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-08-26T15:43:44.209Z",
+  "timestamp": "2025-08-26T18:02:57.261Z",
   "nodeVersion": "v22.17.0",
   "packageVersion": "6.2.0",
   "environment": "test",
@@ -7,16 +7,16 @@
     "initialization": {
       "testName": "Server Initialization",
       "iterations": 10,
-      "avgTime": 0.6623696999999993,
-      "minTime": 0.4756119999999555,
-      "maxTime": 1.0853170000000318,
-      "p95Time": 1.0853170000000318,
-      "throughput": 1509.7308949971612,
+      "avgTime": 0.9872319999999035,
+      "minTime": 0.5805479999999079,
+      "maxTime": 1.6063899999999194,
+      "p95Time": 1.6063899999999194,
+      "throughput": 1012.9331302065752,
       "errors": 0,
       "memoryUsage": {
-        "rss": 183501,
+        "rss": 380109,
         "heapTotal": 0,
-        "heapUsed": 218152,
+        "heapUsed": 218290,
         "external": 4,
         "arrayBuffers": 0
       }
@@ -25,72 +25,72 @@
       {
         "testName": "Tool: search_n8n_nodes",
         "iterations": 20,
-        "avgTime": 1.3930666000000087,
-        "minTime": 0.4076629999999568,
-        "maxTime": 13.69035299999996,
-        "p95Time": 13.69035299999996,
-        "throughput": 717.8407694219312,
+        "avgTime": 1.9021553000000495,
+        "minTime": 0.4238510000000133,
+        "maxTime": 22.00635599999987,
+        "p95Time": 22.00635599999987,
+        "throughput": 525.7194299539968,
         "errors": 0
       },
       {
         "testName": "Tool: get_n8n_workflows",
         "iterations": 20,
-        "avgTime": 0.4103926999999999,
-        "minTime": 0.2310419999998885,
-        "maxTime": 2.031169000000091,
-        "p95Time": 2.031169000000091,
-        "throughput": 2436.6905161812097,
+        "avgTime": 0.4752715999999964,
+        "minTime": 0.26793099999986225,
+        "maxTime": 2.0235720000000583,
+        "p95Time": 2.0235720000000583,
+        "throughput": 2104.060078489873,
         "errors": 0
       },
       {
         "testName": "Tool: validate_mcp_config",
         "iterations": 20,
-        "avgTime": 0.10082074999997985,
-        "minTime": 0.06255299999997987,
-        "maxTime": 0.5249249999999392,
-        "p95Time": 0.5249249999999392,
-        "throughput": 9918.593146750047,
+        "avgTime": 0.13533539999991717,
+        "minTime": 0.0706000000000131,
+        "maxTime": 0.734328000000005,
+        "p95Time": 0.734328000000005,
+        "throughput": 7389.049723875734,
         "errors": 0
       },
       {
         "testName": "Tool: recommend_n8n_nodes",
         "iterations": 20,
-        "avgTime": 0.37947994999999535,
-        "minTime": 0.18674000000009983,
-        "maxTime": 2.776249999999891,
-        "p95Time": 2.776249999999891,
-        "throughput": 2635.1853371963716,
+        "avgTime": 0.5062699499999781,
+        "minTime": 0.24697599999990416,
+        "maxTime": 3.7945559999998295,
+        "p95Time": 3.7945559999998295,
+        "throughput": 1975.2308032504068,
         "errors": 0
       },
       {
         "testName": "Tool: get_system_health",
         "iterations": 20,
-        "avgTime": 0.09976940000005925,
-        "minTime": 0.0481929999998556,
-        "maxTime": 0.6146800000001349,
-        "p95Time": 0.6146800000001349,
-        "throughput": 10023.113299262159,
+        "avgTime": 0.10606885000001967,
+        "minTime": 0.05120199999964825,
+        "maxTime": 0.7032639999997627,
+        "p95Time": 0.7032639999997627,
+        "throughput": 9427.83861614239,
         "errors": 0
       }
     ],
     "agentRouting": {
       "testName": "Agent Routing",
       "iterations": 50,
-      "avgTime": 0.008528107142845036,
-      "minTime": 0.0013779999999314896,
-      "maxTime": 0.16370500000016364,
-      "p95Time": 0.021113000000013926,
-      "throughput": 104695.8167740936,
+      "avgTime": 0.011245571428560197,
+      "minTime": 0.002474999999776628,
+      "maxTime": 0.19965700000011566,
+      "p95Time": 0.016495999999733613,
+      "throughput": 79396.33379496998,
       "errors": 0
     },
     "validation": {
       "testName": "Schema Validation",
       "iterations": 100,
-      "avgTime": 0.4448653899999999,
-      "minTime": 0.09981100000004517,
-      "maxTime": 3.915926000000127,
-      "p95Time": 1.2596730000000207,
-      "throughput": 2247.8709795787895,
+      "avgTime": 0.49789095000001,
+      "minTime": 0.1948499999998603,
+      "maxTime": 3.6291419999997743,
+      "p95Time": 1.30810799999972,
+      "throughput": 2008.47193547097,
       "errors": 0
     },
     "databaseQueries": {
@@ -105,33 +105,33 @@
     "concurrentLoad": {
       "testName": "Concurrent Load",
       "iterations": 100,
-      "avgTime": 0.008378969999998844,
+      "avgTime": 0.014426760000001196,
       "minTime": 0,
-      "maxTime": 0.8378969999998844,
-      "p95Time": 0.7960021499998902,
-      "throughput": 119346.41131310149,
+      "maxTime": 1.4426760000001195,
+      "p95Time": 1.3705422000001135,
+      "throughput": 69315.63289331195,
       "errors": 0
     }
   },
   "build": {
-    "typescriptCompilation": 2033.3333333333333,
+    "typescriptCompilation": 1846.6666666666667,
     "bundleSize": 4096,
-    "startupTime": 0.39304900000006454
+    "startupTime": 0.3740454000000682
   },
   "memory": {
     "heapGrowth": {
       "testName": "Heap Growth",
       "iterations": 100,
-      "avgTime": 0.19232915999999933,
-      "minTime": 0.14652200000000448,
-      "maxTime": 0.9802970000000641,
-      "p95Time": 0.4547999999995227,
-      "throughput": 5199.419578393643,
+      "avgTime": 0.17440778999998657,
+      "minTime": 0.140135000000555,
+      "maxTime": 0.8730609999993248,
+      "p95Time": 0.42736499999955413,
+      "throughput": 5733.6888449769185,
       "errors": 0,
       "memoryUsage": {
-        "rss": 9744496,
-        "heapTotal": 0,
-        "heapUsed": 9744496,
+        "rss": 8035792,
+        "heapTotal": 524288,
+        "heapUsed": 8035792,
         "external": 0,
         "arrayBuffers": 0
       }
@@ -139,11 +139,11 @@
     "memoryPressure": {
       "testName": "Memory Pressure",
       "iterations": 1000,
-      "avgTime": 0.007134710000001178,
-      "minTime": 0.005914000000302622,
-      "maxTime": 0.04717299999992974,
-      "p95Time": 0.011804000000665837,
-      "throughput": 140159.86634352832,
+      "avgTime": 0.013939324999993005,
+      "minTime": 0.012775000000146974,
+      "maxTime": 0.053981000000021595,
+      "p95Time": 0.01598999999987427,
+      "throughput": 71739.48523335971,
       "errors": 0
     },
     "garbageCollection": {
@@ -158,10 +158,10 @@
   },
   "comparison": {
     "vsLegacyV3": {
-      "initializationImprovement": 99.97792101,
+      "initializationImprovement": 99.96709226666667,
       "bundleSizeReduction": 99.99964488636364,
       "dependencyReduction": 99.5,
-      "executionSpeedImprovement": 99.04658823999998
+      "executionSpeedImprovement": 98.74995956000002
     }
   },
   "recommendations": [
