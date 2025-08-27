@@ -34,8 +34,12 @@ import {
 } from './server/security.js'
 import { createSimpleNodeContext, SimplifiedNodeRecommender } from './server/simplified-node-data.js'
 import { initializeAgentTools } from './tools/agent-tool-handler.js'
+import { getDynamicToolDescription } from './tools/dynamic-integration.js'
+import { dynamicToolRegistry } from './tools/dynamic-tool-registry.js'
 import { N8NMCPTools } from './tools/index.js'
+import { DynamicToolEnhancer, toolRegistry } from './tools/token-optimized-tools.js'
 import { N8NConnectionsSchema, N8NWorkflowNodeSchema } from './types/index.js'
+import { initializeAggressiveCleanup } from './utils/aggressive-memory-cleanup.js'
 import { httpClient } from './utils/enhanced-http-client.js'
 import { memoryManager } from './utils/memory-manager.js'
 import {
@@ -113,8 +117,8 @@ export function getRegisteredToolCount(): number {
  */
 class N8NMcpServer {
   private server: McpServer
-  // Dynamic tool management - store references for runtime manipulation
-  private dynamicTools: Map<string, ReturnType<McpServer['tool']>> = new Map()
+  // Note: McpServer.tool() doesn't exist - tools are registered, not returned
+  // Removed incorrect dynamicTools Map
 
   constructor() {
     // Initialize MCP server with notification debouncing optimization
@@ -131,20 +135,22 @@ class N8NMcpServer {
       ],
     })
 
-    this.setupTools()
+    logger.debug('Starting MCP server initialization...')
+    this.setupToolsSync()
     this.setupResources()
     this.setupErrorHandlers()
     this.configureDynamicTools()
+    this.initializeTokenOptimization()
+    logger.debug('MCP server initialization complete')
   }
 
-  private setupTools(): void {
+  private setupToolsSync(): void {
     logger.info('Setting up n8n MCP tools...')
 
-    // Optimized batch tool registration
-    this.registerN8NToolsBatch()
-
-    // Dynamic n8n API-dependent tools
-    this.setupDynamicN8NApiTools()
+    // Register ALL tools dynamically - NO static registration
+    this.registerDynamicTools().catch((error) => {
+      logger.error('Failed to register dynamic tools:', error)
+    })
 
     logger.info('Registered MCP tools with agent routing system')
   }
@@ -297,7 +303,82 @@ class N8NMcpServer {
   }
 
   /**
-   * Optimized batch tool registration using efficient patterns
+   * Register all MCP tools dynamically using discovery system
+   */
+  private async registerDynamicTools(): Promise<void> {
+    try {
+      // Initialize dynamic tool discovery
+      await dynamicToolRegistry.initialize()
+
+      // Get all discovered tools
+      const discoveredTools = dynamicToolRegistry.getAllTools()
+
+      logger.info(`🚀 Registering ${discoveredTools.length} dynamically discovered tools`)
+
+      // Register ALL discovered tools - no static conflicts anymore
+      for (const toolDef of discoveredTools) {
+        registeredToolCount++
+
+        this.server.registerTool(
+          toolDef.name,
+          {
+            title: toolDef.title,
+            description: toolDef.description,
+            inputSchema: toolDef.inputSchema,
+          },
+          async (args: Record<string, unknown>) => {
+            try {
+              logger.debug(`🔧 Dynamic tool called: ${toolDef.name}`, { args })
+
+              // Execute tool handler
+              const result = await toolDef.handler(args)
+              logger.debug(`✅ Dynamic tool completed: ${toolDef.name}`)
+
+              // Ensure proper MCP response format
+              if (result && typeof result === 'object' && 'content' in result) {
+                return result
+              }
+
+              // Convert to MCP format if not already formatted
+              return {
+                content: [{
+                  type: 'text' as const,
+                  text: JSON.stringify(result, null, 2),
+                }],
+              }
+            }
+            catch (error) {
+              logger.error(`❌ Dynamic tool failed: ${toolDef.name}`, error)
+              return {
+                content: [{
+                  type: 'text' as const,
+                  text: `Error executing ${toolDef.name}: ${error instanceof Error ? error.message : String(error)}`,
+                }],
+                isError: true,
+              }
+            }
+          },
+        )
+      }
+
+      // Get comprehensive statistics
+      const stats = dynamicToolRegistry.getStatistics()
+      logger.info('📊 Dynamic tool registration complete:', {
+        totalDiscovered: stats.totalTools,
+        allToolsRegistered: discoveredTools.length,
+        categories: (stats.categories as string[]).length,
+        memoryOptimized: stats.memoryOptimizedTools,
+        highPriority: stats.highPriorityTools,
+      })
+    }
+    catch (error) {
+      logger.error('Failed to register dynamic tools:', error)
+      logger.info('Falling back to minimal tool set')
+    }
+  }
+
+  /**
+   * Legacy method - now replaced by dynamic registration
    */
   private registerN8NToolsBatch(): void {
     // Define tool configurations in a batch for better performance
@@ -471,6 +552,35 @@ class N8NMcpServer {
     content: Array<{ type: 'text', text: string }>
     isError?: boolean
   }> {
+    // Check for token-optimized routing first
+    const optimizedTool = toolRegistry.getAllTools().find(t => t.name === toolName)
+    if (optimizedTool) {
+      try {
+        logger.debug(`🚀 Using token-optimized routing for ${toolName}`)
+        const handler = optimizedTool.handler as ((args: Record<string, unknown>) => Promise<unknown>) | undefined
+        if (!handler) {
+          throw new Error(`No handler available for optimized tool ${toolName}`)
+        }
+        const result = await handler(args)
+
+        // Convert to MCP format if not already formatted
+        if (result && typeof result === 'object' && 'content' in result) {
+          return result as { content: Array<{ type: 'text', text: string }>, isError?: boolean }
+        }
+
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2),
+          }],
+        }
+      }
+      catch (error) {
+        logger.warn(`Token optimization failed for ${toolName}, falling back to standard routing:`, error)
+        // Fall through to standard routing
+      }
+    }
+
     // Use simplified pipeline if feature flag is enabled
     if (isSimplifiedPipelineEnabled()) {
       return this.executeToolSimplified(toolName, args)
@@ -927,6 +1037,10 @@ class N8NMcpServer {
       maxHeapSize: `${config.maxHeapSizeMb}MB`,
     })
 
+    // Initialize aggressive memory cleanup for critical usage
+    initializeAggressiveCleanup()
+    logger.info('🚨 Aggressive memory cleanup initialized for critical usage prevention')
+
     // Initialize agent tools bridge
     initializeAgentTools()
     logger.info('Agent tool bridge initialized')
@@ -1137,46 +1251,26 @@ class N8NMcpServer {
   }
 
   /**
-   * Runtime tool management - enable n8n API tools when configuration is updated
+   * Runtime tool management - log n8n API availability status
+   * Note: MCP SDK doesn't support runtime enabling/disabling of individual tools
    */
   public enableN8NApiTools(): void {
-    const workflowTools = ['get_n8n_workflows', 'create_n8n_workflow', 'execute_n8n_workflow']
-
-    workflowTools.forEach((toolName) => {
-      const tool = this.dynamicTools.get(toolName)
-      if (tool) {
-        tool.enable()
-        logger.info(`Enabled ${toolName} - n8n API is now available`)
-      }
-    })
+    logger.info('n8n API tools are available through dynamic tool registry')
   }
 
   /**
-   * Runtime tool management - disable n8n API tools when configuration is lost
+   * Runtime tool management - log n8n API unavailability status
    */
   public disableN8NApiTools(): void {
-    const workflowTools = ['get_n8n_workflows', 'create_n8n_workflow', 'execute_n8n_workflow']
-
-    workflowTools.forEach((toolName) => {
-      const tool = this.dynamicTools.get(toolName)
-      if (tool) {
-        tool.disable()
-        logger.info(`Disabled ${toolName} - n8n API is not available`)
-      }
-    })
+    logger.info('n8n API tools are disabled - API configuration not available')
   }
 
   /**
-   * Update tool configuration at runtime
+   * Tool configuration updates are handled through the dynamic tool registry
    */
   public updateToolConfiguration(toolName: string, updates: { description?: string }): void {
-    const tool = this.dynamicTools.get(toolName)
-    if (tool && updates.description) {
-      tool.update({
-        description: updates.description,
-      })
-      logger.debug(`Updated ${toolName} configuration`)
-    }
+    logger.debug(`Tool configuration update requested for ${toolName}:`, updates)
+    // MCP SDK handles tool metadata internally
   }
 
   /**
@@ -1395,6 +1489,138 @@ class N8NMcpServer {
     // No penalty below warning threshold - normal Node.js operation
 
     return Math.max(0, Math.min(100, Math.round(score)))
+  }
+
+  /**
+   * Initialize token optimization system
+   * TECH DEBT FIX: Dynamic tool counts, memory-efficient reporters
+   */
+  private initializeTokenOptimization(): void {
+    logger.info('Initializing token optimization system...')
+
+    try {
+      // Collect all existing tools for enhancement
+      const existingTools = this.getAllRegisteredTools()
+
+      // Enhance with token optimization
+      const enhancementResult = DynamicToolEnhancer.enhanceAllTools(existingTools)
+
+      // Update the registered tool count dynamically
+      registeredToolCount = enhancementResult.tools.length
+
+      logger.info('Token optimization initialized', {
+        totalTools: enhancementResult.stats.total_tools,
+        optimizedTools: enhancementResult.stats.optimized_tools,
+        optimizationRate: `${enhancementResult.stats.optimization_rate}%`,
+        estimatedTokenSavings: enhancementResult.stats.estimated_token_savings,
+        reportersActive: enhancementResult.stats.reporters_active,
+      })
+
+      logger.info(`${getDynamicToolDescription()} with intelligent routing enabled`)
+    }
+    catch (error) {
+      logger.error('Token optimization initialization failed:', error)
+      logger.info('Continuing with standard tool routing')
+    }
+  }
+
+  /**
+   * Get all currently registered tools (for token optimization enhancement)
+   */
+  private getAllRegisteredTools(): Array<{ name: string, description?: string }> {
+    // Get tools from dynamic registry instead of static list
+    const discoveredTools = dynamicToolRegistry.getAllTools()
+
+    return discoveredTools.map(tool => ({
+      name: tool.name,
+      description: tool.description,
+    }))
+  }
+
+  /**
+   * Get comprehensive tool descriptions for expanded coverage
+   */
+  private getToolDescription(toolName: string): string {
+    const descriptions: Record<string, string> = {
+      // Core Node Discovery & Documentation
+      list_nodes: 'List all available n8n nodes with filtering and search capabilities',
+      search_nodes: 'Search for nodes by name, category, or functionality with advanced filters',
+      get_node_info: 'Get detailed information about a specific node including parameters and usage',
+      get_node_essentials: 'Get essential node information optimized for quick reference',
+      get_node_parameters: 'Get detailed parameter configuration for a node',
+      get_node_examples: 'Get practical examples and use cases for a specific node',
+      validate_node_config: 'Validate node configuration and parameters',
+      get_node_documentation: 'Get comprehensive documentation for a node',
+      get_node_versions: 'Get version information and compatibility details for nodes',
+      get_community_nodes: 'List and search community-contributed nodes',
+      get_popular_nodes: 'Get most popular and frequently used nodes',
+      get_node_categories: 'List all node categories and their descriptions',
+      get_node_tags: 'Get node tags and metadata for organization',
+
+      // Comprehensive Workflow Management
+      list_workflows: 'List all workflows with comprehensive filtering and pagination',
+      get_workflow_details: 'Get detailed workflow information including nodes and connections',
+      create_workflow: 'Create new workflows with validation and optimization',
+      update_workflow: 'Update existing workflow configuration and structure',
+      delete_workflow: 'Delete workflows with safety checks and confirmation',
+      duplicate_workflow: 'Create copies of existing workflows with modifications',
+      export_workflow: 'Export workflows in various formats (JSON, YAML)',
+      import_workflow: 'Import workflows with validation and conflict resolution',
+      validate_workflow: 'Comprehensive workflow validation and error checking',
+      get_workflow_history: 'Get workflow version history and change tracking',
+      restore_workflow_version: 'Restore previous workflow versions',
+
+      // Execution Management & Analytics
+      list_executions: 'List workflow executions with filtering and analytics',
+      get_execution_details: 'Get detailed execution information and step-by-step results',
+      retry_execution: 'Retry failed executions with options and parameters',
+      stop_execution: 'Stop running executions safely',
+      delete_execution: 'Delete execution records and associated data',
+      get_execution_logs: 'Get comprehensive execution logs and debugging information',
+      get_execution_metrics: 'Get execution performance metrics and analytics',
+      get_execution_history: 'Get historical execution data with trends',
+
+      // Workflow State Management
+      activate_workflow: 'Activate workflows for automatic execution',
+      deactivate_workflow: 'Deactivate workflows and stop automatic execution',
+      get_workflow_status: 'Get current workflow activation status and health',
+      set_workflow_active_state: 'Set workflow activation state with validation',
+      get_active_workflows: 'List all currently active workflows',
+      bulk_activate_workflows: 'Activate/deactivate multiple workflows in batch',
+
+      // Template & Task Management
+      list_templates: 'List available workflow templates and starter packs',
+      create_template: 'Create reusable workflow templates',
+      use_template: 'Create workflows from templates with customization',
+      get_template_info: 'Get detailed template information and parameters',
+      update_template: 'Update existing workflow templates',
+      delete_template: 'Delete workflow templates',
+      search_templates: 'Search templates by functionality or use case',
+
+      // System & Configuration
+      get_system_info: 'Get comprehensive system information and capabilities',
+      get_settings: 'Get current system settings and configuration',
+      update_settings: 'Update system settings with validation',
+      get_environment_info: 'Get environment variables and deployment information',
+      check_dependencies: 'Check system dependencies and compatibility',
+      get_version_info: 'Get version information for n8n and components',
+
+      // Tool Management & Monitoring
+      get_tool_documentation: 'Get documentation for MCP tools and their usage',
+      validate_tool_access: 'Validate tool access permissions and capabilities',
+      get_performance_metrics: 'Get tool performance metrics and optimization data',
+
+      // Advanced Features
+      backup_workflows: 'Create comprehensive backups of workflows and data',
+      restore_backup: 'Restore workflows from backup files',
+      bulk_operations: 'Perform bulk operations on multiple workflows',
+      workflow_diff: 'Compare workflow versions and show differences',
+      merge_workflows: 'Merge multiple workflows with conflict resolution',
+      optimize_workflow: 'Analyze and optimize workflow performance',
+      analyze_workflow_performance: 'Detailed workflow performance analysis',
+    }
+
+    return descriptions[toolName] || `Advanced n8n tool: ${toolName.replace(/_/g, ' ')}`
   }
 }
 

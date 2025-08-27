@@ -94,7 +94,7 @@ export class EnhancedMcpError extends Error {
         statusCode: this.statusCode,
         metadata: this.context.metadata,
         originalError: this.originalError?.message,
-        stack: this.stack,
+        // Stack trace removed for security - see sanitizeErrorMessage for details
       },
     }
   }
@@ -114,22 +114,58 @@ export class EnhancedMcpError extends Error {
   }
 
   private getUserFriendlyMessage(): string {
+    // Sanitize the error message to remove sensitive information
+    const sanitizedMessage = this.sanitizeErrorMessage(this.message)
+
     switch (this.context.category) {
       case ErrorCategory.N8N_API:
-        return `n8n API Error: ${this.message}. Please check your n8n server connection and API credentials.`
+        return `n8n API Error: ${sanitizedMessage}. Please check your n8n server connection and credentials.`
       case ErrorCategory.DATABASE:
-        return `Database Error: ${this.message}. The operation could not be completed.`
+        return `Database Error: ${sanitizedMessage}. The operation could not be completed.`
       case ErrorCategory.CONFIGURATION:
-        return `Configuration Error: ${this.message}. Please check your MCP configuration.`
+        return `Configuration Error: ${sanitizedMessage}. Please check your MCP configuration.`
       case ErrorCategory.VALIDATION:
-        return `Input Validation Error: ${this.message}. Please check your input parameters.`
+        return `Input Validation Error: ${sanitizedMessage}. Please check your input parameters.`
       case ErrorCategory.NETWORK:
-        return `Network Error: ${this.message}. Please check your network connection.`
+        return `Network Error: ${sanitizedMessage}. Please check your network connection.`
       case ErrorCategory.AUTHENTICATION:
-        return `Authentication Error: ${this.message}. Please check your credentials.`
+        return `Authentication Error: ${sanitizedMessage}. Please check your credentials.`
       default:
-        return `Error: ${this.message}`
+        return `Error: ${sanitizedMessage}`
     }
+  }
+
+  /**
+   * Sanitize error messages to remove sensitive information and stack traces
+   */
+  private sanitizeErrorMessage(message: string): string {
+    if (!message || typeof message !== 'string') {
+      return 'An error occurred'
+    }
+
+    return message
+      // Remove sensitive keywords and replace with generic terms
+      .replace(/api[_\s]*key/gi, 'credentials')
+      .replace(/api[_\s]*token/gi, 'authentication')
+      .replace(/password/gi, 'credentials')
+      .replace(/secret/gi, 'configuration')
+      .replace(/bearer\s+[\w-]+/gi, 'authentication')
+      .replace(/token:\s*[\w-]+/gi, 'authentication')
+
+      // Remove stack traces and technical details
+      .replace(/at Object\.[\w$.()[\] ]+/g, '[internal]')
+      .replace(/\s+at\s+[^\n]+/g, '')
+      .replace(/\s+\([^)]+\)$/gm, '')
+      .replace(/Error:\s*/g, '')
+
+      // Remove file paths and internal references
+      .replace(/[a-z]:[\\/][^:]+:\d+:\d+/gi, '[internal]')
+      .replace(/\/[\w\-/]+\.js:\d+:\d+/g, '[internal]')
+      .replace(/src\/[\w\-/]+\.ts/g, '[internal]')
+
+      // Clean up multiple spaces and trim
+      .replace(/\s+/g, ' ')
+      .trim()
   }
 }
 

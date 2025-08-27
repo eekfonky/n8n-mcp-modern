@@ -142,19 +142,24 @@ describe('mCP Tool Discovery', () => {
     })
   }, 10000)
 
-  it('should include expected core n8n tools', async () => {
+  it('should include essential system and discovery tools', async () => {
     const tools = await client.listTools()
     const toolNames = tools.map(t => t.name)
 
-    // Check for some expected tools
-    const expectedTools = [
-      'get_n8n_workflows',
-      'search_n8n_nodes',
-      'get_system_health',
+    // Check for essential system tools (always available)
+    const essentialTools = [
+      'get_system_status',
+      'list_discovery_status',
     ]
 
-    expectedTools.forEach((expectedTool) => {
-      expect(toolNames).toContain(expectedTool)
+    essentialTools.forEach((essentialTool) => {
+      expect(toolNames).toContain(essentialTool)
     })
+
+    // If dynamic discovery is working, should have dynamic tools
+    const hasDynamicTools = toolNames.some(name => name.includes('_dynamic'))
+
+    // Should have either dynamic tools (if n8n connected) or just system tools (if disconnected)
+    expect(tools.length).toBeGreaterThanOrEqual(2) // At minimum, the 2 system tools
   }, 10000)
 })

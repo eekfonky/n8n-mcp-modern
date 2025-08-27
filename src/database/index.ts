@@ -543,7 +543,7 @@ export class DatabaseManager {
 
     logger.info('Database performance optimizations applied', {
       journalMode: 'WAL',
-      cacheSize: '256MB',
+      cacheSize: '32MB', // Aggressive memory optimization: reduced from 256MB to 32MB
       mmapSize: '1GB',
       pageSize: '4KB',
       synchronous: 'NORMAL',

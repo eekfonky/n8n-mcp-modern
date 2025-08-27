@@ -47,11 +47,17 @@ function checkAndBuild() {
     if (needsBuild) {
       // Check if TypeScript is available
       try {
-        execSync('npx tsc --version', { stdio: 'pipe' })
+        execSync('npx tsc --version', { stdio: 'pipe', timeout: 10000 })
       }
       catch {
         log('TypeScript not available, installing...', true)
-        execSync('npm install typescript@latest --no-save', { stdio: 'inherit' })
+        try {
+          execSync('npm install typescript@latest --no-save', { stdio: 'inherit', timeout: 60000 })
+        }
+        catch (installError) {
+          log(`Failed to install TypeScript: ${installError.message}`, true)
+          throw new Error('TypeScript installation failed')
+        }
       }
 
       log('Building TypeScript files...')
@@ -89,7 +95,13 @@ function checkAndBuild() {
       log('Creating minimal n8n node database for GitHub installation...')
 
       // Create a basic SQLite database structure that won't cause errors
-      const minimalDb = Buffer.from('') // Empty but valid SQLite file marker
+      // SQLite file format: 16-byte header + minimal structure
+      const sqliteHeader = 'SQLite format 3\0'
+      const minimalDb = Buffer.alloc(4096) // Standard page size
+      minimalDb.write(sqliteHeader, 0, 'utf8')
+      minimalDb.writeInt16BE(4096, 16) // Page size
+      minimalDb.writeInt8(1, 18) // File format write version
+      minimalDb.writeInt8(1, 19) // File format read version
       fs.writeFileSync(dataPath, minimalDb)
 
       log('Minimal database created - MCP functionality preserved')

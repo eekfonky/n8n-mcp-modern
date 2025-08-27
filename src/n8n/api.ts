@@ -15,6 +15,7 @@ import process from 'node:process'
 import { fetch, Headers } from 'undici'
 import { z } from 'zod'
 import { config } from '../server/config.js'
+import { EnhancedErrorHandler, ErrorCategory, ErrorSeverity } from '../server/enhanced-error-handler.js'
 import { logger } from '../server/logger.js'
 import { n8nApiCircuitBreaker, retryHandler } from '../server/resilience.js'
 import {
@@ -243,12 +244,17 @@ export class N8NApiClient {
       return response.data
     }
     catch (error) {
-      logger.error('Enhanced n8n API request failed:', {
-        endpoint,
-        method: options.method ?? 'GET',
-        error: error instanceof Error ? error.message : String(error),
+      // Use enhanced error handling for n8n API errors
+      const enhancedError = EnhancedErrorHandler.handleError(error, {
+        category: ErrorCategory.N8N_API,
+        severity: ErrorSeverity.HIGH,
+        recoverable: true,
+        metadata: {
+          endpoint,
+          method: options.method ?? 'GET',
+        },
       })
-      throw error
+      throw enhancedError
     }
   }
 
@@ -1277,8 +1283,13 @@ export class N8NApiClient {
       logger.debug(`Connection health validated (${Math.round(latency)}ms)`)
     }
     catch (error) {
-      logger.error('Connection health validation failed:', error)
-      throw new Error(`Connection unhealthy: ${error instanceof Error ? error.message : String(error)}`)
+      const enhancedError = EnhancedErrorHandler.handleError(error, {
+        category: ErrorCategory.N8N_API,
+        severity: ErrorSeverity.HIGH,
+        recoverable: false,
+        metadata: { operation: 'health_check' },
+      })
+      throw enhancedError
     }
   }
 
@@ -1305,13 +1316,29 @@ export class N8NApiClient {
     }
     catch (error) {
       if (attempt >= maxRetries) {
-        throw new Error(`Operation failed after ${maxRetries} attempts: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        const enhancedError = EnhancedErrorHandler.handleError(error, {
+          category: ErrorCategory.N8N_API,
+          severity: ErrorSeverity.HIGH,
+          recoverable: false,
+          metadata: {
+            operation: 'retry_exhausted',
+            maxRetries,
+            attempts: attempt,
+          },
+        })
+        throw enhancedError
       }
 
       // Check if it's a retryable error
       if (!this.isRetryableError(error)) {
-        // Non-retryable error, fail immediately
-        throw error
+        // Non-retryable error, fail immediately with enhanced handling
+        const enhancedError = EnhancedErrorHandler.handleError(error, {
+          category: ErrorCategory.N8N_API,
+          severity: ErrorSeverity.MEDIUM,
+          recoverable: false,
+          metadata: { operation: 'non_retryable_error' },
+        })
+        throw enhancedError
       }
 
       const backoffMs = Math.min(1000 * 2 ** (attempt - 1), 10000) // Cap at 10s

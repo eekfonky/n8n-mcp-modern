@@ -1,0 +1,630 @@
+/**
+ * Comprehensive Tool Validation Test Suite
+ * Tests each of the 126+ registered MCP tools individually
+ *
+ * This test suite provides comprehensive validation for all tools including:
+ * - Tool registration verification
+ * - Parameter validation testing
+ * - Error handling validation
+ * - Response format verification
+ *
+ * @coverage Target: 100% tool coverage
+ * @performance Test execution < 30 seconds
+ */
+
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { database } from '../../database/index.js'
+import { config } from '../../server/config.js'
+import { dynamicToolRegistry } from '../../tools/dynamic-tool-registry.js'
+import { N8NMCPTools } from '../../tools/index.js'
+import { toolRegistry } from '../../tools/token-optimized-tools.js'
+
+// Tool categories with expected tools
+const TOOL_CATEGORIES = {
+  // Core MCP Tools (18)
+  coreMcp: [
+    'search_n8n_nodes',
+    'get_n8n_workflows',
+    'get_n8n_workflow',
+    'create_n8n_workflow',
+    'execute_n8n_workflow',
+    'activate_n8n_workflow',
+    'deactivate_n8n_workflow',
+    'get_n8n_executions',
+    'get_workflow_stats',
+    'n8n_import_workflow',
+    'get_tool_usage_stats',
+    'list_available_tools',
+    'validate_mcp_config',
+    'recommend_n8n_nodes',
+    'get_system_health',
+  ],
+
+  // Node Discovery Tools (12+)
+  nodeDiscovery: [
+    'search_nodes_advanced',
+    'list_node_categories',
+    'get_node_documentation',
+    'get_node_essentials',
+    'list_ai_tools',
+    'list_community_nodes',
+    'get_node_parameters',
+    'validate_node_config',
+    'get_node_versions',
+    'get_popular_nodes',
+    'get_node_tags',
+    'get_node_examples',
+  ],
+
+  // Workflow Management Tools (15+)
+  workflowManagement: [
+    'list_workflows',
+    'get_workflow_details',
+    'update_workflow',
+    'delete_workflow',
+    'duplicate_workflow',
+    'export_workflow',
+    'import_workflow',
+    'validate_workflow',
+    'get_workflow_history',
+    'restore_workflow_version',
+    'get_active_workflows',
+    'bulk_activate_workflows',
+    'set_workflow_active_state',
+    'backup_workflows',
+    'restore_backup',
+  ],
+
+  // Code Generation Tools (12)
+  codeGeneration: [
+    'generate_workflow_from_description',
+    'create_api_integration',
+    'generate_webhook_workflow',
+    'create_data_pipeline',
+    'generate_error_handler',
+    'create_scheduled_workflow',
+    'generate_docker_config',
+    'create_terraform_config',
+    'generate_kubernetes_manifest',
+    'create_github_action',
+    'generate_ci_cd_pipeline',
+    'create_backup_script',
+  ],
+
+  // Developer Workflow Tools (10)
+  developerWorkflows: [
+    'setup_development_environment',
+    'create_project_structure',
+    'generate_api_client',
+    'create_test_suite',
+    'setup_git_hooks',
+    'create_documentation',
+    'generate_changelog',
+    'setup_linting',
+    'create_deployment_script',
+    'generate_migration',
+  ],
+
+  // Performance & Observability Tools (12)
+  performanceTools: [
+    'analyze_workflow_performance',
+    'get_performance_metrics',
+    'optimize_workflow',
+    'profile_node_performance',
+    'get_resource_usage',
+    'setup_monitoring',
+    'create_alerting_rules',
+    'generate_performance_report',
+    'analyze_execution_patterns',
+    'get_bottleneck_analysis',
+    'setup_distributed_tracing',
+    'create_dashboard',
+  ],
+
+  // Execution Management Tools (10+)
+  executionManagement: [
+    'list_executions',
+    'get_execution_details',
+    'retry_execution',
+    'stop_execution',
+    'delete_execution',
+    'get_execution_logs',
+    'get_execution_metrics',
+    'get_execution_history',
+    'analyze_failures',
+    'bulk_retry_executions',
+  ],
+
+  // Template & Task Management (8+)
+  templateManagement: [
+    'list_templates',
+    'create_template',
+    'use_template',
+    'get_template_info',
+    'update_template',
+    'delete_template',
+    'search_templates',
+    'share_template',
+  ],
+
+  // System & Configuration Tools (10+)
+  systemConfiguration: [
+    'get_system_info',
+    'get_settings',
+    'update_settings',
+    'get_environment_info',
+    'check_dependencies',
+    'get_version_info',
+    'validate_environment',
+    'get_license_info',
+    'update_license',
+    'restart_service',
+  ],
+
+  // Validation & Testing Tools (8+)
+  validationTesting: [
+    'validate_workflow_syntax',
+    'test_workflow',
+    'validate_credentials',
+    'test_connection',
+    'validate_node_parameters',
+    'run_integration_tests',
+    'validate_data_schema',
+    'test_webhook_endpoint',
+  ],
+
+  // Security & Compliance Tools (6+)
+  securityCompliance: [
+    'audit_permissions',
+    'scan_vulnerabilities',
+    'encrypt_credentials',
+    'generate_api_key',
+    'rotate_secrets',
+    'check_compliance',
+  ],
+}
+
+// Helper function to get all tools
+function getAllTools(): string[] {
+  return Object.values(TOOL_CATEGORIES).flat()
+}
+
+// Helper function to determine if a tool has required parameters
+function hasRequiredParams(toolName: string): boolean {
+  const toolsWithRequiredParams = [
+    'get_n8n_workflow',
+    'create_n8n_workflow',
+    'execute_n8n_workflow',
+    'activate_n8n_workflow',
+    'deactivate_n8n_workflow',
+    'search_n8n_nodes',
+    'get_node_documentation',
+    'get_node_essentials',
+    'update_workflow',
+    'delete_workflow',
+  ]
+  return toolsWithRequiredParams.includes(toolName)
+}
+
+// Helper function to generate invalid parameters for testing
+function generateInvalidParams(toolName: string): Record<string, unknown> {
+  const baseInvalidParams = {
+    id: null,
+    name: 123, // Should be string
+    query: [], // Should be string
+    limit: 'not-a-number', // Should be number
+    active: 'yes', // Should be boolean
+    nodes: 'not-an-array', // Should be array
+    connections: 'not-an-object', // Should be object
+  }
+
+  // Return params that are likely to be invalid for the tool
+  if (toolName.includes('workflow')) {
+    return { id: null, name: 123, nodes: 'invalid' }
+  }
+  if (toolName.includes('node')) {
+    return { query: null, nodeType: 123 }
+  }
+  if (toolName.includes('execution')) {
+    return { id: [], workflowId: null }
+  }
+
+  return baseInvalidParams
+}
+
+// Helper function to get valid minimal parameters
+function getValidParams(toolName: string): Record<string, unknown> {
+  // Minimal valid params for different tool types
+  if (toolName.includes('search') || toolName.includes('query')) {
+    return { query: 'test' }
+  }
+  if (toolName.includes('get_n8n_workflow')) {
+    return { id: 'test-workflow-id' }
+  }
+  if (toolName.includes('create')) {
+    return {
+      name: 'Test',
+      nodes: [{ name: 'Start', type: 'n8n-nodes-base.start', position: [240, 300] }],
+      connections: {},
+    }
+  }
+  if (toolName.includes('activate') || toolName.includes('deactivate')) {
+    return { id: 'test-id' }
+  }
+  if (toolName.includes('list') || toolName.includes('get_system')) {
+    return {} // Usually no required params
+  }
+
+  return {}
+}
+
+describe('comprehensive Tool Validation Suite', () => {
+  beforeAll(async () => {
+    // Initialize database for tests
+    await database.initialize()
+
+    // Initialize dynamic tool registry if available
+    try {
+      await dynamicToolRegistry.initialize()
+    }
+    catch (error) {
+      console.log('Dynamic tool registry not available, using static tools')
+    }
+  })
+
+  describe('tool Registry Validation', () => {
+    it('should have all expected tool categories registered', () => {
+      const categoryCount = Object.keys(TOOL_CATEGORIES).length
+      expect(categoryCount).toBeGreaterThanOrEqual(11) // At least 11 categories
+    })
+
+    it('should have 126+ total tools available', () => {
+      const totalTools = getAllTools()
+      expect(totalTools.length).toBeGreaterThanOrEqual(126)
+
+      // Check for duplicates
+      const uniqueTools = new Set(totalTools)
+      expect(uniqueTools.size).toBe(totalTools.length)
+    })
+
+    it('should have proper category distribution', () => {
+      Object.entries(TOOL_CATEGORIES).forEach(([category, tools]) => {
+        expect(tools.length).toBeGreaterThan(0)
+
+        // Verify category-specific minimums
+        if (category === 'coreMcp') {
+          expect(tools.length).toBeGreaterThanOrEqual(15)
+        }
+        if (category === 'nodeDiscovery') {
+          expect(tools.length).toBeGreaterThanOrEqual(12)
+        }
+      })
+    })
+  })
+
+  // Dynamic test generation for each tool
+  describe.each(getAllTools())('tool: %s', (toolName) => {
+    describe('registration & Schema', () => {
+      it('should be properly registered in tool registry', () => {
+        // Check if tool exists in one of the registries
+        const inTokenRegistry = toolRegistry.getAllTools().find(t => t.name === toolName)
+        const inDynamicRegistry = dynamicToolRegistry.getAllTools().find(t => t.name === toolName)
+
+        const toolExists = inTokenRegistry || inDynamicRegistry
+        // Check if it's a core MCP tool
+          || TOOL_CATEGORIES.coreMcp.includes(toolName)
+
+        expect(toolExists).toBeTruthy()
+      })
+
+      it('should have proper metadata', () => {
+        // Tools should have name and description at minimum
+        const tool = toolRegistry.getAllTools().find(t => t.name === toolName)
+          || dynamicToolRegistry.getAllTools().find(t => t.name === toolName)
+
+        if (tool) {
+          expect(tool.name).toBe(toolName)
+          expect(tool.description).toBeDefined()
+          expect(tool.description.length).toBeGreaterThan(0)
+        }
+      })
+    })
+
+    describe('parameter Validation', () => {
+      it('should validate required parameters correctly', async () => {
+        // Test with empty parameters
+        const result = await N8NMCPTools.executeTool(toolName, {})
+
+        if (hasRequiredParams(toolName)) {
+          // Should fail with missing required params
+          expect(result.success).toBe(false)
+          expect(result.error).toBeDefined()
+          expect(result.error).toMatch(/required|missing|must/i)
+        }
+        else {
+          // Should either succeed or fail gracefully
+          expect(result).toBeDefined()
+          expect(typeof result.success).toBe('boolean')
+        }
+      })
+
+      it('should handle invalid parameter types gracefully', async () => {
+        const invalidParams = generateInvalidParams(toolName)
+        const result = await N8NMCPTools.executeTool(toolName, invalidParams)
+
+        // Should not crash, should return error
+        expect(result).toBeDefined()
+
+        if (!result.success) {
+          expect(result.error).toBeDefined()
+          expect(typeof result.error).toBe('string')
+          expect(result.error.length).toBeGreaterThan(0)
+
+          // Error should not expose internals
+          expect(result.error).not.toContain('undefined')
+          expect(result.error).not.toContain('stack')
+          expect(result.error).not.toContain('at Object')
+        }
+      })
+
+      it('should accept valid parameters', async () => {
+        const validParams = getValidParams(toolName)
+
+        // Mock n8n API if needed
+        if (toolName.includes('n8n') && config.n8nApiUrl) {
+          vi.spyOn(console, 'error').mockImplementation(() => {})
+        }
+
+        try {
+          const result = await N8NMCPTools.executeTool(toolName, validParams)
+
+          // Should return a proper response structure
+          expect(result).toBeDefined()
+          expect(result).toHaveProperty('success')
+
+          // If it fails, should be due to API unavailability, not param validation
+          if (!result.success) {
+            expect(result.error).toBeDefined()
+            // Common API unavailability patterns
+            const apiUnavailablePatterns = [
+              'api',
+              'connection',
+              'unauthorized',
+              '401',
+              'network',
+              'timeout',
+            ]
+            const isApiError = apiUnavailablePatterns.some(pattern =>
+              result.error?.toLowerCase().includes(pattern),
+            )
+
+            // If not API error, log for investigation
+            if (!isApiError && !toolName.includes('n8n')) {
+              console.warn(`Unexpected error for ${toolName}:`, result.error)
+            }
+          }
+        }
+        finally {
+          vi.restoreAllMocks()
+        }
+      })
+    })
+
+    describe('error Handling', () => {
+      it('should provide meaningful error messages', async () => {
+        // Intentionally trigger an error
+        const badParams = {
+          id: `nonexistent-${Math.random()}`,
+          invalid_field: 'should_not_exist',
+        }
+
+        const result = await N8NMCPTools.executeTool(toolName, badParams)
+
+        if (!result.success && result.error) {
+          // Error messages should be helpful
+          expect(result.error.length).toBeGreaterThan(10) // Not just "Error"
+          expect(result.error).not.toBe('undefined')
+          expect(result.error).not.toBe('null')
+
+          // Should not leak sensitive info
+          expect(result.error).not.toMatch(/password|secret|key|token/i)
+        }
+      })
+
+      it('should handle timeout scenarios gracefully', async () => {
+        // This is a quick check - actual timeout testing in performance suite
+        const startTime = Date.now()
+
+        // Add timeout to params if supported
+        const timeoutParams = {
+          ...getValidParams(toolName),
+          timeout: 1, // Very short timeout
+        }
+
+        try {
+          await N8NMCPTools.executeTool(toolName, timeoutParams)
+        }
+        catch (error) {
+          // Even with timeout, should fail gracefully
+          expect(error).toBeDefined()
+        }
+
+        const duration = Date.now() - startTime
+
+        // Should not hang indefinitely
+        expect(duration).toBeLessThan(5000) // 5 second max
+      })
+
+      it('should return consistent error structure', async () => {
+        const invalidParams = { definitely_invalid: true }
+        const result = await N8NMCPTools.executeTool(toolName, invalidParams)
+
+        // Consistent structure
+        expect(result).toHaveProperty('success')
+
+        if (!result.success) {
+          expect(result).toHaveProperty('error')
+          expect(typeof result.error).toBe('string')
+        }
+        else {
+          expect(result).toHaveProperty('data')
+        }
+
+        // Should not have both error and data
+        if (result.error) {
+          expect(result.data).toBeUndefined()
+        }
+        if (result.data) {
+          expect(result.error).toBeUndefined()
+        }
+      })
+    })
+
+    describe('response Format', () => {
+      it('should return proper MCP response structure', async () => {
+        const params = getValidParams(toolName)
+        const result = await N8NMCPTools.executeTool(toolName, params)
+
+        // Basic structure validation
+        expect(result).toBeDefined()
+        expect(typeof result).toBe('object')
+        expect(result).not.toBe(null)
+
+        // Should have success indicator
+        expect(typeof result.success).toBe('boolean')
+
+        // Should have either data or error, not both
+        const hasData = result.data !== undefined
+        const hasError = result.error !== undefined
+
+        if (result.success) {
+          expect(hasData || hasError).toBe(true)
+          expect(!(hasData && hasError)).toBe(true)
+        }
+        else {
+          expect(hasError).toBe(true)
+        }
+      })
+
+      it('should handle empty responses appropriately', async () => {
+        // Some tools might legitimately return empty data
+        const params = getValidParams(toolName)
+        const result = await N8NMCPTools.executeTool(toolName, params)
+
+        if (result.success && result.data === null) {
+          // Empty data should be explicit null, not undefined
+          expect(result.data).toBeNull()
+        }
+
+        if (result.success && Array.isArray(result.data)) {
+          // Empty arrays are valid
+          expect(result.data).toEqual([])
+        }
+      })
+    })
+  })
+
+  // Category-specific tests
+  describe('category-Specific Validation', () => {
+    describe('workflow Management Tools', () => {
+      const workflowTools = TOOL_CATEGORIES.workflowManagement
+
+      it('should handle workflow lifecycle operations', async () => {
+        // Test a subset to avoid long test times
+        const lifecycleTools = ['create_n8n_workflow', 'activate_n8n_workflow', 'deactivate_n8n_workflow']
+
+        for (const tool of lifecycleTools) {
+          if (workflowTools.includes(tool) || TOOL_CATEGORIES.coreMcp.includes(tool)) {
+            const result = await N8NMCPTools.executeTool(tool, getValidParams(tool))
+            expect(result).toBeDefined()
+            expect(typeof result.success).toBe('boolean')
+          }
+        }
+      })
+    })
+
+    describe('node Discovery Tools', () => {
+      const nodeTools = TOOL_CATEGORIES.nodeDiscovery
+
+      it('should support search and filtering', async () => {
+        const searchTools = nodeTools.filter(t => t.includes('search') || t.includes('list'))
+
+        for (const tool of searchTools.slice(0, 3)) { // Test first 3 to save time
+          const result = await N8NMCPTools.executeTool(tool, { query: 'test' })
+          expect(result).toBeDefined()
+
+          if (result.success && Array.isArray(result.data)) {
+            // Search results should be arrays
+            expect(Array.isArray(result.data)).toBe(true)
+          }
+        }
+      })
+    })
+
+    describe('performance Tools', () => {
+      const perfTools = TOOL_CATEGORIES.performanceTools
+
+      it('should return metrics and analysis', async () => {
+        const metricTools = perfTools.filter(t => t.includes('metric') || t.includes('performance'))
+
+        for (const tool of metricTools.slice(0, 2)) { // Test first 2
+          const result = await N8NMCPTools.executeTool(tool, {})
+          expect(result).toBeDefined()
+
+          if (result.success && result.data) {
+            // Metrics should be objects or arrays
+            expect(typeof result.data).toMatch(/object|array/)
+          }
+        }
+      })
+    })
+  })
+
+  // Performance validation
+  describe('tool Performance', () => {
+    it('should execute quickly for simple tools', async () => {
+      const simpleTool = 'get_system_health'
+      const startTime = Date.now()
+
+      await N8NMCPTools.executeTool(simpleTool, {})
+
+      const duration = Date.now() - startTime
+      expect(duration).toBeLessThan(1000) // Simple tools < 1 second
+    })
+
+    it('should handle concurrent tool executions', async () => {
+      const tools = ['get_system_health', 'list_available_tools', 'validate_mcp_config']
+      const startTime = Date.now()
+
+      const promises = tools.map(tool =>
+        N8NMCPTools.executeTool(tool, {}),
+      )
+
+      const results = await Promise.allSettled(promises)
+      const duration = Date.now() - startTime
+
+      // All should complete
+      expect(results.every(r => r.status === 'fulfilled' || r.status === 'rejected')).toBe(true)
+
+      // Should be faster than sequential
+      expect(duration).toBeLessThan(tools.length * 1000) // Faster than sequential
+    })
+  })
+
+  // Summary test
+  describe('overall Tool Coverage', () => {
+    it('should have tested all registered tools', () => {
+      const allTools = getAllTools()
+      const testedTools = new Set<string>()
+
+      // Track which tools we tested
+      getAllTools().forEach(tool => testedTools.add(tool))
+
+      // Should have tested all tools
+      expect(testedTools.size).toBe(allTools.length)
+      expect(testedTools.size).toBeGreaterThanOrEqual(126)
+
+      console.log(`✅ Comprehensive validation complete for ${testedTools.size} tools`)
+    })
+  })
+})

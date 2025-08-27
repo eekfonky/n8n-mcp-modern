@@ -84,7 +84,8 @@ describe('agent Routing System Tests', () => {
     it('should route node-related tasks to node specialist', () => {
       const context = AgentContextBuilder.create().nodeExpertise().build()
 
-      const selectedAgent = agentRouter.routeTool('search_n8n_nodes', context)
+      // Test with dynamic node search tool
+      const selectedAgent = agentRouter.routeTool('search_n8n_nodes_dynamic', context)
       expect(selectedAgent.name).toBe('n8n-node-specialist')
     })
 

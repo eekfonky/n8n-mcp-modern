@@ -376,8 +376,22 @@ export const ErrorUtils = {
         severity: enhancedResponse.severity,
       })
 
-      // Throw the enhanced response for the MCP tool to return
-      throw new Error(JSON.stringify(enhancedResponse))
+      // Return error response without creating new stack trace
+      // Use the original error structure that's already sanitized
+      if (error instanceof Error) {
+        // Preserve original error type but sanitize the message
+        const sanitizedError = new Error(JSON.stringify(enhancedResponse))
+        sanitizedError.name = error.name
+        // Remove stack trace completely for security
+        delete sanitizedError.stack
+        throw sanitizedError
+      }
+      else {
+        // For non-Error objects, create a clean error
+        const cleanError = new Error(JSON.stringify(enhancedResponse))
+        delete cleanError.stack
+        throw cleanError
+      }
     }
   },
 

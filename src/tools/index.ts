@@ -20,6 +20,7 @@ import { z } from 'zod'
 import { n8nApi, refreshN8NApiClient } from '../n8n/api.js'
 import { createEnhancedN8NApi } from '../n8n/enhanced-api.js'
 import { refreshConfig } from '../server/config.js'
+import { EnhancedMcpError, ErrorCategory, ErrorSeverity } from '../server/enhanced-error-handler.js'
 import { logger } from '../server/logger.js'
 import {
   CreateWorkflowArgsSchema,
@@ -91,16 +92,107 @@ import {
 function sanitizeError(error: Error, includeStack = false): string {
   const errorMessage = error.message || String(error)
 
+  // Apply comprehensive sanitization to remove sensitive information
+  const sanitized = errorMessage
+    // Remove sensitive keywords and replace with generic terms
+    .replace(/api[_\s]*key/gi, 'credentials')
+    .replace(/api[_\s]*token/gi, 'authentication')
+    .replace(/password/gi, 'credentials')
+    .replace(/secret/gi, 'configuration')
+    .replace(/bearer\s+[\w-]+/gi, 'authentication')
+    .replace(/token:\s*[\w-]+/gi, 'authentication')
+
+    // Remove stack traces and technical details
+    .replace(/at Object\.[\w$.()[\] ]+/g, '[internal]')
+    .replace(/\s+at\s+[^\n]+/g, '')
+    .replace(/\s+\([^)]+\)$/gm, '')
+    .replace(/Error:\s*/g, '')
+
+    // Remove file paths and internal references
+    .replace(/[a-z]:[\\/][^:]+:\d+:\d+/gi, '[internal]')
+    .replace(/\/[\w\-/]+\.js:\d+:\d+/g, '[internal]')
+    .replace(/src\/[\w\-/]+\.ts/g, '[internal]')
+
+    // Clean up multiple spaces and trim
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  // In production, be extra strict
   if (process.env.NODE_ENV === 'production') {
-    return errorMessage
+    return sanitized
   }
 
+  // In development, optionally include sanitized stack line
   if (includeStack && error.stack) {
     const firstStackLine = error.stack.split('\n')[1]?.trim()
-    return firstStackLine ? `${errorMessage} (${firstStackLine})` : errorMessage
+    if (firstStackLine) {
+      // Sanitize the stack line too
+      const sanitizedStack = firstStackLine
+        .replace(/[a-z]:[\\/][^:]+:\d+:\d+/gi, '[internal]')
+        .replace(/src\/[\w\-/]+\.ts/g, '[internal]')
+      return `${sanitized} (${sanitizedStack})`
+    }
   }
 
-  return errorMessage
+  return sanitized
+}
+
+/**
+ * Create enhanced error with proper categorization and context
+ */
+function createEnhancedError(
+  error: unknown,
+  toolName: string,
+  args: Record<string, unknown>,
+): { getUserFriendlyMessage: () => string } {
+  let category = ErrorCategory.TOOL_EXECUTION
+  let severity = ErrorSeverity.MEDIUM
+
+  // Categorize error based on type and message
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase()
+
+    if (message.includes('api') || message.includes('connection')) {
+      category = ErrorCategory.N8N_API
+      severity = ErrorSeverity.HIGH
+    }
+    else if (message.includes('validation') || message.includes('required')) {
+      category = ErrorCategory.VALIDATION
+      severity = ErrorSeverity.LOW
+    }
+    else if (message.includes('database')) {
+      category = ErrorCategory.DATABASE
+      severity = ErrorSeverity.HIGH
+    }
+    else if (message.includes('auth') || message.includes('credential')) {
+      category = ErrorCategory.AUTHENTICATION
+      severity = ErrorSeverity.HIGH
+    }
+    else if (message.includes('network') || message.includes('timeout')) {
+      category = ErrorCategory.NETWORK
+      severity = ErrorSeverity.MEDIUM
+    }
+  }
+
+  // Create enhanced MCP error with proper interface compatibility
+  const enhancedError = new EnhancedMcpError(
+    error instanceof Error ? error.message : String(error),
+    {
+      category,
+      severity,
+      recoverable: true, // All tool execution errors are generally recoverable
+      toolName,
+      metadata: { args },
+    },
+    error instanceof Error ? error : undefined,
+  )
+
+  // Return object with getUserFriendlyMessage method for compatibility
+  return {
+    getUserFriendlyMessage(): string {
+      return enhancedError.toUserResponse().content[0]?.text || 'An error occurred'
+    },
+  }
 }
 
 /**
@@ -641,9 +733,11 @@ export class N8NMCPTools {
         return { success: true, data: result }
       }
       catch (error) {
+        // Use enhanced error handling for comprehensive tools
+        const enhancedError = createEnhancedError(error, name, args)
         return {
           success: false,
-          error: error instanceof Error ? error.message : String(error),
+          error: enhancedError.getUserFriendlyMessage(),
         }
       }
     }
