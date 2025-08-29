@@ -4,6 +4,7 @@
  */
 
 import type { N8NNodeDatabase } from '../types/core.js'
+import type { Migration, MigrationResult, SchemaManager, SchemaValidation } from './schema-manager.js'
 import { existsSync, mkdirSync } from 'node:fs'
 // Dynamic import for optional dependency
 import { join } from 'node:path'
@@ -13,7 +14,8 @@ import { setImmediate } from 'node:timers'
 import { z } from 'zod'
 import { config } from '../server/config.js'
 import { logger } from '../server/logger.js'
-import { N8NMcpError } from '../types/index.js'
+import { N8NMcpError } from '../types/fast-types.js'
+import { getSchemaManager } from './schema-manager.js'
 
 // Optional dependency - may not be available
 // eslint-disable-next-line ts/no-explicit-any
@@ -150,6 +152,7 @@ export class DatabaseQueryError extends N8NMcpError {
  */
 export class DatabaseManager {
   private db: import('better-sqlite3').Database | null = null
+  private schemaManager: SchemaManager | null = null
 
   /**
    * Get the underlying database instance for advanced operations
@@ -157,6 +160,14 @@ export class DatabaseManager {
    */
   get rawDatabase(): import('better-sqlite3').Database | null {
     return this.db
+  }
+
+  /**
+   * Get the schema manager instance
+   * @internal
+   */
+  get schemaManagerInstance(): SchemaManager | null {
+    return this.schemaManager
   }
 
   private readonly dbPath: string
@@ -480,13 +491,16 @@ export class DatabaseManager {
       // Enhanced performance optimizations
       this.applyPerformanceOptimizations()
 
-      // Create schema
-      await this.createSchema()
+      // Initialize schema manager and run migrations
+      await this.initializeSchemaManager()
 
-      // Initialize with default data
+      // Initialize with default data (only if needed)
       await this.initializeDefaultData()
 
-      logger.info(`Database initialized: ${this.dbPath}`)
+      logger.info(`Database initialized: ${this.dbPath}`, {
+        schemaVersion: this.schemaManager?.getCurrentSchemaVersion() || 0,
+        migrationsAvailable: this.schemaManager?.getAvailableMigrations().length || 0,
+      })
     }
     catch (error) {
       logger.error('Failed to initialize database:', error)
@@ -552,9 +566,59 @@ export class DatabaseManager {
   }
 
   /**
-   * Create database schema
+   * Initialize schema manager and run migrations
    */
-  private async createSchema(): Promise<void> {
+  private async initializeSchemaManager(): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized')
+    }
+
+    try {
+      // Initialize schema manager
+      this.schemaManager = getSchemaManager(this.dbPath)
+      await this.schemaManager.initialize(this.db)
+
+      // Check for pending migrations
+      if (this.schemaManager.hasPendingMigrations()) {
+        logger.info('Applying pending database migrations...')
+
+        const results = await this.schemaManager.migrate()
+        const successful = results.filter(r => r.success)
+        const failed = results.filter(r => !r.success)
+
+        if (failed.length > 0) {
+          logger.warn(`${failed.length} migrations failed:`, failed.map(r => r.name))
+        }
+
+        logger.info(`Applied ${successful.length} database migrations`, {
+          currentVersion: this.schemaManager.getCurrentSchemaVersion(),
+          executionTime: results.reduce((sum, r) => sum + r.executionTime, 0),
+        })
+      }
+
+      // Validate final schema
+      const validation = await this.schemaManager.validateSchema()
+      if (!validation.isValid) {
+        logger.warn('Database schema validation issues:', {
+          errors: validation.schemaErrors,
+          recommendations: validation.recommendations,
+        })
+      }
+    }
+    catch (error) {
+      logger.error('Failed to initialize schema manager:', error)
+
+      // Fallback to legacy schema creation if schema manager fails
+      logger.warn('Falling back to legacy schema creation...')
+      await this.createLegacySchema()
+    }
+  }
+
+  /**
+   * Legacy schema creation (fallback only)
+   * @deprecated Use SchemaManager instead
+   */
+  private async createLegacySchema(): Promise<void> {
     if (!this.db)
       throw new Error('Database not initialized')
 
@@ -665,6 +729,7 @@ export class DatabaseManager {
 
       return rows.map(row => ({
         name: row.name,
+        type: row.name, // type is alias for name for compatibility
         displayName: row.display_name,
         description: row.description,
         version: row.version,
@@ -697,6 +762,7 @@ export class DatabaseManager {
 
       return rows.map(row => ({
         name: row.name,
+        type: row.name, // type is alias for name for compatibility
         displayName: row.display_name,
         description: row.description,
         version: row.version,
@@ -1286,7 +1352,100 @@ export class DatabaseManager {
       })
     })
   }
+
+  // === Schema Management Methods ===
+
+  /**
+   * Get current schema version
+   */
+  getSchemaVersion(): number {
+    return this.schemaManager?.getCurrentSchemaVersion() || 0
+  }
+
+  /**
+   * Get schema validation status
+   */
+  async validateSchema(): Promise<SchemaValidation> {
+    if (!this.schemaManager) {
+      return {
+        isValid: false,
+        currentVersion: 0,
+        expectedVersion: 0,
+        missingTables: [],
+        extraTables: [],
+        schemaErrors: ['Schema manager not initialized'],
+        recommendations: ['Initialize database first'],
+      }
+    }
+
+    return await this.schemaManager.validateSchema()
+  }
+
+  /**
+   * Apply pending migrations
+   */
+  async applyMigrations(targetVersion?: number): Promise<MigrationResult[]> {
+    if (!this.schemaManager) {
+      throw new Error('Schema manager not initialized')
+    }
+
+    return await this.schemaManager.migrate(targetVersion)
+  }
+
+  /**
+   * Rollback to specific schema version
+   */
+  async rollbackToVersion(targetVersion: number): Promise<MigrationResult[]> {
+    if (!this.schemaManager) {
+      throw new Error('Schema manager not initialized')
+    }
+
+    return await this.schemaManager.rollback(targetVersion)
+  }
+
+  /**
+   * Check if migrations are pending
+   */
+  hasPendingMigrations(): boolean {
+    return this.schemaManager?.hasPendingMigrations() || false
+  }
+
+  /**
+   * Get migration history
+   */
+  getMigrationHistory(): MigrationResult[] {
+    return this.schemaManager?.getMigrationHistory() || []
+  }
+
+  /**
+   * Get available migrations
+   */
+  getAvailableMigrations(): Migration[] {
+    return this.schemaManager?.getAvailableMigrations() || []
+  }
+
+  /**
+   * Enhanced health check with schema validation
+   */
+  async checkHealthWithSchema(): Promise<DatabaseHealth & { schemaValidation: SchemaValidation }> {
+    const baseHealth = await this.checkHealth()
+    const schemaValidation = await this.validateSchema()
+
+    return {
+      ...baseHealth,
+      schemaValidation,
+      // Update overall status based on schema validation
+      status: !schemaValidation.isValid ? 'degraded' : baseHealth.status,
+      errors: [
+        ...baseHealth.errors,
+        ...schemaValidation.schemaErrors,
+      ],
+    }
+  }
 }
 
 // Export singleton instance
 export const database = new DatabaseManager()
+
+// Export Phase 1: Version tracking manager
+export { VersionManager } from './version-manager.js'

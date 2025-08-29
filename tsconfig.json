@@ -30,7 +30,23 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": [
-    "src/**/*"
+    "src/index.ts",
+    "src/fast-index.ts",
+    "src/simple-config.ts",
+    "src/agents/optimized.ts",
+    "src/agents/fast-communication.ts",
+    "src/tools/unified-registry.ts",
+    "src/tools/n8n-node-discovery.ts",
+    "src/tools/dynamic-tool-registry.ts",
+    "src/utils/memory-manager.ts",
+    "src/n8n/api.ts",
+    "src/discovery/**/*",
+    "src/server/logger.ts",
+    "src/server/config.ts",
+    "src/server/resilience.ts",
+    "src/types/fast-types.ts",
+    "src/database/**/*",
+    "src/types/core.ts"
   ],
   "exclude": [
     "node_modules",

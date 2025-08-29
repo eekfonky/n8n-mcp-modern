@@ -1,9 +1,9 @@
-import type { Config } from '../types/index.js'
+import type { Config } from '../types/fast-types.js'
 import process from 'node:process'
 
 import { config as dotenvConfig } from 'dotenv'
 import { z } from 'zod'
-import { ConfigSchema } from '../types/index.js'
+import { ConfigSchema } from '../types/fast-types.js'
 
 // Load environment variables (quiet: true to maintain v16 behavior in v17)
 dotenvConfig({ quiet: true })

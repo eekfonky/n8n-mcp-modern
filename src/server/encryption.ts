@@ -179,8 +179,13 @@ export class SQLiteEncryption {
    * Get SQLite encryption pragma commands
    */
   static getEncryptionPragma(key: string): string[] {
+    // Validate key format to prevent SQL injection
+    if (!/^[a-z0-9+/=]{16,}$/i.test(key)) {
+      throw new Error('Invalid encryption key format')
+    }
+
     return [
-      `PRAGMA key = '${key}'`,
+      'PRAGMA key = ?', // Use parameterized query - key must be set separately
       'PRAGMA cipher_page_size = 4096',
       'PRAGMA kdf_iter = 64000',
       'PRAGMA cipher_hmac_algorithm = HMAC_SHA256',
