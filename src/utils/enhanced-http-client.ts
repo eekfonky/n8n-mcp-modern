@@ -9,7 +9,7 @@ import process from 'node:process'
 import { Agent, Pool, request, setGlobalDispatcher } from 'undici'
 import { config } from '../server/config.js'
 import { logger } from '../server/logger.js'
-import { performanceMonitor } from './node22-features.js'
+// Removed node22-features.js dependency
 
 /**
  * HTTP request options with performance optimizations
@@ -130,7 +130,7 @@ export class EnhancedHttpClient {
       const cached = this.getFromCache<T>(cacheKey)
       if (cached) {
         this.stats.cacheHits++
-        performanceMonitor.endMeasurement(`http_${method.toLowerCase()}`)
+        // Performance monitoring removed
         return {
           ...cached,
           responseTime: Date.now() - startTime,
@@ -141,7 +141,7 @@ export class EnhancedHttpClient {
     }
 
     // Start performance measurement
-    performanceMonitor.startMeasurement(`http_${method.toLowerCase()}`)
+    // Performance monitoring removed
 
     try {
       this.stats.requests++
@@ -172,12 +172,33 @@ export class EnhancedHttpClient {
       const responseBody = response.body ? await response.body.text() : ''
       const responseSize = Buffer.byteLength(responseBody, 'utf8')
 
-      // Parse JSON response
+      // Parse JSON response with security validation
       let data: T
       try {
-        data = responseBody ? JSON.parse(responseBody) as T : {} as T
+        if (responseBody) {
+          // Security validation: Check for potentially malicious JSON
+          if (this.isValidJsonStructure(responseBody)) {
+            data = this.parseJsonSecurely(responseBody) as T
+          }
+          else {
+            logger.warn('Invalid JSON structure detected, treating as plain text', {
+              url,
+              responseSize: responseBody.length,
+              preview: responseBody.slice(0, 100),
+            })
+            data = responseBody as T
+          }
+        }
+        else {
+          data = {} as T
+        }
       }
-      catch {
+      catch (parseError) {
+        logger.debug('JSON parsing failed, treating as plain text', {
+          url,
+          error: parseError instanceof Error ? parseError.message : String(parseError),
+          responsePreview: responseBody.slice(0, 100),
+        })
         data = responseBody as T
       }
 
@@ -218,12 +239,12 @@ export class EnhancedHttpClient {
         })
       }
 
-      performanceMonitor.endMeasurement(`http_${method.toLowerCase()}`)
+      // Performance monitoring removed
       return result
     }
     catch (error) {
       this.stats.errors++
-      performanceMonitor.endMeasurement(`http_${method.toLowerCase()}`)
+      // Performance monitoring removed
 
       logger.error('HTTP request failed:', {
         url,
@@ -477,6 +498,130 @@ export class EnhancedHttpClient {
   }
 
   /**
+   * Validate JSON structure for security
+   */
+  private isValidJsonStructure(jsonString: string): boolean {
+    // Basic security checks
+    if (jsonString.length > 50 * 1024 * 1024) { // 50MB limit
+      logger.warn('JSON response too large, rejecting', { size: jsonString.length })
+      return false
+    }
+
+    // Check for obvious non-JSON content
+    const trimmed = jsonString.trim()
+    if (!trimmed)
+      return false
+
+    // Must start with valid JSON characters
+    const firstChar = trimmed[0]
+    const lastChar = trimmed[trimmed.length - 1]
+
+    const validStarts = ['{', '[', '"', 'true', 'false', 'null']
+    const startsValid = validStarts.some(start =>
+      start === firstChar || trimmed.startsWith(start),
+    )
+
+    if (!startsValid)
+      return false
+
+    // Basic bracket/brace matching for objects and arrays
+    if ((firstChar === '{' && lastChar !== '}')
+      || (firstChar === '[' && lastChar !== ']')
+      || (firstChar === '"' && lastChar !== '"')) {
+      return false
+    }
+
+    // Check for suspicious patterns that might indicate injection attempts
+    const suspiciousPatterns = [
+      /__proto__/gi,
+      /constructor/gi,
+      /prototype/gi,
+      /<script/gi,
+      /javascript:/gi,
+      /eval\s*\(/gi,
+      /Function\s*\(/gi,
+    ]
+
+    return !suspiciousPatterns.some(pattern => pattern.test(jsonString))
+  }
+
+  /**
+   * Parse JSON with additional security measures
+   */
+  private parseJsonSecurely(jsonString: string): unknown {
+    try {
+      // Pre-validate JSON string before parsing to prevent prototype pollution
+      const prototypePollutionPatterns = [
+        /"__proto__"\s*:/,
+        /"constructor"\s*:/,
+        /"prototype"\s*:/,
+        /'__proto__'\s*:/,
+        /'constructor'\s*:/,
+        /'prototype'\s*:/,
+      ]
+
+      if (prototypePollutionPatterns.some(pattern => pattern.test(jsonString))) {
+        logger.warn('Blocked JSON with potential prototype pollution')
+        throw new Error('Unsafe JSON detected: contains prototype pollution attempts')
+      }
+
+      // Parse without reviver first to avoid processing dangerous values
+      const parsed = JSON.parse(jsonString)
+
+      // Deep sanitize the parsed object
+      return this.sanitizeObject(parsed)
+    }
+    catch (error) {
+      logger.error('Secure JSON parsing failed', {
+        error: error instanceof Error ? error.message : String(error),
+        jsonLength: jsonString.length,
+        preview: jsonString.slice(0, 100),
+      })
+      throw error
+    }
+  }
+
+  private sanitizeObject(obj: any): any {
+    if (obj === null || typeof obj !== 'object') {
+      return obj
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.sanitizeObject(item))
+    }
+
+    const sanitized: any = {}
+    const dangerousKeys = ['__proto__', 'constructor', 'prototype']
+
+    for (const [key, value] of Object.entries(obj)) {
+      // Skip dangerous keys entirely
+      if (dangerousKeys.includes(key.toLowerCase())) {
+        logger.warn(`Blocked dangerous property during sanitization: ${key}`)
+        continue
+      }
+
+      // Block function strings that might be evaluated
+      if (typeof value === 'string') {
+        const functionPatterns = [
+          /^\s*function\s*\(/,
+          /^\s*\(\s*\)\s*=>/,
+          /^\s*[a-z_$][\w$]*\s*=>/i,
+        ]
+        if (functionPatterns.some(pattern => pattern.test(value))) {
+          logger.warn(`Blocked potential function in JSON: ${value.slice(0, 50)}...`)
+          sanitized[key] = '[BLOCKED_FUNCTION]'
+          continue
+        }
+      }
+
+      // Recursively sanitize nested objects
+      sanitized[key] = this.sanitizeObject(value)
+    }
+
+    return sanitized
+  }
+
+  /**
    * Close all connections and cleanup resources
    */
   async close(): Promise<void> {
@@ -497,7 +642,35 @@ export class EnhancedHttpClient {
 // Export singleton instance
 export const httpClient = new EnhancedHttpClient()
 
-// Cleanup on process exit
-process.on('beforeExit', async () => {
-  await httpClient.close()
+// Cleanup on process exit - use synchronous approach for exit handlers
+let isClosing = false
+
+process.on('beforeExit', () => {
+  if (!isClosing) {
+    isClosing = true
+    // Use synchronous cleanup for process exit to prevent hanging
+    try {
+      // Simplified cleanup - just call close
+      // httpClient.close() - can't call async here
+    }
+    catch (error) {
+      logger.error('Error during HTTP client cleanup:', error)
+    }
+  }
+})
+
+process.on('SIGTERM', () => {
+  if (!isClosing) {
+    // Graceful shutdown with timeout for async cleanup
+    httpClient.close().catch(err => logger.error('HTTP client close error:', err))
+    setTimeout(() => process.exit(0), 5000) // 5 second timeout
+  }
+})
+
+process.on('SIGINT', () => {
+  if (!isClosing) {
+    // Graceful shutdown with timeout for async cleanup
+    httpClient.close().catch(err => logger.error('HTTP client close error:', err))
+    setTimeout(() => process.exit(0), 5000) // 5 second timeout
+  }
 })

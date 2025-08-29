@@ -7,7 +7,7 @@
  * Philosophy: Simple, fast, memory-efficient node recommendations
  */
 
-import type { N8NNodeDatabase } from '../types/core.js'
+import type { N8NNodeDatabase } from '../types/index.js'
 import { isIntelligenceEnabled } from './feature-flags.js'
 import { logger } from './logger.js'
 

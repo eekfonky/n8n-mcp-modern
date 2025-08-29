@@ -38,6 +38,7 @@
     "src/tools/unified-registry.ts",
     "src/tools/n8n-node-discovery.ts",
     "src/tools/dynamic-tool-registry.ts",
+    "src/tools/mcp-tool-generator.ts",
     "src/utils/memory-manager.ts",
     "src/n8n/api.ts",
     "src/discovery/**/*",

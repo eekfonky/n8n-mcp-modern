@@ -7,7 +7,7 @@
  * Philosophy: Fail fast, log comprehensively, recover gracefully
  */
 
-import { performanceMonitor } from '../utils/node22-features.js'
+// Removed node22-features.js dependency
 import { featureFlags } from './feature-flags.js'
 import { logger } from './logger.js'
 
@@ -30,6 +30,13 @@ export enum ErrorSeverity {
   MEDIUM = 'medium',
   HIGH = 'high',
   CRITICAL = 'critical',
+}
+
+export enum ErrorDetailLevel {
+  MINIMAL = 'minimal', // Production: basic error message only
+  STANDARD = 'standard', // Staging: include some technical details
+  DETAILED = 'detailed', // Development: full error details
+  DEBUG = 'debug', // Debug: everything including stack traces
 }
 
 export interface ErrorContext {
@@ -82,20 +89,58 @@ export class EnhancedMcpError extends Error {
     level: 'warn' | 'error'
     context: Record<string, unknown>
   } {
+    const detailLevel = EnhancedErrorHandler.getErrorDetailLevel()
+
+    const baseContext: Record<string, unknown> = {
+      category: this.context.category,
+      severity: this.context.severity,
+      recoverable: this.context.recoverable,
+    }
+
+    // Add details based on environment level
+    switch (detailLevel) {
+      case ErrorDetailLevel.MINIMAL:
+        // Production: Minimal logging, no sensitive data
+        break
+
+      case ErrorDetailLevel.STANDARD:
+        // Staging: Add basic context
+        Object.assign(baseContext, {
+          requestId: this.context.requestId,
+          toolName: this.context.toolName,
+          statusCode: this.statusCode,
+        })
+        break
+
+      case ErrorDetailLevel.DETAILED:
+        // Development: Add more context
+        Object.assign(baseContext, {
+          requestId: this.context.requestId,
+          toolName: this.context.toolName,
+          statusCode: this.statusCode,
+          metadata: this.context.metadata,
+          originalError: this.originalError?.message,
+        })
+        break
+
+      case ErrorDetailLevel.DEBUG:
+        // Debug: Include everything
+        Object.assign(baseContext, {
+          requestId: this.context.requestId,
+          toolName: this.context.toolName,
+          statusCode: this.statusCode,
+          metadata: this.context.metadata,
+          originalError: this.originalError?.message,
+          stack: this.originalError?.stack?.split('\n').slice(0, 5).join('\n'),
+          timestamp: this.context.timestamp,
+        })
+        break
+    }
+
     return {
       message: this.message,
       level: this.context.severity === ErrorSeverity.CRITICAL ? 'error' : 'warn',
-      context: {
-        category: this.context.category,
-        severity: this.context.severity,
-        recoverable: this.context.recoverable,
-        requestId: this.context.requestId,
-        toolName: this.context.toolName,
-        statusCode: this.statusCode,
-        metadata: this.context.metadata,
-        originalError: this.originalError?.message,
-        // Stack trace removed for security - see sanitizeErrorMessage for details
-      },
+      context: baseContext,
     }
   }
 
@@ -114,9 +159,34 @@ export class EnhancedMcpError extends Error {
   }
 
   private getUserFriendlyMessage(): string {
+    const detailLevel = EnhancedErrorHandler.getErrorDetailLevel()
+
     // Sanitize the error message to remove sensitive information
     const sanitizedMessage = this.sanitizeErrorMessage(this.message)
 
+    // Get base message based on category
+    const baseMessage = this.getCategoryMessage(sanitizedMessage)
+
+    // Add details based on environment
+    switch (detailLevel) {
+      case ErrorDetailLevel.MINIMAL:
+        return this.getMinimalErrorMessage()
+
+      case ErrorDetailLevel.STANDARD:
+        return baseMessage
+
+      case ErrorDetailLevel.DETAILED:
+        return this.getDetailedErrorMessage(baseMessage)
+
+      case ErrorDetailLevel.DEBUG:
+        return this.getDebugErrorMessage(baseMessage)
+
+      default:
+        return baseMessage
+    }
+  }
+
+  private getCategoryMessage(sanitizedMessage: string): string {
     switch (this.context.category) {
       case ErrorCategory.N8N_API:
         return `n8n API Error: ${sanitizedMessage}. Please check your n8n server connection and credentials.`
@@ -133,6 +203,85 @@ export class EnhancedMcpError extends Error {
       default:
         return `Error: ${sanitizedMessage}`
     }
+  }
+
+  private getMinimalErrorMessage(): string {
+    // Production: Only show generic error messages
+    switch (this.context.category) {
+      case ErrorCategory.N8N_API:
+        return 'n8n service is temporarily unavailable. Please try again later.'
+      case ErrorCategory.DATABASE:
+        return 'Data operation failed. Please try again.'
+      case ErrorCategory.CONFIGURATION:
+        return 'Configuration issue detected. Please contact support.'
+      case ErrorCategory.VALIDATION:
+        return 'Invalid input provided. Please check your parameters.'
+      case ErrorCategory.NETWORK:
+        return 'Network connection issue. Please check connectivity.'
+      case ErrorCategory.AUTHENTICATION:
+        return 'Authentication failed. Please verify credentials.'
+      default:
+        return 'An error occurred. Please try again or contact support.'
+    }
+  }
+
+  private getDetailedErrorMessage(baseMessage: string): string {
+    // Development: Include technical details
+    const details: string[] = [baseMessage]
+
+    if (this.context.requestId) {
+      details.push(`Request ID: ${this.context.requestId}`)
+    }
+
+    if (this.context.toolName) {
+      details.push(`Tool: ${this.context.toolName}`)
+    }
+
+    if (this.statusCode) {
+      details.push(`Status: ${this.statusCode}`)
+    }
+
+    if (this.context.metadata) {
+      const metadataStr = Object.entries(this.context.metadata)
+        .map(([k, v]) => `${k}=${String(v)}`)
+        .join(', ')
+      if (metadataStr) {
+        details.push(`Details: ${metadataStr}`)
+      }
+    }
+
+    return details.join(' | ')
+  }
+
+  private getDebugErrorMessage(baseMessage: string): string {
+    // Debug: Include everything including stack traces
+    const details: string[] = [baseMessage]
+
+    if (this.context.requestId) {
+      details.push(`Request ID: ${this.context.requestId}`)
+    }
+
+    if (this.context.toolName) {
+      details.push(`Tool: ${this.context.toolName}`)
+    }
+
+    if (this.statusCode) {
+      details.push(`Status: ${this.statusCode}`)
+    }
+
+    if (this.originalError?.stack) {
+      details.push(`Stack: ${this.originalError.stack.split('\n').slice(0, 3).join(' -> ')}`)
+    }
+
+    if (this.context.metadata) {
+      details.push(`Metadata: ${JSON.stringify(this.context.metadata)}`)
+    }
+
+    details.push(`Category: ${this.context.category}`)
+    details.push(`Severity: ${this.context.severity}`)
+    details.push(`Recoverable: ${this.context.recoverable}`)
+
+    return details.join(' | ')
   }
 
   /**
@@ -176,6 +325,40 @@ export class EnhancedErrorHandler {
   private static lastErrorTime = new Map<string, number>()
 
   /**
+   * Determine error detail level based on environment and configuration
+   */
+  static getErrorDetailLevel(): ErrorDetailLevel {
+    // Check explicit configuration first
+    if (process.env.ERROR_DETAIL_LEVEL) {
+      const level = process.env.ERROR_DETAIL_LEVEL.toLowerCase()
+      switch (level) {
+        case 'minimal': return ErrorDetailLevel.MINIMAL
+        case 'standard': return ErrorDetailLevel.STANDARD
+        case 'detailed': return ErrorDetailLevel.DETAILED
+        case 'debug': return ErrorDetailLevel.DEBUG
+      }
+    }
+
+    // Auto-detect based on NODE_ENV
+    const nodeEnv = process.env.NODE_ENV?.toLowerCase()
+    switch (nodeEnv) {
+      case 'production':
+        return ErrorDetailLevel.MINIMAL
+      case 'staging':
+        return ErrorDetailLevel.STANDARD
+      case 'development':
+      case 'dev':
+        return ErrorDetailLevel.DETAILED
+      case 'test':
+      case 'debug':
+        return ErrorDetailLevel.DEBUG
+      default:
+        // Default to standard for unknown environments
+        return ErrorDetailLevel.STANDARD
+    }
+  }
+
+  /**
    * Handle and log errors with context
    */
   static handleError(error: unknown, context?: Partial<ErrorContext>): EnhancedMcpError {
@@ -195,7 +378,7 @@ export class EnhancedErrorHandler {
 
     // Performance monitoring
     if (enhancedError.context.category === ErrorCategory.PERFORMANCE) {
-      performanceMonitor.recordError(enhancedError.context.toolName || 'unknown')
+      // Performance monitoring removed
     }
 
     return enhancedError
@@ -468,4 +651,39 @@ export async function executeToolWithErrorHandling(
 
     return enhancedError.toUserResponse()
   }
+}
+
+// === Utility Functions for Error Detail Level Management ===
+
+/**
+ * Get current error detail level configuration
+ */
+export function getCurrentErrorDetailLevel(): ErrorDetailLevel {
+  return EnhancedErrorHandler.getErrorDetailLevel()
+}
+
+/**
+ * Check if current environment allows detailed error information
+ */
+export function shouldShowDetailedErrors(): boolean {
+  const level = EnhancedErrorHandler.getErrorDetailLevel()
+  return level === ErrorDetailLevel.DETAILED || level === ErrorDetailLevel.DEBUG
+}
+
+/**
+ * Check if current environment allows debug information
+ */
+export function shouldShowDebugInfo(): boolean {
+  return EnhancedErrorHandler.getErrorDetailLevel() === ErrorDetailLevel.DEBUG
+}
+
+/**
+ * Get environment-appropriate error message for a given error
+ */
+export function getEnvironmentFriendlyErrorMessage(
+  error: unknown,
+  context?: Partial<ErrorContext>,
+): string {
+  const enhancedError = EnhancedErrorHandler.handleError(error, context)
+  return enhancedError.toUserResponse().content[0]?.text || 'An error occurred'
 }

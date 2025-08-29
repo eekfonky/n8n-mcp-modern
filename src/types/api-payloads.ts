@@ -8,12 +8,27 @@
 
 // Import shared types to avoid circular dependencies
 import type {
-  N8NCredential,
-  N8NSettings,
-  N8NUser,
   N8NWorkflow,
   N8NWorkflowNode,
 } from './index.js'
+
+// Simple types for missing interfaces
+interface N8NCredential {
+  id: string
+  name: string
+  type: string
+}
+
+interface N8NSettings {
+  [key: string]: any
+}
+
+interface N8NUser {
+  id: string
+  email: string
+  firstName?: string
+  lastName?: string
+}
 
 // ============================================================================
 // UTILITY TYPES FOR READ-ONLY FIELD EXCLUSION

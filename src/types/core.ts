@@ -116,8 +116,8 @@ export interface DiscoverySession {
 export interface MCPTool {
   /** Unique tool identifier */
   id: string
-  /** Source n8n node name */
-  nodeName: string
+  /** Source n8n node name (null for category tools) */
+  nodeName: string | null
   /** n8n instance this tool belongs to */
   instanceId: string
   /** Type of MCP tool generated */

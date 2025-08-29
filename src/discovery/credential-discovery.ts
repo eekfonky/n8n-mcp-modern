@@ -1,8 +1,8 @@
 /**
  * Credential-based Node Discovery Engine
- * 
+ *
  * Phase 2: Dynamic discovery of n8n nodes through credential testing
- * 
+ *
  * Strategy:
  * 1. Get all available credential types from /api/v1/credentials
  * 2. Test each credential schema endpoint /api/v1/credentials/schema/{type}
@@ -11,14 +11,13 @@
  * 5. Store discovered nodes in database with version tracking
  */
 
-import type { N8NNodeDatabase, N8NInstance, DiscoverySession } from '../types/core.js'
+import type { N8NNodeDatabase } from '../types/core.js'
+import { database, VersionManager } from '../database/index.js'
+import { config } from '../server/config.js'
 import { logger } from '../server/logger.js'
 import { EnhancedHttpClient } from '../utils/enhanced-http-client.js'
 
 const httpClient = new EnhancedHttpClient()
-import { database, VersionManager } from '../database/index.js'
-import { config } from '../server/config.js'
-import { z } from 'zod'
 
 /**
  * Credential type information from n8n API
@@ -71,14 +70,36 @@ interface DiscoveryStats {
  * This is a starting point - we'll discover more dynamically
  */
 const COMMON_CREDENTIAL_TYPES = [
-  'airtableApi', 'asanaApi', 'aws', 'githubApi', 'gitlabApi',
-  'googleApi', 'googleOAuth2Api', 'hubspotApi', 'jiraApi',
-  'linearApi', 'mailchimpApi', 'microsoftOAuth2Api', 'mongoDb',
-  'mySql', 'notionApi', 'openAiApi', 'postgres', 'redis',
-  'salesforceOAuth2Api', 'sendGridApi', 'shopifyApi', 'slackApi',
-  'slackOAuth2Api', 'stripeApi', 'twilioApi', 'zoomApi',
+  'airtableApi',
+  'asanaApi',
+  'aws',
+  'githubApi',
+  'gitlabApi',
+  'googleApi',
+  'googleOAuth2Api',
+  'hubspotApi',
+  'jiraApi',
+  'linearApi',
+  'mailchimpApi',
+  'microsoftOAuth2Api',
+  'mongoDb',
+  'mySql',
+  'notionApi',
+  'openAiApi',
+  'postgres',
+  'redis',
+  'salesforceOAuth2Api',
+  'sendGridApi',
+  'shopifyApi',
+  'slackApi',
+  'slackOAuth2Api',
+  'stripeApi',
+  'twilioApi',
+  'zoomApi',
   // Community nodes
-  'scrapinjaApi', 'scrapflyApi', 'browserlessApi'
+  'scrapinjaApi',
+  'scrapflyApi',
+  'browserlessApi',
 ]
 
 /**
@@ -101,7 +122,7 @@ const CATEGORY_PATTERNS: Record<string, RegExp[]> = {
   'Security': [/auth|oauth|jwt|vault|1password/i],
   'Monitoring': [/datadog|newrelic|sentry|pagerduty/i],
   'Video & Media': [/zoom|youtube|vimeo|twitch|obs/i],
-  'Community': [/scrape|crawl|browser|puppet|playwright/i]
+  'Community': [/scrape|crawl|browser|puppet|playwright/i],
 }
 
 /**
@@ -119,7 +140,7 @@ export class CredentialDiscovery {
     errors: 0,
     warnings: 0,
     executionTime: 0,
-    memoryUsed: 0
+    memoryUsed: 0,
   }
 
   constructor() {
@@ -132,7 +153,7 @@ export class CredentialDiscovery {
   async discover(
     instanceUrl?: string,
     apiKey?: string,
-    discoveryType: 'full' | 'incremental' | 'community_only' = 'full'
+    discoveryType: 'full' | 'incremental' | 'community_only' = 'full',
   ): Promise<DiscoveryStats> {
     const startTime = Date.now()
     const startMemory = process.memoryUsage().heapUsed
@@ -149,7 +170,7 @@ export class CredentialDiscovery {
       logger.info('Starting credential-based node discovery', {
         url,
         discoveryType,
-        phase: 2
+        phase: 2,
       })
 
       // Register or update n8n instance
@@ -164,24 +185,26 @@ export class CredentialDiscovery {
 
       // Phase 2b: Test each credential schema endpoint
       const discoveredNodes: DiscoveredNode[] = []
-      
+
       for (const credType of credentialTypes) {
         try {
           const node = await this.testCredentialSchema(url, key, credType)
           if (node) {
             discoveredNodes.push(node)
             this.stats.nodesDiscovered++
-            
+
             if (node.nodeType === 'official') {
               this.stats.officialNodes++
-            } else {
+            }
+            else {
               this.stats.communityNodes++
             }
 
             // Store node in database
             await this.storeNode(node)
           }
-        } catch (error) {
+        }
+        catch (error) {
           this.stats.errors++
           logger.debug(`Failed to test credential ${credType}:`, error)
         }
@@ -193,7 +216,7 @@ export class CredentialDiscovery {
           logger.info('Discovery progress', {
             tested: this.stats.credentialsTested,
             discovered: this.stats.nodesDiscovered,
-            errors: this.stats.errors
+            errors: this.stats.errors,
           })
         }
       }
@@ -215,15 +238,15 @@ export class CredentialDiscovery {
       logger.info('Credential-based discovery completed', this.stats)
 
       return this.stats
-
-    } catch (error) {
+    }
+    catch (error) {
       logger.error('Discovery failed:', error)
       this.stats.errors++
-      
+
       if (this.sessionId) {
         await this.versionManager.completeDiscoverySession(this.sessionId, {
           errorsCount: this.stats.errors,
-          warningsCount: this.stats.warnings
+          warningsCount: this.stats.warnings,
         })
       }
 
@@ -240,21 +263,22 @@ export class CredentialDiscovery {
       const response = await httpClient.get(`${url}/api/v1/credentials`, {
         headers: {
           'X-N8N-API-KEY': apiKey,
-          'Accept': 'application/json'
+          'Accept': 'application/json',
         },
-        timeout: 10000
+        timeout: 10000,
       })
 
       if (response.data && Array.isArray(response.data)) {
         const types = response.data
           .map((cred: any) => cred.type || cred.name)
           .filter((type): type is string => Boolean(type) && typeof type === 'string')
-        
+
         if (types.length > 0) {
           return [...new Set(types)] // Deduplicate
         }
       }
-    } catch (error) {
+    }
+    catch (error) {
       logger.debug('Failed to get credentials from API, using common types:', error)
     }
 
@@ -266,9 +290,9 @@ export class CredentialDiscovery {
    * Test a credential schema endpoint
    */
   private async testCredentialSchema(
-    url: string, 
-    apiKey: string, 
-    credentialType: string
+    url: string,
+    apiKey: string,
+    credentialType: string,
   ): Promise<DiscoveredNode | null> {
     try {
       const response = await httpClient.get(
@@ -276,17 +300,18 @@ export class CredentialDiscovery {
         {
           headers: {
             'X-N8N-API-KEY': apiKey,
-            'Accept': 'application/json'
+            'Accept': 'application/json',
           },
-          timeout: 5000
-        }
+          timeout: 5000,
+        },
       )
 
       if (response.data) {
         // Extract node information from credential schema
         return this.extractNodeFromCredential(credentialType, response.data)
       }
-    } catch (error: any) {
+    }
+    catch (error: any) {
       // 404 is expected for non-existent credentials
       if (error.response?.status !== 404) {
         logger.debug(`Error testing credential ${credentialType}:`, error.message)
@@ -300,12 +325,12 @@ export class CredentialDiscovery {
    * Extract node information from credential schema
    */
   private extractNodeFromCredential(
-    credentialType: string, 
-    schema: any
+    credentialType: string,
+    schema: any,
   ): DiscoveredNode {
     // Determine if this is a community node
     const isCommunity = this.isCommunityNode(credentialType, schema)
-    
+
     // Determine category based on credential type
     const category = this.determineCategory(credentialType, schema)
 
@@ -318,13 +343,15 @@ export class CredentialDiscovery {
       description: schema.description || `Integration with ${displayName}`,
       category,
       nodeType: isCommunity ? 'community' : 'official',
-      ...(isCommunity ? {
-        packageName: this.extractPackageName(credentialType, schema),
-        packageVersion: '1.0.0'
-      } : {}),
+      ...(isCommunity
+        ? {
+            packageName: this.extractPackageName(credentialType, schema),
+            packageVersion: '1.0.0',
+          }
+        : {}),
       credentialType,
       icon: schema.icon,
-      properties: schema.properties || {}
+      properties: schema.properties || {},
     }
   }
 
@@ -339,7 +366,7 @@ export class CredentialDiscovery {
       /browserless/i,
       /puppeteer/i,
       /playwright/i,
-      /custom/i
+      /custom/i,
     ]
 
     // Check credential type
@@ -413,10 +440,10 @@ export class CredentialDiscovery {
         {
           headers: {
             'X-N8N-API-KEY': apiKey,
-            'Accept': 'application/json'
+            'Accept': 'application/json',
           },
-          timeout: 10000
-        }
+          timeout: 10000,
+        },
       )
 
       if (response.data && Array.isArray(response.data)) {
@@ -432,12 +459,13 @@ export class CredentialDiscovery {
               packageVersion: node.version || '1.0.0',
               credentialType: node.credentials?.[0]?.name || '',
               icon: node.icon,
-              properties: node.properties || {}
+              properties: node.properties || {},
             })
           }
         }
       }
-    } catch (error) {
+    }
+    catch (error) {
       logger.debug('Failed to discover community nodes:', error)
     }
 
@@ -459,7 +487,7 @@ export class CredentialDiscovery {
     try {
       // Get instance version
       const response = await httpClient.get(`${url}/api/v1/version`, {
-        timeout: 5000
+        timeout: 5000,
       })
 
       const data = response.data as any || {}
@@ -477,14 +505,14 @@ export class CredentialDiscovery {
         errorCount: 0,
         officialNodeCount: 0,
         communityNodeCount: 0,
-        apiResponseTime: 0
+        apiResponseTime: 0,
       })
 
       logger.info('Registered n8n instance', { instanceId: this.instanceId, version, edition })
-
-    } catch (error) {
+    }
+    catch (error) {
       logger.warn('Failed to get instance version, using defaults:', error)
-      
+
       this.instanceId = await this.versionManager.registerInstance({
         url,
         version: '1.0.0',
@@ -495,7 +523,7 @@ export class CredentialDiscovery {
         errorCount: 0,
         officialNodeCount: 0,
         communityNodeCount: 0,
-        apiResponseTime: 0
+        apiResponseTime: 0,
       })
     }
   }
@@ -519,7 +547,7 @@ export class CredentialDiscovery {
       warningsCount: 0,
       executionTime: 0,
       memoryUsed: 0,
-      successRate: 0
+      successRate: 0,
     })
 
     logger.info('Started discovery session', { sessionId: this.sessionId })
@@ -541,12 +569,12 @@ export class CredentialDiscovery {
       warningsCount: this.stats.warnings,
       discoveryLog: {
         stats: this.stats,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
       performanceMetrics: {
         executionTime: this.stats.executionTime,
-        memoryUsed: this.stats.memoryUsed
-      }
+        memoryUsed: this.stats.memoryUsed,
+      },
     })
 
     // Update instance counts
@@ -554,7 +582,7 @@ export class CredentialDiscovery {
       await this.versionManager.updateInstance(this.instanceId, {
         officialNodeCount: this.stats.officialNodes,
         communityNodeCount: this.stats.communityNodes,
-        lastDiscovered: new Date()
+        lastDiscovered: new Date(),
       })
     }
   }
@@ -586,10 +614,11 @@ export class CredentialDiscovery {
       ...(node.packageVersion ? { packageVersion: node.packageVersion } : {}),
       discoveredAt: new Date(),
       ...(this.sessionId ? { discoverySessionId: this.sessionId } : {}),
-      isActive: true
+      isActive: true,
     }
 
-    // Store in database (this would use the database manager)
-    logger.debug('Storing node:', { name: node.name, type: node.nodeType })
+    // Store in database using the database manager
+    await database.addNode(dbNode)
+    logger.debug('Stored node:', { name: node.name, type: node.nodeType })
   }
 }

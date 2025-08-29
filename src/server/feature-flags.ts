@@ -8,6 +8,7 @@
  */
 
 import process from 'node:process'
+import { logger } from './logger.js'
 
 export interface FeatureFlags {
   // Intelligence Layer Controls
@@ -216,7 +217,7 @@ export function applyPhaseConfiguration(phase: keyof typeof PHASE_CONFIGURATIONS
   const phaseConfig = PHASE_CONFIGURATIONS[phase]
   Object.assign(featureFlags, phaseConfig)
 
-  console.error(`Applied ${phase} configuration:`, {
+  logger.info(`Applied ${phase} configuration:`, {
     intelligenceEnabled: featureFlags.intelligenceLayer.enabled,
     simplifiedPipeline: featureFlags.architecture.useSimplifiedToolPipeline,
     reducedMonitoring: featureFlags.architecture.reducedMonitoring,
@@ -244,7 +245,7 @@ export function logPerformanceComparison(
     return
 
   const improvement = ((beforeTime - afterTime) / beforeTime * 100).toFixed(1)
-  console.error(`🚀 Performance: ${operation}`, {
+  logger.info(`🚀 Performance: ${operation}`, {
     before: `${beforeTime.toFixed(2)}ms`,
     after: `${afterTime.toFixed(2)}ms`,
     improvement: `${improvement}%`,

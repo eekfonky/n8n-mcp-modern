@@ -7,7 +7,7 @@ import type {
   WorkflowCreatePayload,
   WorkflowUpdatePayload,
 } from '../types/api-payloads.js'
-import type { N8NNodeAPI, N8NWorkflowNode } from '../types/core.js'
+import type { N8NNodeAPI, N8NWorkflowNode } from '../types/fast-types.js'
 import type { EnhancedRequestOptions } from '../utils/enhanced-http-client.js'
 import { Buffer } from 'node:buffer'
 import process from 'node:process'
@@ -72,7 +72,9 @@ export interface N8NWorkflow {
  */
 export interface N8NExecution {
   id: string
+  executionId: string // Added for compatibility
   finished: boolean
+  success?: boolean // Added for compatibility
   mode: string
   retryOf?: string
   retrySuccessId?: string
@@ -896,7 +898,11 @@ export class N8NApiClient {
       {},
       NodeTypeListResponseSchema,
     )
-    return response.data as N8NNodeAPI[]
+    // Convert API response to N8NNodeAPI format by adding type field
+    return response.data.map(node => ({
+      ...node,
+      type: node.name, // type is alias for name for compatibility
+    })) as N8NNodeAPI[]
   }
 
   /**
@@ -908,7 +914,11 @@ export class N8NApiClient {
       {},
       N8NNodeTypeResponseSchema,
     )
-    return response as N8NNodeAPI
+    // Convert API response to N8NNodeAPI format by adding type field
+    return {
+      ...response,
+      type: response.name, // type is alias for name for compatibility
+    } as N8NNodeAPI
   }
 
   /**
@@ -929,9 +939,9 @@ export class N8NApiClient {
 
       const matchesCategory
         = !category
-          || node.group.some(g =>
+          || (node.group && node.group.some(g =>
             g.toLowerCase().includes(category.toLowerCase()),
-          )
+          ))
 
       return matchesQuery && matchesCategory
     })
@@ -1367,6 +1377,62 @@ export class N8NApiClient {
         || message.includes('5') // 5xx errors
     }
     return false
+  }
+
+  /**
+   * Delete execution (missing method)
+   */
+  async deleteExecution(id: string): Promise<{ success: boolean }> {
+    try {
+      await this.request(`/executions/${id}`, {
+        method: 'DELETE',
+      })
+      logger.info(`Deleted execution: ${id}`)
+      return { success: true }
+    }
+    catch (error) {
+      logger.warn(`Failed to delete execution ${id}:`, error)
+      return { success: false }
+    }
+  }
+
+  /**
+   * Get nodes by category (missing method)
+   */
+  async getNodesByCategory(category: string): Promise<N8NNodeAPI[]> {
+    const allNodes = await this.getNodeTypes()
+    return allNodes.filter(node =>
+      node.group && node.group.includes(category),
+    )
+  }
+
+  /**
+   * Get available nodes (alias for getNodeTypes)
+   */
+  async getAvailableNodes(): Promise<N8NNodeAPI[]> {
+    return await this.getNodeTypes()
+  }
+
+  /**
+   * Get active webhooks (missing method)
+   */
+  async getActiveWebhooks(): Promise<unknown[]> {
+    try {
+      const response = await this.request('/webhooks/active')
+      return Array.isArray(response) ? response : []
+    }
+    catch (error) {
+      logger.warn('Failed to get active webhooks:', error)
+      return []
+    }
+  }
+
+  /**
+   * Get recent executions (alias for getExecutions)
+   */
+  async getRecentExecutions(limit?: number): Promise<N8NExecution[]> {
+    const executions = await this.getExecutions()
+    return limit ? executions.slice(0, limit) : executions
   }
 }
 

@@ -366,7 +366,8 @@ export class SchemaManager {
       )
     `
 
-    if (!this.db) throw new Error('Database not initialized')
+    if (!this.db)
+      throw new Error('Database not initialized')
     await this.db.exec(sql)
   }
 
@@ -375,7 +376,8 @@ export class SchemaManager {
    */
   private async getCurrentVersion(): Promise<number> {
     try {
-      if (!this.db) throw new Error('Database not initialized')
+      if (!this.db)
+        throw new Error('Database not initialized')
       const result = this.db.prepare('SELECT MAX(version) as version FROM schema_versions').get() as { version?: number } | undefined
       return result?.version || 0
     }
@@ -554,7 +556,7 @@ export class SchemaManager {
         await db.exec(`
           CREATE TABLE IF NOT EXISTS mcp_tools (
             id TEXT PRIMARY KEY, -- tool identifier 
-            node_name TEXT NOT NULL, -- source n8n node
+            node_name TEXT, -- source n8n node (nullable for category tools)
             instance_id TEXT NOT NULL,
             tool_type TEXT NOT NULL, -- general, operation_specific, category
             operation_name TEXT, -- for operation-specific tools
@@ -700,7 +702,8 @@ export class SchemaManager {
       }
 
       // Execute the migration
-      if (!this.db) throw new Error('Database not initialized')
+      if (!this.db)
+        throw new Error('Database not initialized')
       await migration.up(this.db)
 
       // Validate if validation function provided
@@ -745,7 +748,8 @@ export class SchemaManager {
     try {
       logger.info(`Rolling back migration ${migration.version}: ${migration.name}`)
 
-      if (!this.db) throw new Error('Database not initialized')
+      if (!this.db)
+        throw new Error('Database not initialized')
       await migration.down(this.db)
 
       const executionTime = performance.now() - startTime
@@ -785,7 +789,8 @@ export class SchemaManager {
       VALUES (?, ?, ?, ?, ?, ?)
     `
 
-    if (!this.db) throw new Error('Database not initialized')
+    if (!this.db)
+      throw new Error('Database not initialized')
     this.db.prepare(sql).run([
       migration.version,
       migration.name,
@@ -802,7 +807,8 @@ export class SchemaManager {
    * Remove migration record (for rollback)
    */
   private async removeMigrationRecord(migration: Migration): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized')
+    if (!this.db)
+      throw new Error('Database not initialized')
     const sql = 'DELETE FROM schema_versions WHERE version = ?'
     this.db.prepare(sql).run(migration.version)
   }
@@ -826,7 +832,8 @@ export class SchemaManager {
    * Get current database tables
    */
   private async getCurrentTables(): Promise<string[]> {
-    if (!this.db) throw new Error('Database not initialized')
+    if (!this.db)
+      throw new Error('Database not initialized')
     const sql = 'SELECT name FROM sqlite_master WHERE type=\'table\' AND name NOT LIKE \'sqlite_%\''
     const rows = this.db.prepare(sql).all() as Array<{ name: string }>
     return rows.map(row => row.name)
@@ -854,7 +861,8 @@ export class SchemaManager {
    */
   private async validateTableStructure(tableName: string): Promise<{ isValid: boolean, errors: string[] }> {
     try {
-      if (!this.db) throw new Error('Database not initialized')
+      if (!this.db)
+        throw new Error('Database not initialized')
       const sql = `PRAGMA table_info(${tableName})`
       const columns = this.db.prepare(sql).all() as Array<Record<string, unknown>>
 

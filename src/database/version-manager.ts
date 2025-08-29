@@ -316,22 +316,66 @@ export class VersionManager {
   }
 
   /**
-   * Complete a discovery session
+   * Complete a discovery session (overloaded for scheduler)
+   */
+  async completeDiscoverySession(
+    sessionId: string,
+    nodesDiscovered: number,
+    toolsGenerated: number,
+    executionTime: number,
+    memoryUsed: number
+  ): Promise<void>
+  
+  /**
+   * Complete a discovery session (legacy method)
    */
   async completeDiscoverySession(
     sessionId: string,
     results: Partial<Pick<DiscoverySession, 'nodesDiscovered' | 'toolsGenerated' | 'credentialsTested' | 'errorsCount' | 'warningsCount' | 'discoveryLog' | 'performanceMetrics'>>,
+  ): Promise<void>
+  
+  /**
+   * Complete a discovery session implementation
+   */
+  async completeDiscoverySession(
+    sessionId: string,
+    nodesDiscoveredOrResults: number | Partial<Pick<DiscoverySession, 'nodesDiscovered' | 'toolsGenerated' | 'credentialsTested' | 'errorsCount' | 'warningsCount' | 'discoveryLog' | 'performanceMetrics'>>,
+    toolsGenerated?: number,
+    executionTime?: number,
+    memoryUsed?: number
   ): Promise<void> {
+    // Handle method overloading
+    let results: Partial<Pick<DiscoverySession, 'nodesDiscovered' | 'toolsGenerated' | 'credentialsTested' | 'errorsCount' | 'warningsCount' | 'discoveryLog' | 'performanceMetrics'>>
+    let calculatedExecutionTime: number | undefined
+
+    if (typeof nodesDiscoveredOrResults === 'number') {
+      // Scheduler method signature
+      results = {
+        nodesDiscovered: nodesDiscoveredOrResults,
+        toolsGenerated: toolsGenerated || 0,
+        credentialsTested: 0,
+        errorsCount: 0,
+        warningsCount: 0,
+      }
+      calculatedExecutionTime = executionTime
+    } else {
+      // Legacy method signature
+      results = nodesDiscoveredOrResults
+    }
+
     this.database.executeCustomSQL('complete-discovery-session', (db) => {
       const now = new Date().toISOString()
 
-      // Get session start time to calculate execution time
-      const session = db.prepare('SELECT started_at FROM discovery_sessions WHERE id = ?').get(sessionId) as { started_at: string } | undefined
-      if (!session) {
-        throw new N8NMcpError(`Discovery session not found: ${sessionId}`, 'SESSION_NOT_FOUND')
+      // Get session start time to calculate execution time if not provided
+      let finalExecutionTime = calculatedExecutionTime
+      if (!finalExecutionTime) {
+        const session = db.prepare('SELECT started_at FROM discovery_sessions WHERE id = ?').get(sessionId) as { started_at: string } | undefined
+        if (!session) {
+          throw new N8NMcpError(`Discovery session not found: ${sessionId}`, 'SESSION_NOT_FOUND')
+        }
+        finalExecutionTime = Date.now() - new Date(session.started_at).getTime()
       }
 
-      const executionTime = Date.now() - new Date(session.started_at).getTime()
       const successRate = results.errorsCount
         ? (results.nodesDiscovered || 0) / ((results.nodesDiscovered || 0) + results.errorsCount)
         : 1.0
@@ -350,7 +394,7 @@ export class VersionManager {
         results.nodesDiscovered || 0,
         results.toolsGenerated || 0,
         results.credentialsTested || 0,
-        executionTime,
+        finalExecutionTime,
         results.errorsCount || 0,
         results.warningsCount || 0,
         successRate,
@@ -365,7 +409,7 @@ export class VersionManager {
 
       logger.info('Completed discovery session', {
         sessionId,
-        executionTime: `${executionTime}ms`,
+        executionTime: `${finalExecutionTime}ms`,
         nodesDiscovered: results.nodesDiscovered,
         toolsGenerated: results.toolsGenerated,
         successRate: `${(successRate * 100).toFixed(1)}%`,
@@ -543,6 +587,22 @@ export class VersionManager {
       performance: { avgDiscoveryTime: 0, avgNodesPerSession: 0, avgToolsPerNode: 0 },
       versionChanges: { last30Days: 0, upgradesDetected: 0, rediscoveriesTriggered: 0 },
     }
+  }
+
+  /**
+   * Get all active n8n instances
+   */
+  async getActiveInstances(): Promise<N8NInstance[]> {
+    return this.database.executeCustomSQL('get-active-instances', (db) => {
+      const stmt = db.prepare(`
+        SELECT * FROM n8n_instances 
+        WHERE status = 'active' 
+        ORDER BY created_at DESC
+      `)
+      
+      const rows = stmt.all() as Record<string, unknown>[]
+      return rows.map(row => this.mapInstanceRow(row))
+    }) || []
   }
 
   // === Helper Methods ===

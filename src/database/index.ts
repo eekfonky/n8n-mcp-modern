@@ -98,8 +98,17 @@ export interface DatabaseNodeRow {
   webhooks?: number // SQLite boolean as integer
   polling?: number // SQLite boolean as integer
   last_updated?: string
-  // Removed unused fields that don't exist in actual schema:
-  // id, type, package, group, codex, is_ai_tool, category, development_style, created_at, updated_at
+  // Migration 3 fields
+  instance_id?: string
+  node_type?: string
+  package_name?: string
+  package_version?: string
+  discovered_at?: string
+  discovery_session_id?: string
+  api_version?: string
+  node_version_hash?: string
+  mcp_tools_count?: number
+  is_active?: number // SQLite boolean as integer
 }
 
 export interface ToolUsageRow {
@@ -188,7 +197,12 @@ export class DatabaseManager {
 
   constructor() {
     this.dbPath = config.databaseInMemory ? ':memory:' : config.databasePath
+    // Auto-initialize on construction
+    this.initialize().catch(error => {
+      logger.warn('Database initialization failed during construction:', error)
+    })
   }
+
 
   /**
    * Map SQLite error codes to user-friendly messages
@@ -711,6 +725,44 @@ export class DatabaseManager {
   }
 
   /**
+   * Add a new node to the database
+   */
+  addNode(node: N8NNodeDatabase): void {
+    logger.debug('Adding node to database:', { name: node.name, category: node.category, instanceId: node.instanceId })
+    this.safeExecute('addNode', (db) => {
+      const stmt = db.prepare(`
+        INSERT OR REPLACE INTO nodes (
+          name, display_name, description, version, category, icon, 
+          inputs, outputs, properties, credentials, last_updated,
+          instance_id, node_type, package_name, package_version,
+          discovered_at, discovery_session_id, is_active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      
+      stmt.run(
+        node.name,
+        node.displayName,
+        node.description,
+        node.version,
+        node.category,
+        node.icon,
+        JSON.stringify(node.inputs || ['main']),
+        JSON.stringify(node.outputs || ['main']),
+        JSON.stringify(node.properties || {}),
+        JSON.stringify(node.credentials || []),
+        node.lastUpdated.toISOString(),
+        node.instanceId,
+        node.nodeType || 'official',
+        node.packageName,
+        node.packageVersion,
+        node.discoveredAt?.toISOString(),
+        node.discoverySessionId,
+        node.isActive ? 1 : 0
+      )
+    })
+  }
+
+  /**
    * Get all nodes
    */
   getNodes(category?: string): N8NNodeDatabase[] {
@@ -742,6 +794,14 @@ export class DatabaseManager {
         webhooks: Boolean(row.webhooks),
         polling: Boolean(row.polling),
         lastUpdated: new Date(row.last_updated ?? new Date().toISOString()),
+        // Migration 3 fields (only include if they have values)
+        ...(row.instance_id ? { instanceId: row.instance_id } : {}),
+        nodeType: (row.node_type as 'official' | 'community') || 'official',
+        ...(row.package_name ? { packageName: row.package_name } : {}),
+        ...(row.package_version ? { packageVersion: row.package_version } : {}),
+        ...(row.discovered_at ? { discoveredAt: new Date(row.discovered_at) } : {}),
+        ...(row.discovery_session_id ? { discoverySessionId: row.discovery_session_id } : {}),
+        isActive: Boolean(row.is_active ?? 1),
       }))
     }, { category })
   }
@@ -775,6 +835,14 @@ export class DatabaseManager {
         webhooks: Boolean(row.webhooks),
         polling: Boolean(row.polling),
         lastUpdated: new Date(row.last_updated ?? new Date().toISOString()),
+        // Migration 3 fields (only include if they have values)
+        ...(row.instance_id ? { instanceId: row.instance_id } : {}),
+        nodeType: (row.node_type as 'official' | 'community') || 'official',
+        ...(row.package_name ? { packageName: row.package_name } : {}),
+        ...(row.package_version ? { packageVersion: row.package_version } : {}),
+        ...(row.discovered_at ? { discoveredAt: new Date(row.discovered_at) } : {}),
+        ...(row.discovery_session_id ? { discoverySessionId: row.discovery_session_id } : {}),
+        isActive: Boolean(row.is_active ?? 1),
       }))
     }, { query })
   }
