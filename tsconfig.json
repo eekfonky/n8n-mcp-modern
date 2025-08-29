@@ -46,7 +46,8 @@
     "src/server/resilience.ts",
     "src/types/fast-types.ts",
     "src/database/**/*",
-    "src/types/core.ts"
+    "src/types/core.ts",
+    "src/discovery/**/*"
   ],
   "exclude": [
     "node_modules",
