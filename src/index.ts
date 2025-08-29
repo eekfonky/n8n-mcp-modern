@@ -16,6 +16,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { logger } from './server/logger.js'
 import { executeToolHandler, getAllTools, initializeDynamicTools, cleanup } from './tools/index.js'
+import { initializePerformanceOptimizations } from './tools/performance-optimized.js'
 
 const startTime = performance.now()
 
@@ -37,6 +38,9 @@ async function main() {
       },
     },
   )
+
+  // Initialize performance optimizations first
+  initializePerformanceOptimizations()
 
   // Initialize dynamic tool discovery
   try {

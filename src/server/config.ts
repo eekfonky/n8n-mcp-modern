@@ -65,88 +65,7 @@ const envSchema = z.object({
     .transform((val): val is 'true' => val === 'true')
     .default('false'),
 
-  // API Response Validation Settings with enhanced validation
-  STRICT_API_VALIDATION: z
-    .string()
-    .transform((val): val is 'true' => val === 'true')
-    .default('false'),
-  ENABLE_RESPONSE_LOGGING: z
-    .string()
-    .transform((val): val is 'true' => val === 'true')
-    .default('true'),
-  VALIDATION_TIMEOUT: z
-    .string()
-    .transform((val): number => {
-      const num = Number.parseInt(val, 10)
-      if (Number.isNaN(num) || num < 100)
-        throw new Error(`Invalid VALIDATION_TIMEOUT: ${val}`)
-      return num
-    })
-    .default('5000'),
-  SANITIZE_API_RESPONSES: z
-    .string()
-    .transform((val): val is 'true' => val === 'true')
-    .default('true'),
-  MAX_RESPONSE_SIZE: z
-    .string()
-    .transform((val): number => {
-      const num = Number.parseInt(val, 10)
-      if (Number.isNaN(num) || num < 1024)
-        throw new Error(`Invalid MAX_RESPONSE_SIZE: ${val}`)
-      return num
-    })
-    .default('10485760'),
 
-  // Memory Management Settings
-  ENABLE_MEMORY_MONITORING: z
-    .string()
-    .transform((val): val is 'true' => val === 'true')
-    .default('true'),
-  MEMORY_THRESHOLD_WARNING: z
-    .string()
-    .transform((val): number => {
-      const num = Number.parseInt(val, 10)
-      if (Number.isNaN(num) || num < 50 || num > 95)
-        throw new Error(`Invalid MEMORY_THRESHOLD_WARNING: ${val} (must be 50-95)`)
-      return num
-    })
-    .default('87'),
-  MEMORY_THRESHOLD_CRITICAL: z
-    .string()
-    .transform((val): number => {
-      const num = Number.parseInt(val, 10)
-      if (Number.isNaN(num) || num < 80 || num > 98)
-        throw new Error(`Invalid MEMORY_THRESHOLD_CRITICAL: ${val} (must be 80-98)`)
-      return num
-    })
-    .default('95'),
-  GC_INTERVAL_MS: z
-    .string()
-    .transform((val): number => {
-      const num = Number.parseInt(val, 10)
-      if (Number.isNaN(num) || num < 10000)
-        throw new Error(`Invalid GC_INTERVAL_MS: ${val} (minimum 10000ms)`)
-      return num
-    })
-    .default('60000'),
-  MAX_HEAP_SIZE_MB: z
-    .string()
-    .transform((val): number => {
-      const num = Number.parseInt(val, 10)
-      if (Number.isNaN(num) || num < 128)
-        throw new Error(`Invalid MAX_HEAP_SIZE_MB: ${val} (minimum 128MB)`)
-      return num
-    })
-    .default('512'),
-  CACHE_CLEANUP_INTERVAL_MS: z
-    .string()
-    .transform((val): number => {
-      const num = Number.parseInt(val, 10)
-      if (Number.isNaN(num) || num < 30000)
-        throw new Error(`Invalid CACHE_CLEANUP_INTERVAL_MS: ${val} (minimum 30000ms)`)
-      return num
-    })
-    .default('300000'),
 })
 
 // Parse and validate environment variables
@@ -165,17 +84,6 @@ function parseEnvironment(): Config {
     CACHE_TTL: process.env.CACHE_TTL,
     MAX_CONCURRENT_REQUESTS: process.env.MAX_CONCURRENT_REQUESTS,
     DEBUG: process.env.DEBUG,
-    STRICT_API_VALIDATION: process.env.STRICT_API_VALIDATION,
-    ENABLE_RESPONSE_LOGGING: process.env.ENABLE_RESPONSE_LOGGING,
-    VALIDATION_TIMEOUT: process.env.VALIDATION_TIMEOUT,
-    SANITIZE_API_RESPONSES: process.env.SANITIZE_API_RESPONSES,
-    MAX_RESPONSE_SIZE: process.env.MAX_RESPONSE_SIZE,
-    ENABLE_MEMORY_MONITORING: process.env.ENABLE_MEMORY_MONITORING,
-    MEMORY_THRESHOLD_WARNING: process.env.MEMORY_THRESHOLD_WARNING,
-    MEMORY_THRESHOLD_CRITICAL: process.env.MEMORY_THRESHOLD_CRITICAL,
-    GC_INTERVAL_MS: process.env.GC_INTERVAL_MS,
-    MAX_HEAP_SIZE_MB: process.env.MAX_HEAP_SIZE_MB,
-    CACHE_CLEANUP_INTERVAL_MS: process.env.CACHE_CLEANUP_INTERVAL_MS,
   })
 
   return ConfigSchema.parse({
@@ -192,17 +100,6 @@ function parseEnvironment(): Config {
     maxConcurrentRequests: env.MAX_CONCURRENT_REQUESTS,
     nodeEnv: env.NODE_ENV,
     debug: env.DEBUG,
-    strictApiValidation: env.STRICT_API_VALIDATION,
-    enableResponseLogging: env.ENABLE_RESPONSE_LOGGING,
-    validationTimeout: env.VALIDATION_TIMEOUT,
-    sanitizeApiResponses: env.SANITIZE_API_RESPONSES,
-    maxResponseSize: env.MAX_RESPONSE_SIZE,
-    enableMemoryMonitoring: env.ENABLE_MEMORY_MONITORING,
-    memoryThresholdWarning: env.MEMORY_THRESHOLD_WARNING,
-    memoryThresholdCritical: env.MEMORY_THRESHOLD_CRITICAL,
-    gcIntervalMs: env.GC_INTERVAL_MS,
-    maxHeapSizeMb: env.MAX_HEAP_SIZE_MB,
-    cacheCleanupIntervalMs: env.CACHE_CLEANUP_INTERVAL_MS,
   })
 }
 
@@ -269,34 +166,13 @@ export function updateConfig(updates: Partial<Config>): Config {
   return config
 }
 
-// Validation helper
+// Simple validation helper
 export function validateConfig(cfg: unknown): Config {
-  // First validate against ConfigSchema which has strict validation
   const result = ConfigSchema.safeParse(cfg)
-
   if (!result.success) {
     throw new Error(`Configuration validation failed: ${result.error.message}`)
   }
-
-  // Additional validation for configuration logic
-  const config = result.data
-
-  // Memory threshold validation
-  if (config.memoryThresholdWarning >= config.memoryThresholdCritical) {
-    throw new Error('memoryThresholdWarning must be less than memoryThresholdCritical')
-  }
-
-  // MCP timeout validation
-  if (config.mcpTimeout < 1000 || config.mcpTimeout > 300000) {
-    throw new Error('mcpTimeout must be between 1000 and 300000 milliseconds')
-  }
-
-  // Max heap size validation
-  if (config.maxHeapSizeMb < 128) {
-    throw new Error('maxHeapSizeMb must be at least 128MB')
-  }
-
-  return config
+  return result.data
 }
 
 // Environment helpers with TypeScript 5.9+ type predicates
@@ -313,15 +189,12 @@ export function assertEnvironment<T extends typeof NODE_ENVIRONMENTS[number]>(
   }
 }
 
-// Feature flags with enhanced type safety using const assertions
+// Simple feature flags
 export const features = {
   hasN8nApi: Boolean(config.n8nApiUrl && config.n8nApiKey),
   cachingEnabled: config.enableCache,
   consoleLoggingEnabled: !config.disableConsoleOutput,
   debugMode: isDebug,
-  strictValidation: config.strictApiValidation,
-  responseLogging: config.enableResponseLogging,
-  sanitizedResponses: config.sanitizeApiResponses,
 } as const satisfies Record<string, boolean>
 
 // Export type-safe configuration constants

@@ -7,7 +7,8 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import type { N8NNodeAPI } from '../types/fast-types.js'
 import { CredentialDiscovery } from '../discovery/credential-discovery.js'
 import { DiscoveryScheduler } from '../discovery/scheduler.js'
-import { n8nApi } from '../n8n/api.js'
+import { simpleN8nApi } from '../n8n/simple-api.js'
+import { hasN8nApi } from '../simple-config.js'
 import { logger } from '../server/logger.js'
 import { getAllCategories, getAllNodeTemplates } from './comprehensive-node-registry.js'
 import { MCPToolGenerator } from './mcp-tool-generator.js'
@@ -150,7 +151,7 @@ export async function initializeDynamicTools(): Promise<void> {
     })
 
     // Run Phase 2 discovery if n8n API is available
-    if (n8nApi && await testN8nConnection()) {
+    if (simpleN8nApi && await testN8nConnection()) {
       logger.info('Running Phase 2: Credential-based node discovery...')
       const discoveryStats = await credentialDiscovery.discover()
       logger.info(`Phase 2 complete: ${discoveryStats.nodesDiscovered} nodes discovered`)
@@ -190,7 +191,7 @@ export async function initializeDynamicTools(): Promise<void> {
  */
 async function testN8nConnection(): Promise<boolean> {
   try {
-    return await n8nApi?.testConnection() || false
+    return await simpleN8nApi?.testConnection() || false
   }
   catch {
     return false
@@ -398,7 +399,7 @@ async function discoverN8nNodes(): Promise<void> {
 
     // Try to detect additional nodes from API if available
     try {
-      const apiNodes = await n8nApi?.getNodeTypes() || []
+      const apiNodes = await simpleN8nApi?.getNodeTypes() || []
       if (apiNodes.length > 0) {
         logger.info(`Additionally discovered ${apiNodes.length} nodes from live API`)
         // We could add these but our registry is already comprehensive
@@ -424,19 +425,19 @@ function createDynamicHandler(operation: string) {
     try {
       switch (operation) {
         case 'list_workflows':
-          return await n8nApi?.getWorkflows() || []
+          return await simpleN8nApi?.getWorkflows() || []
         case 'get_workflow':
-          return await n8nApi?.getWorkflow(args.id as string) || null
+          return await simpleN8nApi?.getWorkflow(args.id as string) || null
         case 'create_workflow':
-          return await n8nApi?.createWorkflow({
+          return await simpleN8nApi?.createWorkflow({
             name: args.name as string || 'Dynamic Workflow',
             nodes: args.data as any || [],
             active: false,
           }) || { status: 'workflow_creation_pending' }
         case 'execute_workflow':
-          return await n8nApi?.executeWorkflow(args.id as string, args.data as any) || { status: 'execution_started' }
+          return await simpleN8nApi?.executeWorkflow(args.id as string, args.data as any) || { status: 'execution_started' }
         case 'get_executions':
-          return await n8nApi?.getExecutions(args.id as string) || []
+          return await simpleN8nApi?.getExecutions(args.id as string) || []
         default:
           return { operation, args, status: 'dynamic_execution' }
       }

@@ -13,11 +13,11 @@
 
 import type { N8NNodeDatabase } from '../types/core.js'
 import { database, VersionManager } from '../database/index.js'
-import { config } from '../server/config.js'
+import { config, getNormalizedN8nUrl } from '../simple-config.js'
 import { logger } from '../server/logger.js'
-import { EnhancedHttpClient } from '../utils/enhanced-http-client.js'
+import { SimpleHttpClient } from '../utils/simple-http-client.js'
 
-const httpClient = new EnhancedHttpClient()
+const httpClient = new SimpleHttpClient()
 
 /**
  * Credential type information from n8n API

@@ -19,18 +19,6 @@ export const ConfigSchema = z.object({
   nodeEnv: z.enum(['development', 'production', 'test']).default('production'),
   debug: z.boolean().default(false),
 
-  // API Response Validation Settings
-  strictApiValidation: z.boolean().default(false),
-  enableResponseLogging: z.boolean().default(true),
-  validationTimeout: z.number().default(5000),
-  sanitizeApiResponses: z.boolean().default(true),
-  maxResponseSize: z.number().default(10485760),
-
-  // Memory Management Settings
-  memoryThresholdWarning: z.number().default(80),
-  memoryThresholdCritical: z.number().default(90),
-  maxHeapSizeMb: z.number().default(512),
-  cacheCleanupIntervalMs: z.number().default(300000),
 
   // Database Settings
   databasePath: z.string().default('./data/nodes.db'),

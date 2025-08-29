@@ -1,4 +1,4 @@
-import { config } from './config.js'
+import { logLevel } from '../simple-config.js'
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
@@ -19,7 +19,7 @@ class Logger {
   }
 
   private shouldLog(level: LogLevel): boolean {
-    return this.levels[level] >= this.levels[config.logLevel]
+    return this.levels[level] >= this.levels[logLevel as LogLevel]
   }
 
   private formatEntry(entry: LogEntry): string {
