@@ -13,8 +13,8 @@
 
 import type { N8NNodeDatabase } from '../types/core.js'
 import { database, VersionManager } from '../database/index.js'
-import { config, getNormalizedN8nUrl } from '../simple-config.js'
 import { logger } from '../server/logger.js'
+import { config } from '../simple-config.js'
 import { SimpleHttpClient } from '../utils/simple-http-client.js'
 
 const httpClient = new SimpleHttpClient()
@@ -160,8 +160,8 @@ export class CredentialDiscovery {
 
     try {
       // Use provided credentials or fall back to config
-      const url = instanceUrl || config.n8nApiUrl
-      const key = apiKey || config.n8nApiKey
+      const url = instanceUrl || config.n8nUrl
+      const key = apiKey || config.apiKey
 
       if (!url || !key) {
         throw new Error('n8n API URL and key required for discovery')
@@ -259,19 +259,20 @@ export class CredentialDiscovery {
    */
   private async discoverCredentialTypes(url: string, apiKey: string): Promise<string[]> {
     try {
-      // First try to get credential types from API
+      // First try to get credential types from API with proper timeout and retries
       const response = await httpClient.get(`${url}/api/v1/credentials`, {
         headers: {
           'X-N8N-API-KEY': apiKey,
           'Accept': 'application/json',
+          'User-Agent': 'n8n-mcp-modern/6.2.0',
         },
-        timeout: 10000,
+        timeout: 15000, // Increased timeout for slower networks
       })
 
       if (response.data && Array.isArray(response.data)) {
         const types = response.data
           .map((cred: any) => cred.type || cred.name)
-          .filter((type): type is string => Boolean(type) && typeof type === 'string')
+          .filter((type: unknown): type is string => Boolean(type) && typeof type === 'string')
 
         if (types.length > 0) {
           return [...new Set(types)] // Deduplicate

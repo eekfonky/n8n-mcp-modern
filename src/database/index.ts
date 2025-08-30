@@ -198,11 +198,10 @@ export class DatabaseManager {
   constructor() {
     this.dbPath = config.databaseInMemory ? ':memory:' : config.databasePath
     // Auto-initialize on construction
-    this.initialize().catch(error => {
+    this.initialize().catch((error) => {
       logger.warn('Database initialization failed during construction:', error)
     })
   }
-
 
   /**
    * Map SQLite error codes to user-friendly messages
@@ -738,7 +737,7 @@ export class DatabaseManager {
           discovered_at, discovery_session_id, is_active
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
-      
+
       stmt.run(
         node.name,
         node.displayName,
@@ -757,7 +756,7 @@ export class DatabaseManager {
         node.packageVersion,
         node.discoveredAt?.toISOString(),
         node.discoverySessionId,
-        node.isActive ? 1 : 0
+        node.isActive ? 1 : 0,
       )
     })
   }
@@ -811,13 +810,21 @@ export class DatabaseManager {
    */
   searchNodes(query: string): N8NNodeDatabase[] {
     return this.safeExecute('searchNodes', (db) => {
+      // Security: Sanitize search query to prevent SQL injection
+      const sanitizedQuery = query.replace(/[^\w\s-_.]/g, '').substring(0, 100)
+      
+      if (sanitizedQuery.length === 0) {
+        return [] // Return empty array for empty/invalid search
+      }
+      
       const searchQuery = `
         SELECT * FROM nodes 
         WHERE display_name LIKE ? OR description LIKE ? OR name LIKE ?
         ORDER BY display_name
+        LIMIT 100
       `
 
-      const searchTerm = `%${query}%`
+      const searchTerm = `%${sanitizedQuery}%`
       const rows = db.prepare(searchQuery).all(searchTerm, searchTerm, searchTerm) as DatabaseNodeRow[]
 
       return rows.map(row => ({
@@ -975,13 +982,20 @@ export class DatabaseManager {
         decisions: Map<string, Record<string, unknown>[]>
       }
 
-      const testStorage = ((globalThis as Record<string, unknown>).__TEST_DB_STORAGE__ as TestStorage) || {
-        stories: new Map(),
-        decisions: new Map(),
-      } as TestStorage
-
-      if (!(globalThis as Record<string, unknown>).__TEST_DB_STORAGE__) {
-        (globalThis as Record<string, unknown>).__TEST_DB_STORAGE__ = testStorage
+      // Security: Safe global state access for test environment only
+      const globalKey = Symbol.for('__TEST_DB_STORAGE__')
+      let testStorage = (globalThis as any)[globalKey] as TestStorage
+      
+      if (!testStorage) {
+        testStorage = {
+          stories: new Map(),
+          decisions: new Map(),
+        } as TestStorage
+        
+        // Only set if we're actually in test environment
+        if (process.env.NODE_ENV === 'test') {
+          (globalThis as any)[globalKey] = testStorage
+        }
       }
 
       const mockDb = {

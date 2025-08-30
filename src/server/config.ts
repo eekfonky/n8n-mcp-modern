@@ -65,7 +65,6 @@ const envSchema = z.object({
     .transform((val): val is 'true' => val === 'true')
     .default('false'),
 
-
 })
 
 // Parse and validate environment variables
@@ -86,7 +85,7 @@ function parseEnvironment(): Config {
     DEBUG: process.env.DEBUG,
   })
 
-  return ConfigSchema.parse({
+  const configData = {
     n8nApiUrl: normalizeN8NUrl(env.N8N_API_URL),
     n8nApiKey: env.N8N_API_KEY,
     logLevel: env.LOG_LEVEL,
@@ -100,7 +99,14 @@ function parseEnvironment(): Config {
     maxConcurrentRequests: env.MAX_CONCURRENT_REQUESTS,
     nodeEnv: env.NODE_ENV,
     debug: env.DEBUG,
-  })
+  }
+  
+  // Security: Validate API key without exposing it in logs
+  if (configData.n8nApiKey && configData.n8nApiKey.length < 16) {
+    throw new Error('N8N_API_KEY must be at least 16 characters long')
+  }
+  
+  return ConfigSchema.parse(configData)
 }
 
 // Normalize N8N API URL to ensure correct format

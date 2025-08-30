@@ -19,7 +19,6 @@ export const ConfigSchema = z.object({
   nodeEnv: z.enum(['development', 'production', 'test']).default('production'),
   debug: z.boolean().default(false),
 
-
   // Database Settings
   databasePath: z.string().default('./data/nodes.db'),
   databaseInMemory: z.boolean().default(false),

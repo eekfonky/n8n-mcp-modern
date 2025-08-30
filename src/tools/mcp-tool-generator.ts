@@ -135,11 +135,12 @@ export class MCPToolGenerator {
       // Get all discovered nodes from database
       const nodes = database.getNodes()
       logger.info(`Found ${nodes.length} discovered nodes for tool generation`)
-      
+
       // Debug: Log first few node names for verification
       if (nodes.length > 0) {
         logger.debug('Sample discovered nodes:', nodes.slice(0, 3).map(n => ({ name: n.name, category: n.category, type: n.nodeType })))
-      } else {
+      }
+      else {
         // Try to debug why no nodes are found
         logger.warn('No nodes found in database - debugging database state')
         const rawDb = database.rawDatabase
@@ -147,10 +148,11 @@ export class MCPToolGenerator {
           try {
             const count = rawDb.prepare('SELECT COUNT(*) as count FROM nodes').get() as { count: number }
             logger.warn(`Raw database query shows ${count.count} nodes in nodes table`)
-            
+
             const sample = rawDb.prepare('SELECT name, display_name, category FROM nodes LIMIT 3').all()
             logger.warn('Sample raw nodes:', sample)
-          } catch (error) {
+          }
+          catch (error) {
             logger.error('Failed to query database directly:', error)
           }
         }
@@ -784,7 +786,7 @@ export class MCPToolGenerator {
    */
   private async persistGeneratedTools(): Promise<void> {
     const toolsToStore: MCPTool[] = []
-    
+
     // Get the instance ID once to avoid multiple database calls
     const instanceId = await this.getLatestInstanceId()
     logger.info(`Using instance ID for MCP tools: ${instanceId}`)
@@ -810,16 +812,17 @@ export class MCPToolGenerator {
     // Store in batches to avoid memory issues
     const batchSize = 100
     logger.info(`Attempting to persist ${toolsToStore.length} tools in batches of ${batchSize}`)
-    
+
     for (let i = 0; i < toolsToStore.length; i += batchSize) {
       const batch = toolsToStore.slice(i, i + batchSize)
-      logger.debug(`Persisting batch ${Math.floor(i/batchSize) + 1}: ${batch.length} tools`)
-      
+      logger.debug(`Persisting batch ${Math.floor(i / batchSize) + 1}: ${batch.length} tools`)
+
       for (const tool of batch) {
         try {
           logger.debug(`Registering tool: ${tool.id} (node: ${tool.nodeName}, instance: ${tool.instanceId})`)
           await this.versionManager.registerMCPTool(tool)
-        } catch (error) {
+        }
+        catch (error) {
           logger.error(`Failed to register tool ${tool.id}:`, error)
           throw error // Re-throw to stop the process and get more details
         }
@@ -877,7 +880,7 @@ export class MCPToolGenerator {
         lastDiscovered: new Date(),
         officialNodeCount: 0,
         communityNodeCount: 0,
-        apiResponseTime: 0
+        apiResponseTime: 0,
       })
     }
     catch (error) {

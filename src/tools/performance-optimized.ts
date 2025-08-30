@@ -53,7 +53,7 @@ function createSimpleAgent(type: string) {
     type,
     execute: async (toolName: string, args: Record<string, unknown>) => {
       const executeStart = performance.now()
-      
+
       try {
         // Direct execution without complex routing
         const result = {
@@ -62,21 +62,22 @@ function createSimpleAgent(type: string) {
           args,
           status: 'success',
           timestamp: Date.now(),
-          executionTime: Math.round(performance.now() - executeStart)
+          executionTime: Math.round(performance.now() - executeStart),
         }
-        
+
         logger.debug(`${type} executed ${toolName} in ${result.executionTime}ms`)
         return result
-      } catch (error) {
+      }
+      catch (error) {
         return {
           agent: type,
           tool: toolName,
           status: 'error',
           error: error instanceof Error ? error.message : String(error),
-          executionTime: Math.round(performance.now() - executeStart)
+          executionTime: Math.round(performance.now() - executeStart),
         }
       }
-    }
+    },
   }
 }
 
@@ -88,15 +89,15 @@ export function preCompileSchemas() {
     type: 'object',
     properties: {
       operation: { type: 'string' },
-      parameters: { type: 'object' }
-    }
+      parameters: { type: 'object' },
+    },
   }
-  
+
   // Simple validation function (avoiding zod overhead for hot paths)
   compiledSchemas.set('basic', (data: any) => {
     return typeof data === 'object' && data !== null
   })
-  
+
   logger.debug(`Pre-compiled ${compiledSchemas.size} schemas`)
 }
 
@@ -111,11 +112,11 @@ export function registerTool(name: string, description: string, handler: Functio
       type: 'object',
       properties: {
         operation: { type: 'string' },
-        parameters: { type: 'object' }
-      }
-    }
+        parameters: { type: 'object' },
+      },
+    },
   }
-  
+
   toolCache.set(name, tool)
   handlerCache.set(name, handler)
 }
@@ -125,33 +126,34 @@ export function registerTool(name: string, description: string, handler: Functio
  */
 export async function executeTool(name: string, args: Record<string, unknown>) {
   const executeStart = performance.now()
-  
+
   try {
     const handler = handlerCache.get(name)
     if (!handler) {
       throw new Error(`Tool not found: ${name}`)
     }
-    
+
     // Fast validation
     const validator = compiledSchemas.get('basic')
     if (validator && !validator(args)) {
       throw new Error('Invalid arguments')
     }
-    
+
     const result = await handler(args)
     const executionTime = Math.round(performance.now() - executeStart)
-    
+
     // Performance target check
     if (executionTime > 100) {
       logger.warn(`Slow operation: ${name} took ${executionTime}ms`)
     }
-    
+
     return {
       ...result,
       executionTime,
-      performanceTarget: executionTime < 100 ? 'met' : 'exceeded'
+      performanceTarget: executionTime < 100 ? 'met' : 'exceeded',
     }
-  } catch (error) {
+  }
+  catch (error) {
     const executionTime = Math.round(performance.now() - executeStart)
     throw new Error(`Tool execution failed in ${executionTime}ms: ${error instanceof Error ? error.message : String(error)}`)
   }
@@ -170,21 +172,21 @@ export function getAllTools(): Tool[] {
 export function initializePerformanceOptimizations() {
   // Pre-compile schemas
   preCompileSchemas()
-  
+
   // Register core tools
   registerTool('ping', 'Health check with performance metrics', async () => ({
     status: 'ok',
     timestamp: Date.now(),
     uptime: Math.round(performance.now() - startTime),
-    mode: 'performance_optimized'
+    mode: 'performance_optimized',
   }))
-  
+
   // Force garbage collection if available (Node.js with --expose-gc)
   if (global.gc) {
     global.gc()
     logger.debug('Forced garbage collection for optimal startup')
   }
-  
+
   const initTime = Math.round(performance.now() - startTime)
   logger.info(`Performance optimizations initialized in ${initTime}ms`)
 }
@@ -197,7 +199,7 @@ export function performanceCleanup() {
   handlerCache.clear()
   compiledSchemas.clear()
   agentRegistry.clear()
-  
+
   if (global.gc) {
     global.gc()
   }

@@ -57,8 +57,8 @@ class Logger {
 
     const formatted = this.formatEntry(entry)
 
-    // Only log to console if not disabled
-    if (!config.disableConsoleOutput) {
+    // Simple console output (always enabled for lightweight version)
+    {
       switch (level) {
         case 'debug':
           console.debug(formatted)

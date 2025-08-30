@@ -150,15 +150,29 @@ export class MemoryManager {
 // Global memory manager instance
 export const memoryManager = new MemoryManager()
 
-// Register process exit cleanup
-process.on('exit', () => {
-  memoryManager.stop()
-})
+// Register process exit cleanup (with safety checks to prevent duplicate handlers)
+const exitHandlerRegistered = Symbol.for('memoryManager.exitHandlerRegistered')
+if (!(global as any)[exitHandlerRegistered]) {
+  (global as any)[exitHandlerRegistered] = true
+  
+  process.on('exit', () => {
+    memoryManager.stop()
+  })
 
-process.on('SIGTERM', () => {
-  memoryManager.cleanup().finally(() => process.exit(0))
-})
+  let shutdownInProgress = false
+  const gracefulShutdown = async (signal: string) => {
+    if (shutdownInProgress) return
+    shutdownInProgress = true
+    
+    try {
+      await memoryManager.cleanup()
+    } catch (error) {
+      logger.error(`Error during ${signal} cleanup:`, error)
+    } finally {
+      process.exit(0)
+    }
+  }
 
-process.on('SIGINT', () => {
-  memoryManager.cleanup().finally(() => process.exit(0))
-})
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+}

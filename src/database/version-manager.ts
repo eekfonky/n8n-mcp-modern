@@ -325,7 +325,7 @@ export class VersionManager {
     executionTime: number,
     memoryUsed: number
   ): Promise<void>
-  
+
   /**
    * Complete a discovery session (legacy method)
    */
@@ -333,7 +333,7 @@ export class VersionManager {
     sessionId: string,
     results: Partial<Pick<DiscoverySession, 'nodesDiscovered' | 'toolsGenerated' | 'credentialsTested' | 'errorsCount' | 'warningsCount' | 'discoveryLog' | 'performanceMetrics'>>,
   ): Promise<void>
-  
+
   /**
    * Complete a discovery session implementation
    */
@@ -342,7 +342,7 @@ export class VersionManager {
     nodesDiscoveredOrResults: number | Partial<Pick<DiscoverySession, 'nodesDiscovered' | 'toolsGenerated' | 'credentialsTested' | 'errorsCount' | 'warningsCount' | 'discoveryLog' | 'performanceMetrics'>>,
     toolsGenerated?: number,
     executionTime?: number,
-    memoryUsed?: number
+    memoryUsed?: number,
   ): Promise<void> {
     // Handle method overloading
     let results: Partial<Pick<DiscoverySession, 'nodesDiscovered' | 'toolsGenerated' | 'credentialsTested' | 'errorsCount' | 'warningsCount' | 'discoveryLog' | 'performanceMetrics'>>
@@ -358,7 +358,8 @@ export class VersionManager {
         warningsCount: 0,
       }
       calculatedExecutionTime = executionTime
-    } else {
+    }
+    else {
       // Legacy method signature
       results = nodesDiscoveredOrResults
     }
@@ -599,7 +600,7 @@ export class VersionManager {
         WHERE status = 'active' 
         ORDER BY created_at DESC
       `)
-      
+
       const rows = stmt.all() as Record<string, unknown>[]
       return rows.map(row => this.mapInstanceRow(row))
     }) || []

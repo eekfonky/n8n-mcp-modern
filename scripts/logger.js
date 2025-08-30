@@ -196,11 +196,31 @@ export function logEnvironment(logger, envVars = {}) {
   const sanitized = {}
 
   for (const [key, value] of Object.entries(envVars)) {
-    if (key.toLowerCase().includes('key') || key.toLowerCase().includes('token') || key.toLowerCase().includes('secret')) {
-      sanitized[key] = value ? `***${value.slice(-4)}` : 'not-set'
+    const keyLower = key.toLowerCase()
+    
+    // Enhanced security patterns for sensitive data detection
+    if (keyLower.includes('key') || 
+        keyLower.includes('token') || 
+        keyLower.includes('secret') ||
+        keyLower.includes('password') ||
+        keyLower.includes('auth') ||
+        keyLower.includes('api_key') ||
+        keyLower.includes('credential')) {
+      
+      // Only show last 4 characters if value exists and is long enough
+      if (value && typeof value === 'string' && value.length >= 8) {
+        sanitized[key] = `***${value.slice(-4)}`
+      } else {
+        sanitized[key] = value ? '***HIDDEN***' : 'not-set'
+      }
     }
     else {
-      sanitized[key] = value || 'not-set'
+      // Still sanitize other values to prevent log injection
+      if (typeof value === 'string') {
+        sanitized[key] = value.replace(/[\r\n\t]/g, ' ').substring(0, 200) || 'not-set'
+      } else {
+        sanitized[key] = value || 'not-set'
+      }
     }
   }
 

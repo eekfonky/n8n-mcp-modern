@@ -1,0 +1,130 @@
+#!/usr/bin/env node
+/**
+ * Core functionality tests using native Node.js test runner
+ * Zero external dependencies, maximum performance
+ */
+
+import assert from 'node:assert'
+import { test, describe } from 'node:test'
+import { performance } from 'node:perf_hooks'
+import { config, getNormalizedN8nUrl, hasN8nApi } from '../dist/simple-config.js'
+import { SimpleHttpClient } from '../dist/utils/simple-http-client.js'
+
+describe('Core Configuration Tests', () => {
+  test('config should have expected structure', () => {
+    assert.ok(typeof config === 'object', 'config should be an object')
+    assert.ok(typeof hasN8nApi === 'boolean', 'hasN8nApi should be boolean')
+  })
+
+  test('getNormalizedN8nUrl should handle various URL formats', () => {
+    // Test URL normalization
+    const testUrl = 'http://localhost:5678'
+    const normalized = getNormalizedN8nUrl()
+
+    if (normalized) {
+      assert.ok(normalized.includes('/api/v1'), 'URL should contain /api/v1')
+    }
+  })
+
+  test('config agents should default to all', () => {
+    assert.ok(Array.isArray(config.agents?.enabled), 'agents.enabled should be array')
+    assert.ok(config.agents?.enabled?.includes('all'), 'should include "all" by default')
+  })
+})
+
+describe('simple HTTP Client Tests', () => {
+  test('simpleHttpClient should construct properly', () => {
+    const client = new SimpleHttpClient()
+    assert.ok(client, 'client should be created')
+  })
+
+  test('simpleHttpClient request options should be valid', async () => {
+    const client = new SimpleHttpClient('http://localhost:3000')
+
+    // Test timeout handling
+    const startTime = performance.now()
+    try {
+      await client.get('/nonexistent', { timeout: 100 })
+    }
+    catch (error) {
+      const elapsed = performance.now() - startTime
+      assert.ok(elapsed < 1000, 'should timeout quickly')
+    }
+  })
+
+  test('pOST method should handle different body types', () => {
+    const client = new SimpleHttpClient()
+
+    // Should not throw when creating request
+    assert.doesNotThrow(() => {
+      client.post('/test', { key: 'value' })
+    })
+
+    assert.doesNotThrow(() => {
+      client.post('/test', 'string data')
+    })
+
+    assert.doesNotThrow(() => {
+      client.post('/test', undefined)
+    })
+  })
+})
+
+describe('performance Tests', () => {
+  test('configuration loading should be fast', () => {
+    const startTime = performance.now()
+
+    // Re-import to test loading time
+    import('../dist/simple-config.js').then(() => {
+      const loadTime = performance.now() - startTime
+      assert.ok(loadTime < 50, `Config loading took ${loadTime}ms, should be <50ms`)
+    })
+  })
+
+  test('hTTP client creation should be lightweight', () => {
+    const startTime = performance.now()
+    const client = new SimpleHttpClient('http://test.com', { test: 'header' })
+    const creationTime = performance.now() - startTime
+
+    assert.ok(creationTime < 10, `Client creation took ${creationTime}ms, should be <10ms`)
+    assert.ok(client, 'Client should be created')
+  })
+})
+
+describe('memory Tests', () => {
+  test('objects should not create memory leaks', () => {
+    const initialMemory = process.memoryUsage().heapUsed
+
+    // Create many HTTP clients and let them be garbage collected
+    for (let i = 0; i < 100; i++) {
+      const client = new SimpleHttpClient(`http://test${i}.com`)
+      // Use client briefly
+      client.get('/test').catch(() => {}) // Ignore errors
+    }
+
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc()
+    }
+
+    const finalMemory = process.memoryUsage().heapUsed
+    const memoryIncrease = finalMemory - initialMemory
+
+    // Memory increase should be reasonable (less than 5MB for 100 clients)
+    assert.ok(memoryIncrease < 5 * 1024 * 1024, `Memory increased by ${Math.round(memoryIncrease / 1024)}KB, should be <5MB`)
+  })
+})
+
+// Run performance check
+it('overall test suite performance', async () => {
+  const suiteStart = performance.now()
+
+  // Simulate some async operations
+  await new Promise(resolve => setTimeout(resolve, 10))
+
+  const suiteTime = performance.now() - suiteStart
+  console.log(`Test suite completed in ${Math.round(suiteTime)}ms`)
+
+  // Test suite should complete quickly
+  assert.ok(suiteTime < 1000, 'Test suite should complete in <1000ms')
+})

@@ -8,10 +8,13 @@ import type { N8NNodeAPI } from '../types/fast-types.js'
 import { CredentialDiscovery } from '../discovery/credential-discovery.js'
 import { DiscoveryScheduler } from '../discovery/scheduler.js'
 import { simpleN8nApi } from '../n8n/simple-api.js'
-import { hasN8nApi } from '../simple-config.js'
 import { logger } from '../server/logger.js'
+import { hasN8nApi } from '../simple-config.js'
+import { coldStartOptimizationTools } from './cold-start-optimization-tool.js'
 import { getAllCategories, getAllNodeTemplates } from './comprehensive-node-registry.js'
 import { MCPToolGenerator } from './mcp-tool-generator.js'
+import { memoryOptimizationTools } from './memory-optimization-tool.js'
+import { performanceMonitoringTools } from './performance-monitoring-tool.js'
 
 let discoveredTools: Tool[] = []
 const toolHandlers: Map<string, Function> = new Map()
@@ -46,6 +49,36 @@ export async function initializeDynamicTools(): Promise<void> {
       phase: 'Phase 4: Discovery Automation',
     }))
 
+    // Add memory optimization tools
+    for (const [toolName, toolConfig] of Object.entries(memoryOptimizationTools)) {
+      discoveredTools.push({
+        name: toolName,
+        description: toolConfig.description,
+        inputSchema: toolConfig.parameters,
+      })
+      toolHandlers.set(toolName, toolConfig.handler)
+    }
+
+    // Add cold start optimization tools
+    for (const [toolName, toolConfig] of Object.entries(coldStartOptimizationTools)) {
+      discoveredTools.push({
+        name: toolName,
+        description: toolConfig.description,
+        inputSchema: toolConfig.parameters,
+      })
+      toolHandlers.set(toolName, toolConfig.handler)
+    }
+
+    // Add performance monitoring tools
+    for (const [toolName, toolConfig] of Object.entries(performanceMonitoringTools)) {
+      discoveredTools.push({
+        name: toolName,
+        description: toolConfig.description,
+        inputSchema: toolConfig.parameters,
+      })
+      toolHandlers.set(toolName, toolConfig.handler)
+    }
+
     // Discovery scheduler control tools
     discoveredTools.push({
       name: 'discovery-trigger',
@@ -61,7 +94,7 @@ export async function initializeDynamicTools(): Promise<void> {
         },
       },
     })
-    
+
     discoveredTools.push({
       name: 'discovery-status',
       description: 'Get status of discovery sessions and scheduler',
@@ -70,7 +103,7 @@ export async function initializeDynamicTools(): Promise<void> {
         properties: {},
       },
     })
-    
+
     discoveredTools.push({
       name: 'discovery-config',
       description: 'Update discovery scheduler configuration',
@@ -100,9 +133,9 @@ export async function initializeDynamicTools(): Promise<void> {
       if (!discoveryScheduler) {
         return { error: 'Discovery scheduler not initialized' }
       }
-      
+
       const sessionId = await discoveryScheduler.triggerDiscovery('manual', args?.reason || 'Manual trigger via MCP')
-      
+
       return {
         success: true,
         sessionId,
@@ -114,10 +147,10 @@ export async function initializeDynamicTools(): Promise<void> {
       if (!discoveryScheduler) {
         return { error: 'Discovery scheduler not initialized' }
       }
-      
+
       const sessions = discoveryScheduler.getSessionStatus()
       const stats = discoveryScheduler.getStats()
-      
+
       return {
         scheduler: stats,
         sessions: sessions.map(session => ({
@@ -136,13 +169,13 @@ export async function initializeDynamicTools(): Promise<void> {
       if (!discoveryScheduler) {
         return { error: 'Discovery scheduler not initialized' }
       }
-      
+
       if (!args || Object.keys(args).length === 0) {
         return { error: 'No configuration provided' }
       }
-      
+
       discoveryScheduler.updateConfig(args)
-      
+
       return {
         success: true,
         message: 'Discovery scheduler configuration updated',
@@ -151,7 +184,7 @@ export async function initializeDynamicTools(): Promise<void> {
     })
 
     // Run Phase 2 discovery if n8n API is available
-    if (simpleN8nApi && await testN8nConnection()) {
+    if (hasN8nApi && simpleN8nApi && await testN8nConnection()) {
       logger.info('Running Phase 2: Credential-based node discovery...')
       const discoveryStats = await credentialDiscovery.discover()
       logger.info(`Phase 2 complete: ${discoveryStats.nodesDiscovered} nodes discovered`)
@@ -163,7 +196,7 @@ export async function initializeDynamicTools(): Promise<void> {
 
       // Load the generated tools into the MCP system
       await loadGeneratedTools(generationStats.totalGenerated)
-      
+
       // Initialize Phase 4: Discovery Scheduler
       logger.info('Initializing Phase 4: Discovery automation scheduler...')
       discoveryScheduler = new DiscoveryScheduler()
@@ -172,7 +205,7 @@ export async function initializeDynamicTools(): Promise<void> {
     }
     else {
       logger.warn('No n8n API connection - running with basic tools only')
-      
+
       // Still initialize scheduler for potential future connections
       discoveryScheduler = new DiscoveryScheduler()
       await discoveryScheduler.start()
@@ -214,10 +247,10 @@ async function loadGeneratedTools(maxTools?: number): Promise<void> {
 
     for (const metadata of toolMetadata) {
       // Create lightweight tool definition for MCP
-      const description = metadata.operationName 
+      const description = metadata.operationName
         ? `${metadata.operationName} operation for ${metadata.nodeName || 'general category'}`
         : `${metadata.toolType} tool for ${metadata.nodeName || 'category operations'}`
-      
+
       discoveredTools.push({
         name: metadata.toolId,
         description,
@@ -293,13 +326,59 @@ function createLazyToolHandler(toolId: string) {
  */
 async function discoverN8nNodes(): Promise<void> {
   try {
-    // Generate dynamic tools for core workflow operations
+    // Generate dynamic tools for comprehensive workflow operations
     const coreOperations = [
       'list_workflows',
       'get_workflow',
       'create_workflow',
       'execute_workflow',
       'get_executions',
+
+      // Extended workflow operations
+      'update_workflow',
+      'delete_workflow',
+      'activate_workflow',
+      'deactivate_workflow',
+      'duplicate_workflow',
+
+      // Execution operations
+      'get_execution',
+      'delete_execution',
+      'retry_execution',
+      'stop_execution',
+
+      // Credential operations
+      'list_credentials',
+      'get_credential',
+      'create_credential',
+      'update_credential',
+      'delete_credential',
+      'test_credential',
+
+      // Import/Export operations
+      'export_workflow',
+      'import_workflow',
+
+      // Tag operations
+      'list_tags',
+      'create_tag',
+      'tag_workflow',
+
+      // Variable operations
+      'list_variables',
+      'create_variable',
+      'update_variable',
+      'delete_variable',
+
+      // System operations
+      'get_health',
+      'get_version',
+      'list_event_destinations',
+
+      // Batch operations
+      'batch_delete_workflows',
+      'batch_activate_workflows',
+      'batch_deactivate_workflows',
     ]
 
     for (const operation of coreOperations) {
@@ -423,7 +502,29 @@ async function discoverN8nNodes(): Promise<void> {
 function createDynamicHandler(operation: string) {
   return async (args: Record<string, unknown>) => {
     try {
+      // Security: Validate and sanitize input arguments
+      if (!args || typeof args !== 'object') {
+        throw new Error('Invalid arguments provided')
+      }
+      
+      // Sanitize string arguments to prevent injection attacks
+      const sanitizedArgs: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(args)) {
+        if (typeof value === 'string') {
+          // Remove potentially dangerous characters and limit length
+          sanitizedArgs[key] = value.replace(/[<>\"'&]/g, '').substring(0, 1000)
+        } else if (Array.isArray(value)) {
+          // Validate array elements
+          sanitizedArgs[key] = value.slice(0, 100).map(item => 
+            typeof item === 'string' ? item.replace(/[<>\"'&]/g, '').substring(0, 500) : item
+          )
+        } else {
+          sanitizedArgs[key] = value
+        }
+      }
+      
       switch (operation) {
+        // Core workflow operations
         case 'list_workflows':
           return await simpleN8nApi?.getWorkflows() || []
         case 'get_workflow':
@@ -438,6 +539,83 @@ function createDynamicHandler(operation: string) {
           return await simpleN8nApi?.executeWorkflow(args.id as string, args.data as any) || { status: 'execution_started' }
         case 'get_executions':
           return await simpleN8nApi?.getExecutions(args.id as string) || []
+
+        // Extended workflow operations
+        case 'update_workflow':
+          return await simpleN8nApi?.updateWorkflow(args.id as string, args.data as any) || null
+        case 'delete_workflow':
+          return await simpleN8nApi?.deleteWorkflow(args.id as string) || false
+        case 'activate_workflow':
+          return await simpleN8nApi?.activateWorkflow(args.id as string) || false
+        case 'deactivate_workflow':
+          return await simpleN8nApi?.deactivateWorkflow(args.id as string) || false
+        case 'duplicate_workflow':
+          return await simpleN8nApi?.duplicateWorkflow(args.id as string, args.name as string) || null
+
+        // Execution operations
+        case 'get_execution':
+          return await simpleN8nApi?.getExecution(args.id as string) || null
+        case 'delete_execution':
+          return await simpleN8nApi?.deleteExecution(args.id as string) || false
+        case 'retry_execution':
+          return await simpleN8nApi?.retryExecution(args.id as string) || null
+        case 'stop_execution':
+          return await simpleN8nApi?.stopExecution(args.id as string) || false
+
+        // Credential operations
+        case 'list_credentials':
+          return await simpleN8nApi?.getCredentials() || []
+        case 'get_credential':
+          return await simpleN8nApi?.getCredential(args.id as string) || null
+        case 'create_credential':
+          return await simpleN8nApi?.createCredential(args.data as any) || null
+        case 'update_credential':
+          return await simpleN8nApi?.updateCredential(args.id as string, args.data as any) || null
+        case 'delete_credential':
+          return await simpleN8nApi?.deleteCredential(args.id as string) || false
+        case 'test_credential':
+          return await simpleN8nApi?.testCredential(args.id as string) || null
+
+        // Import/Export operations
+        case 'export_workflow':
+          return await simpleN8nApi?.exportWorkflow(args.id as string) || null
+        case 'import_workflow':
+          return await simpleN8nApi?.importWorkflow(args.data as any) || null
+
+        // Tag operations
+        case 'list_tags':
+          return await simpleN8nApi?.getTags() || []
+        case 'create_tag':
+          return await simpleN8nApi?.createTag(args.name as string) || null
+        case 'tag_workflow':
+          return await simpleN8nApi?.tagWorkflow(args.workflowId as string, args.tagIds as string[]) || false
+
+        // Variable operations
+        case 'list_variables':
+          return await simpleN8nApi?.getVariables() || []
+        case 'create_variable':
+          return await simpleN8nApi?.createVariable(args as { key: string, value: string }) || null
+        case 'update_variable':
+          return await simpleN8nApi?.updateVariable(args.id as string, args.data as any) || null
+        case 'delete_variable':
+          return await simpleN8nApi?.deleteVariable(args.id as string) || false
+
+        // System operations
+        case 'get_health':
+          return await simpleN8nApi?.getHealth() || null
+        case 'get_version':
+          return await simpleN8nApi?.getVersion() || null
+        case 'list_event_destinations':
+          return await simpleN8nApi?.getEventDestinations() || []
+
+        // Batch operations
+        case 'batch_delete_workflows':
+          return await simpleN8nApi?.batchDeleteWorkflows(args.ids as string[]) || { success: [], failed: [] }
+        case 'batch_activate_workflows':
+          return await simpleN8nApi?.batchActivateWorkflows(args.ids as string[]) || { success: [], failed: [] }
+        case 'batch_deactivate_workflows':
+          return await simpleN8nApi?.batchDeactivateWorkflows(args.ids as string[]) || { success: [], failed: [] }
+
         default:
           return { operation, args, status: 'dynamic_execution' }
       }
@@ -570,7 +748,7 @@ export async function refreshTools(): Promise<void> {
  */
 export async function cleanup(): Promise<void> {
   logger.info('Cleaning up discovery automation resources...')
-  
+
   try {
     // Stop discovery scheduler
     if (discoveryScheduler) {
@@ -578,13 +756,13 @@ export async function cleanup(): Promise<void> {
       discoveryScheduler = null
       logger.info('Discovery scheduler stopped')
     }
-    
+
     // Clear tool references
     discoveredTools = []
     toolHandlers.clear()
     toolGenerator = null
     credentialDiscovery = null
-    
+
     logger.info('Cleanup completed successfully')
   }
   catch (error) {
