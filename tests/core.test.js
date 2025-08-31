@@ -51,21 +51,25 @@ describe('simple HTTP Client Tests', () => {
     }
   })
 
-  it('pOST method should handle different body types', () => {
+  it('pOST method should handle different body types', async () => {
     const client = new SimpleHttpClient()
 
-    // Should not throw when creating request
-    assert.doesNotThrow(() => {
-      client.post('/test', { key: 'value' })
-    })
+    // Test that methods can be called without throwing
+    // Use catch to handle expected errors from invalid URLs
+    const testPost = async (data) => {
+      try {
+        await client.post('/test', data)
+      } catch (error) {
+        // Expected to fail with invalid URL - that's OK
+        // We're just testing that the method accepts different body types
+        assert.ok(error.message.includes('Failed to parse URL') || error.message.includes('fetch failed'), 'Expected URL parse error')
+      }
+    }
 
-    assert.doesNotThrow(() => {
-      client.post('/test', 'string data')
-    })
-
-    assert.doesNotThrow(() => {
-      client.post('/test', undefined)
-    })
+    // Test different body types
+    await testPost({ key: 'value' })
+    await testPost('string data')
+    await testPost(undefined)
   })
 })
 
