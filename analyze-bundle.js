@@ -89,7 +89,7 @@ function analyzeSourceFiles() {
         }
       }
     }
-    catch (error) {
+    catch {
       // Directory might not exist, skip
     }
   }
@@ -113,7 +113,7 @@ function analyzeSourceFiles() {
   console.log(`JavaScript files: ${javaScript.length} (${formatBytes(javaScript.reduce((s, f) => s + f.size, 0))})`)
 
   console.log('\nLargest Files:')
-  srcFiles.slice(0, 10).forEach((file, i) => {
+  srcFiles.slice(0, 10).forEach((file, _i) => {
     const icon = file.size > 10000 ? '🔴' : file.size > 5000 ? '🟡' : '🟢'
     console.log(`  ${icon} ${file.path.replace(`${process.cwd()}/`, '')} (${formatBytes(file.size)})`)
   })
@@ -146,7 +146,7 @@ function analyzeCompiledBundle() {
           }
         }
       }
-      catch (error) {
+      catch {
         // Directory might not exist
       }
     }
@@ -212,7 +212,7 @@ function analyzeNodeModules() {
           }
         }
       }
-      catch (error) {
+      catch (_error) {
         // Skip inaccessible directories
       }
       return size

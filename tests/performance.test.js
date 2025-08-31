@@ -5,12 +5,12 @@
  */
 
 import assert from 'node:assert'
-import { test, describe } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { performance } from 'node:perf_hooks'
+import { describe, it } from 'vitest'
 
-describe('Startup Performance Tests', () => {
-  test('server startup should be under 2 seconds', async () => {
+describe('startup Performance Tests', () => {
+  it('server startup should be under 2 seconds', async () => {
     const startTime = performance.now()
 
     try {
@@ -27,7 +27,7 @@ describe('Startup Performance Tests', () => {
     }
   })
 
-  test('configuration should load instantly', async () => {
+  it('configuration should load instantly', async () => {
     const configStart = performance.now()
     await import('../dist/simple-config.js')
     const configTime = performance.now() - configStart
@@ -36,7 +36,7 @@ describe('Startup Performance Tests', () => {
     assert.ok(configTime < 50, `Config loading took ${configTime}ms, should be <50ms`)
   })
 
-  test('tool system should initialize quickly', async () => {
+  it('tool system should initialize quickly', async () => {
     const toolStart = performance.now()
 
     try {
@@ -53,7 +53,7 @@ describe('Startup Performance Tests', () => {
 })
 
 describe('bundle Size Tests', () => {
-  test('package.json should have minimal dependencies', () => {
+  it('package.json should have minimal dependencies', () => {
     const packageJson = JSON.parse(readFileSync('package.json', 'utf8'))
     const deps = packageJson.dependencies || {}
     const depCount = Object.keys(deps).length
@@ -62,7 +62,7 @@ describe('bundle Size Tests', () => {
     assert.ok(depCount <= 5, `Has ${depCount} dependencies, target is ≤5`)
   })
 
-  test('core files should be reasonably sized', async () => {
+  it('core files should be reasonably sized', async () => {
     const coreFiles = [
       'src/index.ts',
       'src/simple-config.ts',
@@ -76,7 +76,7 @@ describe('bundle Size Tests', () => {
         const content = readFileSync(file, 'utf8')
         totalSize += content.length
       }
-      catch (error) {
+      catch {
         // File might not exist, that's OK for this test
       }
     }
@@ -90,7 +90,7 @@ describe('bundle Size Tests', () => {
 })
 
 describe('memory Usage Tests', () => {
-  test('baseline memory should be minimal', () => {
+  it('baseline memory should be minimal', () => {
     const baseline = process.memoryUsage()
     const heapMB = Math.round(baseline.heapUsed / 1024 / 1024)
     const totalMB = Math.round(baseline.heapTotal / 1024 / 1024)
@@ -102,7 +102,7 @@ describe('memory Usage Tests', () => {
     assert.ok(totalMB < 200, `Total heap is ${totalMB}MB, should be reasonable`)
   })
 
-  test('repeated operations should not leak memory', () => {
+  it('repeated operations should not leak memory', () => {
     const initialMemory = process.memoryUsage().heapUsed
 
     // Simulate repeated tool executions
@@ -119,8 +119,8 @@ describe('memory Usage Tests', () => {
     }
 
     // Force GC if available
-    if (global.gc) {
-      global.gc()
+    if (globalThis.gc) {
+      globalThis.gc()
     }
 
     const finalMemory = process.memoryUsage().heapUsed
@@ -132,7 +132,7 @@ describe('memory Usage Tests', () => {
 })
 
 describe('operation Speed Tests', () => {
-  test('jSON processing should be fast', () => {
+  it('jSON processing should be fast', () => {
     const testData = {
       tools: Array.from({ length: 100 }).fill().map((_, i) => ({
         name: `tool_${i}`,
@@ -156,7 +156,7 @@ describe('operation Speed Tests', () => {
     assert.ok(avgTime < 10, `JSON processing took ${avgTime}ms, should be <10ms`)
   })
 
-  test('object creation should be efficient', () => {
+  it('object creation should be efficient', () => {
     const objStart = performance.now()
 
     const objects = []

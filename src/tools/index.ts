@@ -12,15 +12,18 @@ import { logger } from '../server/logger.js'
 import { hasN8nApi } from '../simple-config.js'
 import { coldStartOptimizationTools } from './cold-start-optimization-tool.js'
 import { getAllCategories, getAllNodeTemplates } from './comprehensive-node-registry.js'
+import { createDynamicAgentTools } from './dynamic-agent-tools.js'
 import { MCPToolGenerator } from './mcp-tool-generator.js'
 import { memoryOptimizationTools } from './memory-optimization-tool.js'
 import { performanceMonitoringTools } from './performance-monitoring-tool.js'
+import { WorkflowBuilderUtils } from './workflow-builder-utils.js'
 
 let discoveredTools: Tool[] = []
-const toolHandlers: Map<string, Function> = new Map()
+const toolHandlers: Map<string, (args: Record<string, unknown>) => Promise<unknown>> = new Map()
 let toolGenerator: MCPToolGenerator | null = null
 let credentialDiscovery: CredentialDiscovery | null = null
 let discoveryScheduler: DiscoveryScheduler | null = null
+let dynamicAgentTools: any = null
 
 /**
  * Initialize the pure dynamic tool system
@@ -32,6 +35,9 @@ export async function initializeDynamicTools(): Promise<void> {
     // Initialize the Phase 3 tool generator
     toolGenerator = new MCPToolGenerator()
     credentialDiscovery = new CredentialDiscovery()
+
+    // Initialize dynamic agent tools
+    dynamicAgentTools = await createDynamicAgentTools()
 
     // Basic connectivity tool
     discoveredTools.push({
@@ -78,6 +84,64 @@ export async function initializeDynamicTools(): Promise<void> {
       })
       toolHandlers.set(toolName, toolConfig.handler)
     }
+
+    // Add dynamic agent tools
+    const dynamicTools = dynamicAgentTools.getTools()
+    for (const tool of dynamicTools) {
+      discoveredTools.push(tool)
+      toolHandlers.set(tool.name, async (args: any) => {
+        return await dynamicAgentTools.handleToolCall(tool.name, args)
+      })
+    }
+
+    // Add iterative workflow building tool
+    discoveredTools.push({
+      name: 'build_workflow_iteratively',
+      description: 'Interactive step-by-step workflow building with real-time validation and rollback capability',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          action: {
+            type: 'string',
+            enum: [
+              'create_session',
+              'add_node',
+              'test_workflow',
+              'create_checkpoint',
+              'rollback',
+              'get_suggestions',
+              'validate_connections',
+              'preview_workflow',
+              'complete_workflow',
+            ],
+            description: 'The iterative building action to perform',
+          },
+          sessionId: {
+            type: 'string',
+            description: 'Unique session identifier for maintaining state across interactions',
+          },
+          workflowName: {
+            type: 'string',
+            description: 'Name for the workflow (required for create_session)',
+          },
+          nodeType: {
+            type: 'string',
+            description: 'Type of node to add (e.g., n8n-nodes-base.httpRequest)',
+          },
+          nodeParameters: {
+            type: 'object',
+            description: 'Parameters for the node being added',
+            additionalProperties: true,
+          },
+          checkpointId: {
+            type: 'number',
+            description: 'Checkpoint ID for rollback operations',
+            minimum: 0,
+          },
+        },
+        required: ['action'],
+      },
+    })
 
     // Discovery scheduler control tools
     discoveredTools.push({
@@ -180,6 +244,259 @@ export async function initializeDynamicTools(): Promise<void> {
         success: true,
         message: 'Discovery scheduler configuration updated',
         newConfig: discoveryScheduler.getStats().config,
+      }
+    })
+
+    // Add handler for iterative workflow building
+    toolHandlers.set('build_workflow_iteratively', async (args: any) => {
+      try {
+        if (!simpleN8nApi) {
+          return { error: 'n8n API not available' }
+        }
+
+        const { action, sessionId, workflowName, nodeType, nodeParameters, checkpointId } = args
+
+        switch (action) {
+          case 'create_session': {
+            if (!workflowName) {
+              return { error: 'workflowName is required for create_session' }
+            }
+
+            // Create a new workflow for iterative building
+            const workflow = await simpleN8nApi.createIterativeWorkflow(workflowName)
+            if (!workflow) {
+              return { error: 'Failed to create workflow' }
+            }
+
+            // Create a new session
+            const session = WorkflowBuilderUtils.SessionManager.createSession(workflow.id)
+
+            return {
+              success: true,
+              sessionId: session.sessionId,
+              workflowId: session.workflowId,
+              message: `Created iterative workflow session: ${session.sessionId}`,
+              suggestions: await simpleN8nApi.getCompatibleNodes(workflow.id),
+            }
+          }
+
+          case 'add_node': {
+            if (!sessionId) {
+              return { error: 'sessionId is required for add_node' }
+            }
+            if (!nodeType) {
+              return { error: 'nodeType is required for add_node' }
+            }
+
+            const session = WorkflowBuilderUtils.SessionManager.validateSession(sessionId)
+            if (!session) {
+              return { error: 'Invalid or expired session' }
+            }
+
+            // Create node object
+            const node = {
+              type: nodeType,
+              parameters: nodeParameters || {},
+              position: [100 + session.currentNodes.length * 200, 100] as [number, number],
+            }
+
+            // Add node to workflow
+            const success = await WorkflowBuilderUtils.NodeManager.addNodeToWorkflow(
+              session,
+              node,
+              simpleN8nApi,
+            )
+
+            if (!success) {
+              return { error: 'Failed to add node to workflow' }
+            }
+
+            // Create automatic checkpoint
+            WorkflowBuilderUtils.SessionManager.createCheckpoint(session, 'auto_after_add_node')
+
+            return {
+              success: true,
+              message: `Added ${nodeType} node to workflow`,
+              nodeCount: session.currentNodes.length,
+              nextSuggestions: await simpleN8nApi.getCompatibleNodes(session.workflowId, nodeType),
+            }
+          }
+
+          case 'test_workflow': {
+            if (!sessionId) {
+              return { error: 'sessionId is required for test_workflow' }
+            }
+
+            const session = WorkflowBuilderUtils.SessionManager.validateSession(sessionId)
+            if (!session) {
+              return { error: 'Invalid or expired session' }
+            }
+
+            const result = await WorkflowBuilderUtils.NodeManager.testWorkflow(session, simpleN8nApi)
+            if (!result) {
+              return { error: 'Workflow test failed' }
+            }
+
+            return {
+              success: true,
+              validationResult: result,
+              message: result.status === 'success' ? 'Workflow executed successfully' : 'Workflow execution had issues',
+            }
+          }
+
+          case 'create_checkpoint': {
+            if (!sessionId) {
+              return { error: 'sessionId is required for create_checkpoint' }
+            }
+
+            const session = WorkflowBuilderUtils.SessionManager.validateSession(sessionId)
+            if (!session) {
+              return { error: 'Invalid or expired session' }
+            }
+
+            const success = WorkflowBuilderUtils.SessionManager.createCheckpoint(session, 'manual')
+
+            return {
+              success,
+              message: success ? 'Checkpoint created successfully' : 'Failed to create checkpoint',
+              checkpointId: success ? session.checkpoints.length - 1 : null,
+            }
+          }
+
+          case 'rollback': {
+            if (!sessionId) {
+              return { error: 'sessionId is required for rollback' }
+            }
+            if (checkpointId === undefined) {
+              return { error: 'checkpointId is required for rollback' }
+            }
+
+            const session = WorkflowBuilderUtils.SessionManager.validateSession(sessionId)
+            if (!session) {
+              return { error: 'Invalid or expired session' }
+            }
+
+            const success = await WorkflowBuilderUtils.RollbackManager.rollbackToCheckpoint(
+              session,
+              checkpointId,
+              simpleN8nApi,
+            )
+
+            return {
+              success,
+              message: success ? `Rolled back to checkpoint ${checkpointId}` : 'Rollback failed',
+              nodeCount: success ? session.currentNodes.length : null,
+            }
+          }
+
+          case 'get_suggestions': {
+            if (!sessionId) {
+              return { error: 'sessionId is required for get_suggestions' }
+            }
+
+            const session = WorkflowBuilderUtils.SessionManager.validateSession(sessionId)
+            if (!session) {
+              return { error: 'Invalid or expired session' }
+            }
+
+            const lastNode = session.currentNodes[session.currentNodes.length - 1]
+            const suggestions = await simpleN8nApi.getCompatibleNodes(
+              session.workflowId,
+              lastNode?.type,
+            )
+
+            return {
+              success: true,
+              suggestions,
+              lastNodeType: lastNode?.type || null,
+              nodeCount: session.currentNodes.length,
+            }
+          }
+
+          case 'validate_connections': {
+            if (!sessionId) {
+              return { error: 'sessionId is required for validate_connections' }
+            }
+
+            const session = WorkflowBuilderUtils.SessionManager.validateSession(sessionId)
+            if (!session) {
+              return { error: 'Invalid or expired session' }
+            }
+
+            const validation = await simpleN8nApi.validateWorkflowConnections(session.workflowId)
+
+            return {
+              success: true,
+              validation,
+              message: validation.valid ? 'Workflow connections are valid' : 'Workflow has validation issues',
+            }
+          }
+
+          case 'preview_workflow': {
+            if (!sessionId) {
+              return { error: 'sessionId is required for preview_workflow' }
+            }
+
+            const session = WorkflowBuilderUtils.SessionManager.validateSession(sessionId)
+            if (!session) {
+              return { error: 'Invalid or expired session' }
+            }
+
+            // Generate ASCII visualization
+            const nodeNames = session.currentNodes.map(n => n.name || n.type.split('.').pop())
+            const preview = nodeNames.length > 0
+              ? `[Start] → ${nodeNames.join(' → ')} → [End]`
+              : '[Empty Workflow]'
+
+            return {
+              success: true,
+              preview,
+              nodeCount: session.currentNodes.length,
+              checkpointCount: session.checkpoints.length,
+              sessionAge: Date.now() - session.securityContext.createdAt.getTime(),
+            }
+          }
+
+          case 'complete_workflow': {
+            if (!sessionId) {
+              return { error: 'sessionId is required for complete_workflow' }
+            }
+
+            const session = WorkflowBuilderUtils.SessionManager.validateSession(sessionId)
+            if (!session) {
+              return { error: 'Invalid or expired session' }
+            }
+
+            // Final validation
+            const validation = await simpleN8nApi.validateWorkflowConnections(session.workflowId)
+            if (!validation.valid) {
+              return {
+                error: 'Cannot complete workflow - validation failed',
+                validationErrors: validation.errors,
+              }
+            }
+
+            // Cleanup session
+            WorkflowBuilderUtils.SessionManager.cleanupSession(sessionId)
+
+            return {
+              success: true,
+              workflowId: session.workflowId,
+              finalNodeCount: session.currentNodes.length,
+              message: 'Workflow completed successfully. Session cleaned up.',
+            }
+          }
+
+          default:
+            return { error: `Unknown action: ${action}` }
+        }
+      }
+      catch (error) {
+        logger.error('Iterative workflow building error:', error)
+        return {
+          error: 'Internal error during iterative workflow building',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        }
       }
     })
 
@@ -324,7 +641,7 @@ function createLazyToolHandler(toolId: string) {
 /**
  * Discover n8n capabilities and generate comprehensive tools (Legacy fallback)
  */
-async function discoverN8nNodes(): Promise<void> {
+async function _discoverN8nNodes(): Promise<void> {
   try {
     // Generate dynamic tools for comprehensive workflow operations
     const coreOperations = [
@@ -484,7 +801,7 @@ async function discoverN8nNodes(): Promise<void> {
         // We could add these but our registry is already comprehensive
       }
     }
-    catch (nodeError) {
+    catch (_nodeError) {
       logger.debug('Live node discovery not available - using comprehensive registry')
     }
 
@@ -506,23 +823,25 @@ function createDynamicHandler(operation: string) {
       if (!args || typeof args !== 'object') {
         throw new Error('Invalid arguments provided')
       }
-      
+
       // Sanitize string arguments to prevent injection attacks
       const sanitizedArgs: Record<string, unknown> = {}
       for (const [key, value] of Object.entries(args)) {
         if (typeof value === 'string') {
           // Remove potentially dangerous characters and limit length
-          sanitizedArgs[key] = value.replace(/[<>\"'&]/g, '').substring(0, 1000)
-        } else if (Array.isArray(value)) {
+          sanitizedArgs[key] = value.replace(/[<>"'&]/g, '').substring(0, 1000)
+        }
+        else if (Array.isArray(value)) {
           // Validate array elements
-          sanitizedArgs[key] = value.slice(0, 100).map(item => 
-            typeof item === 'string' ? item.replace(/[<>\"'&]/g, '').substring(0, 500) : item
+          sanitizedArgs[key] = value.slice(0, 100).map(item =>
+            typeof item === 'string' ? item.replace(/[<>"'&]/g, '').substring(0, 500) : item,
           )
-        } else {
+        }
+        else {
           sanitizedArgs[key] = value
         }
       }
-      
+
       switch (operation) {
         // Core workflow operations
         case 'list_workflows':
@@ -629,7 +948,7 @@ function createDynamicHandler(operation: string) {
 /**
  * Create handler for specific node (legacy - for API discovered nodes)
  */
-function createNodeHandler(node: N8NNodeAPI) {
+function _createNodeHandler(node: N8NNodeAPI) {
   return async (args: Record<string, unknown>) => {
     return {
       node: node.name,

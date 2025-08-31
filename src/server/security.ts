@@ -469,32 +469,32 @@ export const SECURITY_CONFIG = {
   MAX_ARRAY_LENGTH: 1000,
   MAX_OBJECT_DEPTH: 10,
   MAX_REQUEST_SIZE: 10 * 1024 * 1024, // 10MB
-  
+
   // Rate limiting
   MAX_REQUESTS_PER_MINUTE: 100,
   MAX_CONCURRENT_REQUESTS: 10,
-  
+
   // API key validation
   MIN_API_KEY_LENGTH: 16,
   MAX_API_KEY_LENGTH: 128,
-  
+
   // Database query limits
   MAX_QUERY_RESULTS: 1000,
   MAX_SEARCH_QUERY_LENGTH: 100,
-  
+
   // Network security
   ALLOWED_PROTOCOLS: ['http:', 'https:'],
   BLOCKED_HOSTS: ['localhost', '127.0.0.1', '0.0.0.0'],
-  
+
   // Memory limits
   MAX_HEAP_USAGE_PERCENT: 90,
   MEMORY_LEAK_THRESHOLD: 1024, // bytes per second
-  
+
   // Timeout configurations
   DEFAULT_REQUEST_TIMEOUT: 30000,
   DISCOVERY_TIMEOUT: 15000,
   SHUTDOWN_TIMEOUT: 10000,
-  
+
   // File system limits
   MAX_LOG_FILE_SIZE: 100 * 1024 * 1024, // 100MB
   MAX_CACHE_SIZE: 1000,

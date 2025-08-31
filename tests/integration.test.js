@@ -5,21 +5,21 @@
  */
 
 import assert from 'node:assert'
-import { test, describe } from 'node:test'
 import { performance } from 'node:perf_hooks'
+import { describe, it } from 'vitest'
 
-describe('MCP Protocol Integration', () => {
-  test('MCP server components should be importable', async () => {
+describe('mCP Protocol Integration', () => {
+  it('mCP server components should be importable', async () => {
     try {
       const { Server } = await import('@modelcontextprotocol/sdk/server/index.js')
       assert.ok(Server, 'MCP Server should be available')
     }
-    catch (error) {
+    catch {
       console.log('MCP SDK not available in test environment')
     }
   })
 
-  test('tools system should export expected functions', async () => {
+  it('tools system should export expected functions', async () => {
     try {
       const tools = await import('../src/tools/index.js')
 
@@ -35,7 +35,7 @@ describe('MCP Protocol Integration', () => {
     }
   })
 
-  test('performance optimizations should be available', async () => {
+  it('performance optimizations should be available', async () => {
     try {
       const perfTools = await import('../src/tools/performance-optimized.js')
 
@@ -51,7 +51,7 @@ describe('MCP Protocol Integration', () => {
 })
 
 describe('discovery System Integration', () => {
-  test('credential discovery should be importable', async () => {
+  it('credential discovery should be importable', async () => {
     try {
       const discovery = await import('../src/discovery/credential-discovery.js')
       assert.ok(discovery.CredentialDiscovery, 'CredentialDiscovery should be available')
@@ -62,7 +62,7 @@ describe('discovery System Integration', () => {
     }
   })
 
-  test('scheduler should be importable', async () => {
+  it('scheduler should be importable', async () => {
     try {
       const scheduler = await import('../src/discovery/scheduler.js')
       assert.ok(scheduler.DiscoveryScheduler, 'DiscoveryScheduler should be available')
@@ -75,7 +75,7 @@ describe('discovery System Integration', () => {
 })
 
 describe('database Integration', () => {
-  test('database system should be available', async () => {
+  it('database system should be available', async () => {
     try {
       const db = await import('../src/database/index.js')
       assert.ok(db.database !== undefined, 'database should be exported')
@@ -89,7 +89,7 @@ describe('database Integration', () => {
 })
 
 describe('error Handling Integration', () => {
-  test('simple error handler should work', async () => {
+  it('simple error handler should work', async () => {
     try {
       const errorHandler = await import('../src/server/simple-error-handler.js')
 
@@ -110,7 +110,7 @@ describe('error Handling Integration', () => {
 })
 
 describe('end-to-End MCP Flow', () => {
-  test('complete MCP initialization flow should work', async () => {
+  it('complete MCP initialization flow should work', async () => {
     const flowStart = performance.now()
 
     try {
@@ -123,7 +123,7 @@ describe('end-to-End MCP Flow', () => {
       perfTools.initializePerformanceOptimizations()
 
       // 3. Check if tools can be loaded
-      const tools = await import('../src/tools/index.js')
+      await import('../src/tools/index.js')
 
       // 4. Simulate tool execution
       const mockTools = perfTools.getAllTools()
@@ -145,7 +145,7 @@ describe('end-to-End MCP Flow', () => {
 })
 
 describe('real-world Usage Simulation', () => {
-  test('simulate multiple tool executions', async () => {
+  it('simulate multiple tool executions', async () => {
     const simulationStart = performance.now()
 
     // Simulate 50 rapid tool executions

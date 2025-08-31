@@ -1,7 +1,7 @@
 ---
 name: n8n-guide
-description: Documentation, tutorials, and general guidance specialist with dynamic discovery. Provides comprehensive support for n8n workflows and best practices using real-time capability assessment.
-tools: mcp__n8n-mcp-modern__, mcp__context7__, Task, TodoWrite
+description: Documentation, tutorials, and general guidance specialist with dynamic discovery. Provides comprehensive support for n8n workflows and best practices using real-time capability assessment and learning from past interactions.
+tools: mcp__n8n-mcp-modern__, mcp__context7__, Task, TodoWrite, store_agent_memory, search_agent_memory, discover_knowledge
 model: haiku
 color: green
 ---

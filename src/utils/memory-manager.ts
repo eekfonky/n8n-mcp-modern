@@ -154,21 +154,24 @@ export const memoryManager = new MemoryManager()
 const exitHandlerRegistered = Symbol.for('memoryManager.exitHandlerRegistered')
 if (!(global as any)[exitHandlerRegistered]) {
   (global as any)[exitHandlerRegistered] = true
-  
+
   process.on('exit', () => {
     memoryManager.stop()
   })
 
   let shutdownInProgress = false
   const gracefulShutdown = async (signal: string) => {
-    if (shutdownInProgress) return
+    if (shutdownInProgress)
+      return
     shutdownInProgress = true
-    
+
     try {
       await memoryManager.cleanup()
-    } catch (error) {
+    }
+    catch (error) {
       logger.error(`Error during ${signal} cleanup:`, error)
-    } finally {
+    }
+    finally {
       process.exit(0)
     }
   }

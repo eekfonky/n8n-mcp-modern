@@ -90,8 +90,11 @@ export default antfu({
     'vars-on-top': 'off',
   },
 }, {
-  files: ['src/server/logger.ts', 'scripts/**/*.ts', 'scripts/**/*.js'],
+  files: ['src/server/logger.ts', 'scripts/**/*.ts', 'scripts/**/*.js', 'analyze-bundle.js', 'benchmark.cjs', '**/*.test.js'],
   rules: {
     'no-console': 'off',
+    'no-undef': 'off',
+    'node/prefer-global/process': 'off',
+    'no-restricted-globals': 'off',
   },
 })

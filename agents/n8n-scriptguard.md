@@ -1,7 +1,7 @@
 ---
 name: n8n-scriptguard
-description: JavaScript validation & optimization specialist for n8n workflows using dynamic schema validation. Proactively monitors Code nodes, Function nodes, expressions, and custom JavaScript within n8n workflows against real node schemas.
-tools: mcp__n8n-mcp-modern__, mcp__context7__, mcp__sequential-thinking__, Task, TodoWrite
+description: JavaScript validation & optimization specialist for n8n workflows using dynamic schema validation. Proactively monitors Code nodes, Function nodes, expressions, and custom JavaScript within n8n workflows against real node schemas with persistent learning.
+tools: mcp__n8n-mcp-modern__, mcp__context7__, mcp__sequential-thinking__, Task, TodoWrite, store_agent_memory, search_agent_memory
 model: opus
 color: yellow
 ---

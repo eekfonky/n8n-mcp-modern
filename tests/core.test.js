@@ -5,20 +5,19 @@
  */
 
 import assert from 'node:assert'
-import { test, describe } from 'node:test'
 import { performance } from 'node:perf_hooks'
+import { describe, it } from 'vitest'
 import { config, getNormalizedN8nUrl, hasN8nApi } from '../dist/simple-config.js'
 import { SimpleHttpClient } from '../dist/utils/simple-http-client.js'
 
-describe('Core Configuration Tests', () => {
-  test('config should have expected structure', () => {
+describe('core Configuration Tests', () => {
+  it('config should have expected structure', () => {
     assert.ok(typeof config === 'object', 'config should be an object')
     assert.ok(typeof hasN8nApi === 'boolean', 'hasN8nApi should be boolean')
   })
 
-  test('getNormalizedN8nUrl should handle various URL formats', () => {
+  it('getNormalizedN8nUrl should handle various URL formats', () => {
     // Test URL normalization
-    const testUrl = 'http://localhost:5678'
     const normalized = getNormalizedN8nUrl()
 
     if (normalized) {
@@ -26,19 +25,19 @@ describe('Core Configuration Tests', () => {
     }
   })
 
-  test('config agents should default to all', () => {
+  it('config agents should default to all', () => {
     assert.ok(Array.isArray(config.agents?.enabled), 'agents.enabled should be array')
     assert.ok(config.agents?.enabled?.includes('all'), 'should include "all" by default')
   })
 })
 
 describe('simple HTTP Client Tests', () => {
-  test('simpleHttpClient should construct properly', () => {
+  it('simpleHttpClient should construct properly', () => {
     const client = new SimpleHttpClient()
     assert.ok(client, 'client should be created')
   })
 
-  test('simpleHttpClient request options should be valid', async () => {
+  it('simpleHttpClient request options should be valid', async () => {
     const client = new SimpleHttpClient('http://localhost:3000')
 
     // Test timeout handling
@@ -52,7 +51,7 @@ describe('simple HTTP Client Tests', () => {
     }
   })
 
-  test('pOST method should handle different body types', () => {
+  it('pOST method should handle different body types', () => {
     const client = new SimpleHttpClient()
 
     // Should not throw when creating request
@@ -71,7 +70,7 @@ describe('simple HTTP Client Tests', () => {
 })
 
 describe('performance Tests', () => {
-  test('configuration loading should be fast', () => {
+  it('configuration loading should be fast', () => {
     const startTime = performance.now()
 
     // Re-import to test loading time
@@ -81,7 +80,7 @@ describe('performance Tests', () => {
     })
   })
 
-  test('hTTP client creation should be lightweight', () => {
+  it('hTTP client creation should be lightweight', () => {
     const startTime = performance.now()
     const client = new SimpleHttpClient('http://test.com', { test: 'header' })
     const creationTime = performance.now() - startTime
@@ -92,7 +91,7 @@ describe('performance Tests', () => {
 })
 
 describe('memory Tests', () => {
-  test('objects should not create memory leaks', () => {
+  it('objects should not create memory leaks', () => {
     const initialMemory = process.memoryUsage().heapUsed
 
     // Create many HTTP clients and let them be garbage collected

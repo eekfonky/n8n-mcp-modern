@@ -811,12 +811,12 @@ export class DatabaseManager {
   searchNodes(query: string): N8NNodeDatabase[] {
     return this.safeExecute('searchNodes', (db) => {
       // Security: Sanitize search query to prevent SQL injection
-      const sanitizedQuery = query.replace(/[^\w\s-_.]/g, '').substring(0, 100)
-      
+      const sanitizedQuery = query.replace(/[^\w\s.]/g, '').substring(0, 100)
+
       if (sanitizedQuery.length === 0) {
         return [] // Return empty array for empty/invalid search
       }
-      
+
       const searchQuery = `
         SELECT * FROM nodes 
         WHERE display_name LIKE ? OR description LIKE ? OR name LIKE ?
@@ -985,13 +985,13 @@ export class DatabaseManager {
       // Security: Safe global state access for test environment only
       const globalKey = Symbol.for('__TEST_DB_STORAGE__')
       let testStorage = (globalThis as any)[globalKey] as TestStorage
-      
+
       if (!testStorage) {
         testStorage = {
           stories: new Map(),
           decisions: new Map(),
         } as TestStorage
-        
+
         // Only set if we're actually in test environment
         if (process.env.NODE_ENV === 'test') {
           (globalThis as any)[globalKey] = testStorage

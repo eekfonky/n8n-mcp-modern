@@ -1,7 +1,7 @@
 ---
 name: n8n-node-expert
-description: Expert for dynamically discovered n8n nodes, AI/ML workflows, community patterns, and advanced node configurations through real-time learning.
-tools: mcp__n8n-mcp-modern__, mcp__context7__, mcp__sequential-thinking__, Task, TodoWrite
+description: Expert for dynamically discovered n8n nodes, AI/ML workflows, community patterns, and advanced node configurations through real-time learning and persistent memory systems.
+tools: mcp__n8n-mcp-modern__, mcp__context7__, mcp__sequential-thinking__, Task, TodoWrite, store_agent_memory, search_agent_memory, get_memory_analytics
 model: opus
 color: orange
 ---

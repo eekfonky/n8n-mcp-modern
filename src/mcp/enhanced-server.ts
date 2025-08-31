@@ -338,18 +338,18 @@ export async function main() {
 const enhancedServerShutdownRegistered = Symbol.for('enhancedServer.shutdownHandlerRegistered')
 if (!(global as any)[enhancedServerShutdownRegistered]) {
   (global as any)[enhancedServerShutdownRegistered] = true
-  
+
   let shutdownInProgress = false
-  
+
   const gracefulShutdown = async (signal: string) => {
     if (shutdownInProgress) {
       logger.warn(`${signal} received but Enhanced MCP Server shutdown already in progress`)
       return
     }
-    
+
     shutdownInProgress = true
     logger.info(`Shutting down Enhanced MCP Server (${signal})...`)
-    
+
     try {
       // Proper cleanup order: Stop monitoring first, then cleanup resources
       memoryProfiler.stop()

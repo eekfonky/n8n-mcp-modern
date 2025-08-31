@@ -184,18 +184,18 @@ async function main() {
 const mainShutdownHandlerRegistered = Symbol.for('main.shutdownHandlerRegistered')
 if (!(global as any)[mainShutdownHandlerRegistered]) {
   (global as any)[mainShutdownHandlerRegistered] = true
-  
+
   let shutdownInProgress = false
-  
+
   const gracefulShutdown = async (signal: string) => {
     if (shutdownInProgress) {
       logger.warn(`${signal} received but shutdown already in progress`)
       return
     }
-    
+
     shutdownInProgress = true
     logger.info(`Shutting down n8n-MCP Modern (${signal})...`)
-    
+
     try {
       // Stop memory profiler and get final stats
       memoryProfiler.stop()

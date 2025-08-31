@@ -42,7 +42,7 @@ Promise.resolve().then(async () => {
 
   for (const op of operations) {
     const opStart = performance.now()
-    const result = op.simulate()
+    op.simulate()
     const opTime = Math.round(performance.now() - opStart)
 
     console.log(`  ${op.name}: ${opTime}ms`)

@@ -100,12 +100,12 @@ function parseEnvironment(): Config {
     nodeEnv: env.NODE_ENV,
     debug: env.DEBUG,
   }
-  
+
   // Security: Validate API key without exposing it in logs
   if (configData.n8nApiKey && configData.n8nApiKey.length < 16) {
     throw new Error('N8N_API_KEY must be at least 16 characters long')
   }
-  
+
   return ConfigSchema.parse(configData)
 }
 

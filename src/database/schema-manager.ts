@@ -381,7 +381,7 @@ export class SchemaManager {
       const result = this.db.prepare('SELECT MAX(version) as version FROM schema_versions').get() as { version?: number } | undefined
       return result?.version || 0
     }
-    catch (_error) {
+    catch {
       // Table might not exist yet
       return 0
     }

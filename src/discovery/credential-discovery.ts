@@ -12,6 +12,7 @@
  */
 
 import type { N8NNodeDatabase } from '../types/core.js'
+import process from 'node:process'
 import { database, VersionManager } from '../database/index.js'
 import { logger } from '../server/logger.js'
 import { config } from '../simple-config.js'
@@ -22,7 +23,7 @@ const httpClient = new SimpleHttpClient()
 /**
  * Credential type information from n8n API
  */
-interface CredentialType {
+interface LocalCredentialType {
   name: string
   displayName: string
   documentationUrl?: string
