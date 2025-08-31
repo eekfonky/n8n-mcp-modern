@@ -7,7 +7,7 @@
 import assert from 'node:assert'
 import { readFileSync } from 'node:fs'
 import { performance } from 'node:perf_hooks'
-import { describe, it } from 'vitest'
+import { describe, it } from 'node:test'
 
 describe('startup Performance Tests', () => {
   it('server startup should be under 2 seconds', async () => {
