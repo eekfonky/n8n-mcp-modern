@@ -6,6 +6,7 @@
  */
 
 import type { CallToolRequest, ListToolsRequest } from '@modelcontextprotocol/sdk/types.js'
+import process from 'node:process'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
@@ -102,7 +103,7 @@ async function main() {
   }
 
   // List tools (dynamically discovered)
-  server.setRequestHandler(ListToolsRequestSchema, async (request: ListToolsRequest) => {
+  server.setRequestHandler(ListToolsRequestSchema, async (_request: ListToolsRequest) => {
     try {
       const tools = await getAllTools()
       logger.debug(`Returning ${tools.length} dynamically discovered tools`)
@@ -182,8 +183,8 @@ async function main() {
 
 // Handle process signals with cleanup (prevent duplicate handlers)
 const mainShutdownHandlerRegistered = Symbol.for('main.shutdownHandlerRegistered')
-if (!(global as any)[mainShutdownHandlerRegistered]) {
-  (global as any)[mainShutdownHandlerRegistered] = true
+if (!(globalThis as Record<symbol, boolean>)[mainShutdownHandlerRegistered]) {
+  (globalThis as Record<symbol, boolean>)[mainShutdownHandlerRegistered] = true
 
   let shutdownInProgress = false
 

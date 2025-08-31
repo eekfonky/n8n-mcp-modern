@@ -4,9 +4,12 @@
  * Uses native Node.js tools for zero-dependency analysis
  */
 
+/* eslint-disable no-console */
+
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { performance } from 'node:perf_hooks'
+import process from 'node:process'
 
 const COLORS = {
   GREEN: '\x1B[32m',
@@ -115,7 +118,8 @@ function analyzeSourceFiles() {
   console.log('\nLargest Files:')
   srcFiles.slice(0, 10).forEach((file, _i) => {
     const icon = file.size > 10000 ? '🔴' : file.size > 5000 ? '🟡' : '🟢'
-    console.log(`  ${icon} ${file.path.replace(`${process.cwd()}/`, '')} (${formatBytes(file.size)})`)
+    const relativePath = file.path.replace(`${process.cwd()}/`, '')
+    console.log(`  ${icon} ${relativePath} (${formatBytes(file.size)})`)
   })
 
   return { totalSize, typeScript: typeScript.length, javaScript: javaScript.length }
@@ -212,7 +216,7 @@ function analyzeNodeModules() {
           }
         }
       }
-      catch (_error) {
+      catch {
         // Skip inaccessible directories
       }
       return size
@@ -334,4 +338,7 @@ async function main() {
   console.log(`\n📋 Summary: ${JSON.stringify(summary)}`)
 }
 
-main().catch(console.error)
+main().catch((error) => {
+  console.error('Analysis failed:', error)
+  process.exit(1)
+})

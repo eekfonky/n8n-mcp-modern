@@ -354,7 +354,7 @@ export function createClaudeContext(): SecurityContext {
     permissions: ['mcp:tools:*', 'n8n:api:*'],
     metadata: {
       client: 'Claude Code',
-      version: process.env.npm_package_version,
+      version: process.env.npm_package_version || 'unknown',
     },
   }
 }

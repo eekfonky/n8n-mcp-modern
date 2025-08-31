@@ -11,7 +11,7 @@ import { logger } from '../server/logger.js'
 /**
  * Get cold start optimization statistics
  */
-export async function getColdStartStats(args: Record<string, any>) {
+export async function getColdStartStats(_args: Record<string, any>) {
   try {
     const stats = coldStartOptimizer.getOptimizationStats()
     const timings = startupAnalyzer.getAllTimings()
@@ -55,7 +55,7 @@ export async function getColdStartStats(args: Record<string, any>) {
 /**
  * Generate cold start performance report
  */
-export async function generateColdStartReport(args: Record<string, any>) {
+export async function generateColdStartReport(_args: Record<string, any>) {
   try {
     const performanceReport = startupAnalyzer.generateReport()
     const optimizationStats = coldStartOptimizer.getOptimizationStats()

@@ -11,6 +11,7 @@ import type {
 import type {
   LoggingLevel,
 } from '@modelcontextprotocol/sdk/types.js'
+import process from 'node:process'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
@@ -277,7 +278,7 @@ export async function createEnhancedServer(): Promise<MCPServer> {
     logger.debug('Resources changed', { added, removed })
   })
 
-  resourceManager.on('resource_updated', async ({ uri, content, sessionId }) => {
+  resourceManager.on('resource_updated', async ({ uri, content: _content, sessionId: _sessionId }) => {
     // Send resource updated notification
     await server.notification({
       method: 'notifications/resources/updated',
@@ -306,7 +307,7 @@ export async function createEnhancedServer(): Promise<MCPServer> {
         logger: 'n8n-mcp',
         data: { message, args },
       },
-    }).catch((err) => {
+    }).catch((_err) => {
       // Ignore notification errors
     })
   }
@@ -336,8 +337,8 @@ export async function main() {
 
 // Handle process signals (prevent duplicate handlers)
 const enhancedServerShutdownRegistered = Symbol.for('enhancedServer.shutdownHandlerRegistered')
-if (!(global as any)[enhancedServerShutdownRegistered]) {
-  (global as any)[enhancedServerShutdownRegistered] = true
+if (!(globalThis as Record<symbol, boolean>)[enhancedServerShutdownRegistered]) {
+  (globalThis as Record<symbol, boolean>)[enhancedServerShutdownRegistered] = true
 
   let shutdownInProgress = false
 

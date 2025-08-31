@@ -5,6 +5,8 @@
  * for production performance and reliability
  */
 
+import type { PerformanceObserver } from 'node:perf_hooks'
+import process from 'node:process'
 import { createError } from '../server/enhanced-error-handler.js'
 import { logger } from '../server/logger.js'
 
@@ -86,7 +88,7 @@ export interface ProfilerConfig {
 export class MemoryProfiler {
   private snapshots: MemorySnapshot[] = []
   private profilerTimer: NodeJS.Timeout | undefined = undefined
-  private gcObserver?: any
+  private gcObserver?: PerformanceObserver | null
   private startTime = Date.now()
   private config: ProfilerConfig
   private lastGcStats = { count: 0, time: 0 }
@@ -116,7 +118,10 @@ export class MemoryProfiler {
   private initialize(): void {
     // Setup GC monitoring if available and enabled
     if (this.config.gcMonitoring) {
-      this.setupGCMonitoring()
+      // Don't await here to avoid blocking constructor
+      this.setupGCMonitoring().catch((error) => {
+        logger.warn('Failed to setup GC monitoring:', error)
+      })
     }
 
     // Take initial snapshot
@@ -129,13 +134,13 @@ export class MemoryProfiler {
   /**
    * Setup GC (Garbage Collection) monitoring
    */
-  private setupGCMonitoring(): void {
+  private async setupGCMonitoring(): Promise<void> {
     try {
       // Try to setup performance hooks for GC monitoring (Node.js 8.5+)
-      const { PerformanceObserver, constants } = require('node:perf_hooks')
+      const { PerformanceObserver, constants } = await import('node:perf_hooks')
 
       if (constants && constants.NODE_PERFORMANCE_GC_MAJOR) {
-        this.gcObserver = new PerformanceObserver((list: any) => {
+        this.gcObserver = new PerformanceObserver((list) => {
           const entries = list.getEntries()
           for (const entry of entries) {
             this.lastGcStats.count++
@@ -194,7 +199,7 @@ export class MemoryProfiler {
     if (this.gcObserver) {
       try {
         this.gcObserver.disconnect()
-        this.gcObserver = undefined
+        this.gcObserver = null
       }
       catch (error) {
         logger.warn('Error disconnecting GC observer:', error)
@@ -297,8 +302,11 @@ export class MemoryProfiler {
     const confidence = Math.min(r2 * 2, 1) // R² confidence, capped at 1
     const isLeak = growthRate > this.config.leakDetectionThreshold && confidence > 0.5
 
-    const trend = slope > 50000 ? 'increasing' // 50KB per sample
-      : slope < -50000 ? 'decreasing' : 'stable'
+    const trend = slope > 50000
+      ? 'increasing' // 50KB per sample
+      : slope < -50000
+        ? 'decreasing'
+        : 'stable'
 
     const recommendations = this.generateLeakRecommendations(growthRate, trend, confidence)
 
@@ -405,9 +413,9 @@ export class MemoryProfiler {
    */
   forceGC(): boolean {
     try {
-      if (global.gc) {
+      if (globalThis.gc) {
         const beforeGC = process.memoryUsage().heapUsed
-        global.gc()
+        globalThis.gc()
         const afterGC = process.memoryUsage().heapUsed
         const freed = beforeGC - afterGC
 
@@ -478,7 +486,7 @@ export class MemoryProfiler {
     const sumY = points.reduce((sum, p) => sum + p.y, 0)
     const sumXY = points.reduce((sum, p) => sum + p.x * p.y, 0)
     const sumXX = points.reduce((sum, p) => sum + p.x * p.x, 0)
-    const sumYY = points.reduce((sum, p) => sum + p.y * p.y, 0)
+    const _sumYY = points.reduce((sum, p) => sum + p.y * p.y, 0)
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX)
     const intercept = (sumY - slope * sumX) / n
@@ -733,7 +741,7 @@ export function setupMemoryMonitoring(): void {
       const stats = getQuickMemoryStats()
       logger.info('Final memory stats', stats)
     }
-    catch (error) {
+    catch {
       // Ignore errors during exit
     }
   })

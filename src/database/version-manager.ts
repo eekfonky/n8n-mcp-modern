@@ -342,7 +342,7 @@ export class VersionManager {
     nodesDiscoveredOrResults: number | Partial<Pick<DiscoverySession, 'nodesDiscovered' | 'toolsGenerated' | 'credentialsTested' | 'errorsCount' | 'warningsCount' | 'discoveryLog' | 'performanceMetrics'>>,
     toolsGenerated?: number,
     executionTime?: number,
-    memoryUsed?: number,
+    _memoryUsed?: number,
   ): Promise<void> {
     // Handle method overloading
     let results: Partial<Pick<DiscoverySession, 'nodesDiscovered' | 'toolsGenerated' | 'credentialsTested' | 'errorsCount' | 'warningsCount' | 'discoveryLog' | 'performanceMetrics'>>

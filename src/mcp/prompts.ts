@@ -134,7 +134,7 @@ Please provide:
             context = `\n\nWorkflow context:\n${JSON.stringify(workflow, null, 2)}`
           }
         }
-        catch (e) {
+        catch {
           // Ignore
         }
       }

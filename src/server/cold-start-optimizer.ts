@@ -5,6 +5,7 @@
  * for ultra-fast MCP server initialization
  */
 
+import { Buffer } from 'node:buffer'
 import { performance } from 'node:perf_hooks'
 import { createError } from './enhanced-error-handler.js'
 import { logger } from './logger.js'
@@ -148,7 +149,7 @@ export class ColdStartOptimizer {
       // Phase 2: Setup lazy loading for non-critical modules
       const lazySetupStart = performance.now()
       this.setupLazyLoading()
-      const lazySetupTime = performance.now() - lazySetupStart
+      const _lazySetupTime = performance.now() - lazySetupStart
 
       // Phase 3: Warm up caches if enabled
       if (this.config.warmupCache) {
@@ -337,7 +338,7 @@ export class ColdStartOptimizer {
       try {
         await import(mod)
       }
-      catch (error) {
+      catch {
         // Ignore errors for unavailable modules
       }
     }
@@ -360,7 +361,7 @@ export class ColdStartOptimizer {
       try {
         pattern()
       }
-      catch (error) {
+      catch {
         // Ignore warmup errors
       }
     }
@@ -377,7 +378,7 @@ export class ColdStartOptimizer {
       path.join('.', 'test')
       path.extname('test.js')
     }
-    catch (error) {
+    catch {
       // Ignore warmup errors
     }
   }

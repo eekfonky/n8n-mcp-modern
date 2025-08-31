@@ -152,15 +152,15 @@ export const memoryManager = new MemoryManager()
 
 // Register process exit cleanup (with safety checks to prevent duplicate handlers)
 const exitHandlerRegistered = Symbol.for('memoryManager.exitHandlerRegistered')
-if (!(global as any)[exitHandlerRegistered]) {
-  (global as any)[exitHandlerRegistered] = true
+if (!(globalThis as Record<symbol, boolean>)[exitHandlerRegistered]) {
+  (globalThis as Record<symbol, boolean>)[exitHandlerRegistered] = true
 
   process.on('exit', () => {
     memoryManager.stop()
   })
 
   let shutdownInProgress = false
-  const gracefulShutdown = async (signal: string) => {
+  const gracefulShutdown = async (signal: string): Promise<void> => {
     if (shutdownInProgress)
       return
     shutdownInProgress = true

@@ -11,8 +11,8 @@ import { simpleN8nApi } from '../n8n/simple-api.js'
 import { logger } from '../server/logger.js'
 import { hasN8nApi } from '../simple-config.js'
 import { coldStartOptimizationTools } from './cold-start-optimization-tool.js'
-import { getAllCategories, getAllNodeTemplates } from './comprehensive-node-registry.js'
-import { createDynamicAgentTools } from './dynamic-agent-tools.js'
+import { getAllCategories, getAllNodeTemplates, type NodeTemplate } from './comprehensive-node-registry.js'
+import { createDynamicAgentTools, type DynamicAgentTools } from './dynamic-agent-tools.js'
 import { MCPToolGenerator } from './mcp-tool-generator.js'
 import { memoryOptimizationTools } from './memory-optimization-tool.js'
 import { performanceMonitoringTools } from './performance-monitoring-tool.js'
@@ -23,7 +23,7 @@ const toolHandlers: Map<string, (args: Record<string, unknown>) => Promise<unkno
 let toolGenerator: MCPToolGenerator | null = null
 let credentialDiscovery: CredentialDiscovery | null = null
 let discoveryScheduler: DiscoveryScheduler | null = null
-let dynamicAgentTools: any = null
+let dynamicAgentTools: DynamicAgentTools | null = null
 
 /**
  * Initialize the pure dynamic tool system
@@ -86,12 +86,14 @@ export async function initializeDynamicTools(): Promise<void> {
     }
 
     // Add dynamic agent tools
-    const dynamicTools = dynamicAgentTools.getTools()
-    for (const tool of dynamicTools) {
-      discoveredTools.push(tool)
-      toolHandlers.set(tool.name, async (args: any) => {
-        return await dynamicAgentTools.handleToolCall(tool.name, args)
-      })
+    if (dynamicAgentTools) {
+      const dynamicTools = dynamicAgentTools.getTools()
+      for (const tool of dynamicTools) {
+        discoveredTools.push(tool)
+        toolHandlers.set(tool.name, async (args: Record<string, unknown>) => {
+          return await dynamicAgentTools!.handleToolCall(tool.name, args)
+        })
+      }
     }
 
     // Add iterative workflow building tool
@@ -193,12 +195,13 @@ export async function initializeDynamicTools(): Promise<void> {
     })
 
     // Add handlers for scheduler tools
-    toolHandlers.set('discovery-trigger', async (args: any) => {
+    toolHandlers.set('discovery-trigger', async (args: Record<string, unknown>) => {
       if (!discoveryScheduler) {
         return { error: 'Discovery scheduler not initialized' }
       }
 
-      const sessionId = await discoveryScheduler.triggerDiscovery('manual', args?.reason || 'Manual trigger via MCP')
+      const reason = (args?.reason as string) || 'Manual trigger via MCP'
+      const sessionId = await discoveryScheduler.triggerDiscovery('manual', reason)
 
       return {
         success: true,
@@ -229,7 +232,7 @@ export async function initializeDynamicTools(): Promise<void> {
       }
     })
 
-    toolHandlers.set('discovery-config', async (args: any) => {
+    toolHandlers.set('discovery-config', async (args: Record<string, unknown>) => {
       if (!discoveryScheduler) {
         return { error: 'Discovery scheduler not initialized' }
       }
@@ -248,7 +251,7 @@ export async function initializeDynamicTools(): Promise<void> {
     })
 
     // Add handler for iterative workflow building
-    toolHandlers.set('build_workflow_iteratively', async (args: any) => {
+    toolHandlers.set('build_workflow_iteratively', async (args: Record<string, unknown>) => {
       try {
         if (!simpleN8nApi) {
           return { error: 'n8n API not available' }
@@ -258,7 +261,7 @@ export async function initializeDynamicTools(): Promise<void> {
 
         switch (action) {
           case 'create_session': {
-            if (!workflowName) {
+            if (!workflowName || typeof workflowName !== 'string') {
               return { error: 'workflowName is required for create_session' }
             }
 
@@ -281,10 +284,10 @@ export async function initializeDynamicTools(): Promise<void> {
           }
 
           case 'add_node': {
-            if (!sessionId) {
+            if (!sessionId || typeof sessionId !== 'string') {
               return { error: 'sessionId is required for add_node' }
             }
-            if (!nodeType) {
+            if (!nodeType || typeof nodeType !== 'string') {
               return { error: 'nodeType is required for add_node' }
             }
 
@@ -296,7 +299,7 @@ export async function initializeDynamicTools(): Promise<void> {
             // Create node object
             const node = {
               type: nodeType,
-              parameters: nodeParameters || {},
+              parameters: (nodeParameters as Record<string, unknown>) || {},
               position: [100 + session.currentNodes.length * 200, 100] as [number, number],
             }
 
@@ -323,7 +326,7 @@ export async function initializeDynamicTools(): Promise<void> {
           }
 
           case 'test_workflow': {
-            if (!sessionId) {
+            if (!sessionId || typeof sessionId !== 'string') {
               return { error: 'sessionId is required for test_workflow' }
             }
 
@@ -345,7 +348,7 @@ export async function initializeDynamicTools(): Promise<void> {
           }
 
           case 'create_checkpoint': {
-            if (!sessionId) {
+            if (!sessionId || typeof sessionId !== 'string') {
               return { error: 'sessionId is required for create_checkpoint' }
             }
 
@@ -364,10 +367,10 @@ export async function initializeDynamicTools(): Promise<void> {
           }
 
           case 'rollback': {
-            if (!sessionId) {
+            if (!sessionId || typeof sessionId !== 'string') {
               return { error: 'sessionId is required for rollback' }
             }
-            if (checkpointId === undefined) {
+            if (typeof checkpointId !== 'number') {
               return { error: 'checkpointId is required for rollback' }
             }
 
@@ -390,7 +393,7 @@ export async function initializeDynamicTools(): Promise<void> {
           }
 
           case 'get_suggestions': {
-            if (!sessionId) {
+            if (!sessionId || typeof sessionId !== 'string') {
               return { error: 'sessionId is required for get_suggestions' }
             }
 
@@ -414,7 +417,7 @@ export async function initializeDynamicTools(): Promise<void> {
           }
 
           case 'validate_connections': {
-            if (!sessionId) {
+            if (!sessionId || typeof sessionId !== 'string') {
               return { error: 'sessionId is required for validate_connections' }
             }
 
@@ -433,7 +436,7 @@ export async function initializeDynamicTools(): Promise<void> {
           }
 
           case 'preview_workflow': {
-            if (!sessionId) {
+            if (!sessionId || typeof sessionId !== 'string') {
               return { error: 'sessionId is required for preview_workflow' }
             }
 
@@ -458,7 +461,7 @@ export async function initializeDynamicTools(): Promise<void> {
           }
 
           case 'complete_workflow': {
-            if (!sessionId) {
+            if (!sessionId || typeof sessionId !== 'string') {
               return { error: 'sessionId is required for complete_workflow' }
             }
 
@@ -962,7 +965,7 @@ function _createNodeHandler(node: N8NNodeAPI) {
 /**
  * Create handler for node template
  */
-function createNodeTemplateHandler(nodeTemplate: any) {
+function createNodeTemplateHandler(nodeTemplate: NodeTemplate) {
   return async (args: Record<string, unknown>) => {
     return {
       node: nodeTemplate.name,
@@ -981,7 +984,7 @@ function createNodeTemplateHandler(nodeTemplate: any) {
 /**
  * Create handler for specific node operation
  */
-function createOperationHandler(nodeTemplate: any, operation: string) {
+function createOperationHandler(nodeTemplate: NodeTemplate, operation: string) {
   return async (args: Record<string, unknown>) => {
     return {
       node: nodeTemplate.name,

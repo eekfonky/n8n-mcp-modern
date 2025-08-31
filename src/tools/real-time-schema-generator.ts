@@ -179,7 +179,7 @@ export class RealTimeSchemaGenerator {
 
       // Small delay between batches to avoid overwhelming the system
       if (i + batchSize < contexts.length) {
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise<void>(resolve => setTimeout(resolve, 100))
       }
     }
 
@@ -336,7 +336,7 @@ export class RealTimeSchemaGenerator {
           zodType = zodType.default(prop.default)
         break
 
-      case 'number':
+      case 'number': {
         jsonSchema = {
           type: 'number',
           description: prop.description || prop.displayName || `${prop.name} parameter`,
@@ -353,6 +353,7 @@ export class RealTimeSchemaGenerator {
         if (prop.default !== undefined)
           zodType = zodType.default(prop.default)
         break
+      }
 
       case 'boolean':
         jsonSchema = {
@@ -516,7 +517,7 @@ export class RealTimeSchemaGenerator {
   private addCommonWorkflowFields(
     properties: Record<string, any>,
     zodSchema: Record<string, z.ZodTypeAny>,
-    required: string[],
+    _required: string[],
   ): void {
     // Add workflow execution context fields
     properties.workflowId = {

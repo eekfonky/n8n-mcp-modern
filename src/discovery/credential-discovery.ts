@@ -23,7 +23,7 @@ const httpClient = new SimpleHttpClient()
 /**
  * Credential type information from n8n API
  */
-interface LocalCredentialType {
+interface _LocalCredentialType {
   name: string
   displayName: string
   documentationUrl?: string

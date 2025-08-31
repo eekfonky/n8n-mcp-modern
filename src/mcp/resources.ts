@@ -8,13 +8,23 @@ import type {
   ResourceContent,
 } from '@modelcontextprotocol/sdk/types.js'
 import { EventEmitter } from 'node:events'
+import process from 'node:process'
 import { simpleN8nApi } from '../n8n/simple-api.js'
 import { logger } from '../server/logger.js'
 import { hasN8nApi } from '../simple-config.js'
 
+// Type for cached resource data
+interface CachedResourceData {
+  id: string | number
+  name?: string
+  type?: string
+  lastModified?: Date
+  data?: Record<string, unknown>
+}
+
 export class ResourceManager extends EventEmitter {
   private subscriptions = new Map<string, Set<string>>()
-  private resourceCache = new Map<string, any>()
+  private resourceCache = new Map<string, CachedResourceData>()
   private updateInterval: NodeJS.Timeout | null = null
 
   constructor() {
@@ -117,7 +127,7 @@ export class ResourceManager extends EventEmitter {
     const resourceId = parts[1]
 
     try {
-      let content: any = null
+      let content: Record<string, unknown> | null = null
       let text: string = ''
 
       switch (resourceType) {
@@ -280,7 +290,7 @@ export class ResourceManager extends EventEmitter {
   /**
    * Notify subscribers of resource changes
    */
-  private notifySubscribers(uri: string, content: any) {
+  private notifySubscribers(uri: string, content: Record<string, unknown>) {
     const subscribers = this.subscriptions.get(uri)
     if (subscribers) {
       for (const sessionId of subscribers) {

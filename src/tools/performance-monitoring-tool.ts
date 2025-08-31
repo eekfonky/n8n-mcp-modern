@@ -5,7 +5,9 @@
  * capabilities as MCP tools for production observability
  */
 
+import { loadavg } from 'node:os'
 import { performance } from 'node:perf_hooks'
+import process from 'node:process'
 import { coldStartOptimizer } from '../server/cold-start-optimizer.js'
 import { errorMonitoringService } from '../server/error-monitoring.js'
 import { logger } from '../server/logger.js'
@@ -176,7 +178,7 @@ class SystemHealthChecker {
   }> {
     const memUsage = process.memoryUsage()
     const cpuUsage = process.cpuUsage()
-    const loadAvg = require('node:os').loadavg()
+    const loadAvg = loadavg()
 
     return {
       cpu: {

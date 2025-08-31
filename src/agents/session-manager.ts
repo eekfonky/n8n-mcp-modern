@@ -5,6 +5,7 @@
  */
 
 import type { AgentSession, SessionOperation } from '../database/dynamic-agent-db.js'
+import type { CipherGCM, DecipherGCM } from 'node:crypto'
 import { Buffer } from 'node:buffer'
 import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto'
 import process from 'node:process'
@@ -451,7 +452,7 @@ export class AgentSessionManager {
     context: Record<string, any>,
   ): Promise<EncryptedSessionData> {
     const iv = randomBytes(16)
-    const cipher = createCipheriv(this.config.encryptionAlgorithm, this.encryptionKey, iv)
+    const cipher = createCipheriv(this.config.encryptionAlgorithm, this.encryptionKey, iv) as CipherGCM
 
     // Encrypt state
     const stateBuffer = Buffer.from(JSON.stringify(state), 'utf8')
@@ -463,7 +464,7 @@ export class AgentSessionManager {
 
     encryptedStateChunks.push(cipher.final())
     const encryptedState = Buffer.concat(encryptedStateChunks)
-    const authTag = (cipher as any).getAuthTag()
+    const authTag = cipher.getAuthTag()
 
     // Split encrypted data
     const encryptedContext = encryptedState.slice(stateBuffer.length)
@@ -511,8 +512,8 @@ export class AgentSessionManager {
     }
 
     // Decrypt data
-    const decipher = createDecipheriv(this.config.encryptionAlgorithm, this.encryptionKey, iv);
-    (decipher as any).setAuthTag(authTag)
+    const decipher = createDecipheriv(this.config.encryptionAlgorithm, this.encryptionKey, iv) as DecipherGCM
+    decipher.setAuthTag(authTag)
 
     const decryptedChunks = [decipher.update(actualEncryptedData), decipher.final()]
     const decryptedData = Buffer.concat(decryptedChunks).toString('utf8')
@@ -525,7 +526,7 @@ export class AgentSessionManager {
         context: parsed.context ?? {},
       }
     }
-    catch (_error) {
+    catch {
       throw new Error('Failed to parse decrypted session data')
     }
   }

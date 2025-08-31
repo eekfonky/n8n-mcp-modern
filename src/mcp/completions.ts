@@ -10,10 +10,10 @@ import type {
 import { simpleN8nApi } from '../n8n/simple-api.js'
 import { logger } from '../server/logger.js'
 import { hasN8nApi } from '../simple-config.js'
-import { getAllNodeTemplates } from '../tools/comprehensive-node-registry.js'
+import { getAllNodeTemplates, type NodeTemplate } from '../tools/comprehensive-node-registry.js'
 
 export class CompletionManager {
-  private nodeCache: Map<string, any> = new Map()
+  private nodeCache: Map<string, NodeTemplate> = new Map()
   private credentialTypes: Set<string> = new Set()
 
   constructor() {
@@ -92,7 +92,7 @@ export class CompletionManager {
   private async completePromptArgument(
     promptName: string,
     argument: { name: string, value: string },
-    context: any,
+    _context: Record<string, unknown>,
   ): Promise<CompleteResult> {
     const values: string[] = []
 
@@ -204,7 +204,7 @@ export class CompletionManager {
   private async completeResourceArgument(
     resourceUri: string,
     argument: { name: string, value: string },
-    context: any,
+    _context: Record<string, unknown>,
   ): Promise<CompleteResult> {
     const values: string[] = []
 
@@ -250,7 +250,7 @@ export class CompletionManager {
   private async completeToolArgument(
     toolName: string,
     argument: { name: string, value: string },
-    context: any,
+    _context: Record<string, unknown>,
   ): Promise<CompleteResult> {
     const values: string[] = []
 
@@ -258,28 +258,13 @@ export class CompletionManager {
     if (toolName.startsWith('node-')) {
       const nodeType = toolName.replace('node-', '').replace(/-/g, '.')
 
-      if (argument.name === 'operation') {
-        // Suggest operations for this node type
+      if (argument.name === 'operation' || argument.name === 'resource') {
+        // Suggest operations/resources for this node type
         const nodeTemplate = this.nodeCache.get(nodeType)
-        if (nodeTemplate?.properties) {
-          const operations = nodeTemplate.properties
-            .filter((p: any) => p.name === 'operation')
-            .flatMap((p: any) => p.options || [])
-            .map((o: any) => o.value)
-            .filter((v: string) => v.toLowerCase().includes(argument.value.toLowerCase()))
-          values.push(...operations)
-        }
-      }
-      else if (argument.name === 'resource') {
-        // Suggest resources for this node type
-        const nodeTemplate = this.nodeCache.get(nodeType)
-        if (nodeTemplate?.properties) {
-          const resources = nodeTemplate.properties
-            .filter((p: any) => p.name === 'resource')
-            .flatMap((p: any) => p.options || [])
-            .map((o: any) => o.value)
-            .filter((v: string) => v.toLowerCase().includes(argument.value.toLowerCase()))
-          values.push(...resources)
+        if (nodeTemplate?.commonOperations) {
+          const filtered = nodeTemplate.commonOperations
+            .filter((op: string) => op.toLowerCase().includes(argument.value.toLowerCase()))
+          values.push(...filtered)
         }
       }
     }

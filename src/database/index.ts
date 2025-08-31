@@ -18,12 +18,12 @@ import { N8NMcpError } from '../types/fast-types.js'
 import { getSchemaManager } from './schema-manager.js'
 
 // Optional dependency - may not be available
-// eslint-disable-next-line ts/no-explicit-any
-type DatabaseConstructor = any
-let Database: DatabaseConstructor = null
+type DatabaseInstance = import('better-sqlite3').Database
+
+let Database: any = null
 
 // Helper to dynamically load SQLite
-async function loadDatabase(): Promise<DatabaseConstructor> {
+async function loadDatabase(): Promise<any> {
   if (Database)
     return Database
 
@@ -160,14 +160,14 @@ export class DatabaseQueryError extends N8NMcpError {
  * Database manager class
  */
 export class DatabaseManager {
-  private db: import('better-sqlite3').Database | null = null
+  private db: DatabaseInstance | null = null
   private schemaManager: SchemaManager | null = null
 
   /**
    * Get the underlying database instance for advanced operations
    * @internal
    */
-  get rawDatabase(): import('better-sqlite3').Database | null {
+  get rawDatabase(): DatabaseInstance | null {
     return this.db
   }
 
@@ -190,7 +190,7 @@ export class DatabaseManager {
   private cacheMisses: number = 0
   private sqliteAvailable: boolean = false
   private queryPerformanceStats: Map<string, { count: number, totalTime: number, avgTime: number }> = new Map()
-  private connectionPool: import('better-sqlite3').Database[] = [] // For future multi-connection support
+  private connectionPool: DatabaseInstance[] = [] // For future multi-connection support
   private readonly maxConnections: number = 5
   private transactionCount: number = 0
   private rollbackCount: number = 0
@@ -239,7 +239,7 @@ export class DatabaseManager {
   /**
    * Safe execution wrapper for database operations with error handling and performance tracking
    */
-  private safeExecute<T>(operation: string, fn: (db: import('better-sqlite3').Database) => T, context?: Record<string, unknown>): T {
+  private safeExecute<T>(operation: string, fn: (db: DatabaseInstance) => T, context?: Record<string, unknown>): T {
     if (!this.sqliteAvailable) {
       logger.debug(`Database operation skipped - SQLite not available: ${operation}`)
       // Return empty results for database operations when SQLite is not available
@@ -498,7 +498,11 @@ export class DatabaseManager {
 
       // Open database connection
       this.db = new DatabaseClass(this.dbPath, {
-        verbose: config.debug ? (sql: string): void => logger.debug('Database query:', { sql }) : undefined,
+        verbose: config.debug ? ((message?: unknown): void => {
+          if (typeof message === 'string') {
+            logger.debug('Database query:', { sql: message })
+          }
+        }) : undefined,
       })
 
       // Enhanced performance optimizations
@@ -973,7 +977,7 @@ export class DatabaseManager {
    * @param sqlCallback - Callback that receives the database instance
    * @returns Result of the callback or null if database unavailable
    */
-  executeCustomSQL<T>(operation: string, sqlCallback: (db: import('better-sqlite3').Database) => T): T | null {
+  executeCustomSQL<T>(operation: string, sqlCallback: (db: DatabaseInstance) => T): T | null {
     // In test environment, create a mock database and execute the callback
     if (process.env.NODE_ENV === 'test' && process.env.DATABASE_IN_MEMORY === 'true') {
       // Simple in-memory storage for tests
@@ -1108,7 +1112,7 @@ export class DatabaseManager {
             return []
           },
         }),
-      } as unknown as import('better-sqlite3').Database
+      } as unknown as DatabaseInstance
 
       try {
         return sqlCallback(mockDb)
@@ -1151,7 +1155,7 @@ export class DatabaseManager {
   /**
    * Get or create prepared statement with caching
    */
-  private getPreparedStatement(db: import('better-sqlite3').Database, key: string, sql: string): import('better-sqlite3').Statement {
+  private getPreparedStatement(db: DatabaseInstance, key: string, sql: string): import('better-sqlite3').Statement {
     if (!this.preparedStatements.has(key)) {
       this.preparedStatements.set(key, db.prepare(sql))
     }
@@ -1201,7 +1205,7 @@ export class DatabaseManager {
   /**
    * Async wrapper for heavy operations to prevent event loop blocking
    */
-  private async asyncSafeExecute<T>(operation: string, fn: (db: import('better-sqlite3').Database) => T, context?: Record<string, unknown>): Promise<T> {
+  private async asyncSafeExecute<T>(operation: string, fn: (db: DatabaseInstance) => T, context?: Record<string, unknown>): Promise<T> {
     return new Promise((resolve, reject) => {
       setImmediate(() => {
         try {

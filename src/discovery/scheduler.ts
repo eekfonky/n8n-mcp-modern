@@ -11,11 +11,33 @@
  * - Performance monitoring and adaptive scheduling
  */
 
+import type { Buffer } from 'node:buffer'
+import { createHmac } from 'node:crypto'
+import process from 'node:process'
+import { z } from 'zod'
 import { database, VersionManager } from '../database/index.js'
 import { config } from '../server/config.js'
 import { logger } from '../server/logger.js'
 import { MCPToolGenerator } from '../tools/mcp-tool-generator.js'
 import { CredentialDiscovery } from './credential-discovery.js'
+
+// Discovery environment variables validation schema
+const DiscoveryEnvSchema = z.object({
+  ENABLE_DISCOVERY_SCHEDULING: z.string().optional().default('true'),
+  DISCOVERY_INTERVAL_MINUTES: z.string().optional().default('60'),
+  ENABLE_VERSION_DETECTION: z.string().optional().default('true'),
+  VERSION_CHECK_INTERVAL_MINUTES: z.string().optional().default('15'),
+  MAX_CONCURRENT_DISCOVERY_SESSIONS: z.string().optional().default('1'),
+  ENABLE_ADAPTIVE_SCHEDULING: z.string().optional().default('false'),
+  MIN_DISCOVERY_INTERVAL_MINUTES: z.string().optional().default('30'),
+  MAX_DISCOVERY_INTERVAL_MINUTES: z.string().optional().default('240'),
+  ENABLE_DISCOVERY_WEBHOOKS: z.string().optional().default('false'),
+  DISCOVERY_WEBHOOK_PORT: z.string().optional().default('3001'),
+  DISCOVERY_WEBHOOK_SECRET: z.string().optional(),
+  ENABLE_SMART_INTERVALS: z.string().optional().default('false'),
+  ACTIVITY_WINDOW_MINUTES: z.string().optional().default('30'),
+  HIGH_ACTIVITY_INTERVAL_MINUTES: z.string().optional().default('15'),
+})
 
 /**
  * Discovery trigger types
@@ -99,22 +121,25 @@ export class DiscoveryScheduler {
     this.toolGenerator = new MCPToolGenerator()
     this.versionManager = new VersionManager(database)
 
-    // Load configuration with defaults
+    // Validate and load environment variables
+    const envVars = DiscoveryEnvSchema.parse(process.env)
+
+    // Load configuration with validated defaults
     this.config = {
-      enabled: process.env.ENABLE_DISCOVERY_SCHEDULING !== 'false',
-      intervalMinutes: Number.parseInt(process.env.DISCOVERY_INTERVAL_MINUTES || '60', 10),
-      versionDetection: process.env.ENABLE_VERSION_DETECTION !== 'false',
-      versionCheckMinutes: Number.parseInt(process.env.VERSION_CHECK_INTERVAL_MINUTES || '15', 10),
-      maxConcurrentSessions: Number.parseInt(process.env.MAX_CONCURRENT_DISCOVERY_SESSIONS || '1', 10),
-      adaptiveScheduling: process.env.ENABLE_ADAPTIVE_SCHEDULING === 'true',
-      minIntervalMinutes: Number.parseInt(process.env.MIN_DISCOVERY_INTERVAL_MINUTES || '30', 10),
-      maxIntervalMinutes: Number.parseInt(process.env.MAX_DISCOVERY_INTERVAL_MINUTES || '240', 10),
-      webhooksEnabled: process.env.ENABLE_DISCOVERY_WEBHOOKS === 'true',
-      webhookPort: Number.parseInt(process.env.DISCOVERY_WEBHOOK_PORT || '3001', 10),
-      ...(process.env.DISCOVERY_WEBHOOK_SECRET && { webhookSecret: process.env.DISCOVERY_WEBHOOK_SECRET }),
-      smartIntervals: process.env.ENABLE_SMART_INTERVALS === 'true',
-      activityWindowMinutes: Number.parseInt(process.env.ACTIVITY_WINDOW_MINUTES || '30', 10),
-      highActivityIntervalMinutes: Number.parseInt(process.env.HIGH_ACTIVITY_INTERVAL_MINUTES || '15', 10),
+      enabled: envVars.ENABLE_DISCOVERY_SCHEDULING !== 'false',
+      intervalMinutes: Number.parseInt(envVars.DISCOVERY_INTERVAL_MINUTES, 10),
+      versionDetection: envVars.ENABLE_VERSION_DETECTION !== 'false',
+      versionCheckMinutes: Number.parseInt(envVars.VERSION_CHECK_INTERVAL_MINUTES, 10),
+      maxConcurrentSessions: Number.parseInt(envVars.MAX_CONCURRENT_DISCOVERY_SESSIONS, 10),
+      adaptiveScheduling: envVars.ENABLE_ADAPTIVE_SCHEDULING === 'true',
+      minIntervalMinutes: Number.parseInt(envVars.MIN_DISCOVERY_INTERVAL_MINUTES, 10),
+      maxIntervalMinutes: Number.parseInt(envVars.MAX_DISCOVERY_INTERVAL_MINUTES, 10),
+      webhooksEnabled: envVars.ENABLE_DISCOVERY_WEBHOOKS === 'true',
+      webhookPort: Number.parseInt(envVars.DISCOVERY_WEBHOOK_PORT, 10),
+      ...(envVars.DISCOVERY_WEBHOOK_SECRET && { webhookSecret: envVars.DISCOVERY_WEBHOOK_SECRET }),
+      smartIntervals: envVars.ENABLE_SMART_INTERVALS === 'true',
+      activityWindowMinutes: Number.parseInt(envVars.ACTIVITY_WINDOW_MINUTES, 10),
+      highActivityIntervalMinutes: Number.parseInt(envVars.HIGH_ACTIVITY_INTERVAL_MINUTES, 10),
     }
   }
 
@@ -526,7 +551,10 @@ export class DiscoveryScheduler {
 
     // Replace existing adaptive timer
     if (this.scheduledJobs.has('adaptive-discovery')) {
-      clearTimeout(this.scheduledJobs.get('adaptive-discovery')!)
+      const existingTimer = this.scheduledJobs.get('adaptive-discovery')
+      if (existingTimer) {
+        clearTimeout(existingTimer)
+      }
     }
     this.scheduledJobs.set('adaptive-discovery', timer)
 
@@ -608,7 +636,7 @@ export class DiscoveryScheduler {
             reason,
           }))
         }
-        catch (error) {
+        catch {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Invalid JSON payload' }))
         }
@@ -630,7 +658,6 @@ export class DiscoveryScheduler {
     }
 
     try {
-      const { createHmac } = require('node:crypto')
       const expectedSignature = `sha256=${createHmac('sha256', this.config.webhookSecret).update(body).digest('hex')}`
       return signature === expectedSignature
     }
@@ -711,7 +738,10 @@ export class DiscoveryScheduler {
   private scheduleSmartDiscovery(): void {
     // Cancel existing smart discovery timer
     if (this.scheduledJobs.has('smart-discovery')) {
-      clearTimeout(this.scheduledJobs.get('smart-discovery')!)
+      const existingTimer = this.scheduledJobs.get('smart-discovery')
+      if (existingTimer) {
+        clearTimeout(existingTimer)
+      }
       this.scheduledJobs.delete('smart-discovery')
     }
 

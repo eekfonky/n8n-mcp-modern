@@ -5,6 +5,7 @@
 
 import type { SimpleN8nApi } from '../n8n/simple-api.js'
 import type { IterativeBuildSession } from '../tools/workflow-builder-utils.js'
+import { Buffer } from 'node:buffer'
 import * as crypto from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {

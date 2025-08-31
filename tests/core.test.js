@@ -6,7 +6,7 @@
 
 import assert from 'node:assert'
 import { performance } from 'node:perf_hooks'
-import { describe, it } from 'vitest'
+import { describe, it } from 'node:test'
 import { config, getNormalizedN8nUrl, hasN8nApi } from '../dist/simple-config.js'
 import { SimpleHttpClient } from '../dist/utils/simple-http-client.js'
 
@@ -45,7 +45,7 @@ describe('simple HTTP Client Tests', () => {
     try {
       await client.get('/nonexistent', { timeout: 100 })
     }
-    catch (error) {
+    catch {
       const elapsed = performance.now() - startTime
       assert.ok(elapsed < 1000, 'should timeout quickly')
     }
@@ -102,7 +102,7 @@ describe('memory Tests', () => {
     }
 
     // Force garbage collection if available
-    if (global.gc) {
+    if (typeof global.gc === 'function') {
       global.gc()
     }
 

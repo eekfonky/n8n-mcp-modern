@@ -6,6 +6,20 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import { logger } from '../server/logger.js'
 
+// Agent interface for type safety
+interface Agent {
+  type: string
+  execute: (toolName: string, args: Record<string, unknown>) => Promise<{
+    agent: string
+    tool: string
+    args?: Record<string, unknown>
+    status: 'success' | 'error'
+    timestamp: number
+    executionTime: number
+    error?: string
+  }>
+}
+
 // Pre-compiled schema cache (using native Map for performance)
 const compiledSchemas = new Map<string, Function>()
 const toolCache = new Map<string, Tool>()
@@ -17,7 +31,7 @@ const startTime = performance.now()
 /**
  * Lazy-loaded agent registry
  */
-const agentRegistry = new Map<string, any>()
+const agentRegistry = new Map<string, Agent>()
 
 function getAgent(type: string) {
   if (!agentRegistry.has(type)) {
@@ -48,7 +62,7 @@ function getAgent(type: string) {
 /**
  * Create simple agent with direct execution
  */
-function createSimpleAgent(type: string) {
+function createSimpleAgent(type: string): Agent {
   return {
     type,
     execute: async (toolName: string, args: Record<string, unknown>) => {
@@ -60,7 +74,7 @@ function createSimpleAgent(type: string) {
           agent: type,
           tool: toolName,
           args,
-          status: 'success',
+          status: 'success' as const,
           timestamp: Date.now(),
           executionTime: Math.round(performance.now() - executeStart),
         }
@@ -72,8 +86,9 @@ function createSimpleAgent(type: string) {
         return {
           agent: type,
           tool: toolName,
-          status: 'error',
+          status: 'error' as const,
           error: error instanceof Error ? error.message : String(error),
+          timestamp: Date.now(),
           executionTime: Math.round(performance.now() - executeStart),
         }
       }
