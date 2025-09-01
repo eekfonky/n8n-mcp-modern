@@ -272,14 +272,14 @@ export async function initializeDynamicTools(): Promise<void> {
             }
 
             // Create a new session
-            const session = WorkflowBuilderUtils.SessionManager.createSession(workflow.id)
+            const session = WorkflowBuilderUtils.SessionManager.createSession(workflow.id as string)
 
             return {
               success: true,
               sessionId: session.sessionId,
               workflowId: session.workflowId,
               message: `Created iterative workflow session: ${session.sessionId}`,
-              suggestions: await simpleN8nApi.getCompatibleNodes(workflow.id),
+              suggestions: await simpleN8nApi.getCompatibleNodes(workflow.id as string),
             }
           }
 

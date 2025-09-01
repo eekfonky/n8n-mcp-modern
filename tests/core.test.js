@@ -6,7 +6,7 @@
 
 import assert from 'node:assert'
 import { performance } from 'node:perf_hooks'
-import { describe, it } from 'node:test'
+import { describe, it } from 'vitest'
 import { config, getNormalizedN8nUrl, hasN8nApi } from '../dist/simple-config.js'
 import { SimpleHttpClient } from '../dist/utils/simple-http-client.js'
 
@@ -59,7 +59,8 @@ describe('simple HTTP Client Tests', () => {
     const testPost = async (data) => {
       try {
         await client.post('/test', data)
-      } catch (error) {
+      }
+      catch (error) {
         // Expected to fail with invalid URL - that's OK
         // We're just testing that the method accepts different body types
         assert.ok(error.message.includes('Failed to parse URL') || error.message.includes('fetch failed'), 'Expected URL parse error')

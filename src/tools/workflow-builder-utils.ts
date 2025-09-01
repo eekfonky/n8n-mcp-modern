@@ -75,7 +75,7 @@ export interface ValidationResult {
 const SESSION_TIMEOUT_MINUTES = 30
 const MAX_NODES_PER_WORKFLOW = 50
 const MAX_CHECKPOINTS = 10
-const MAX_OPERATIONS_PER_MINUTE = 10
+const MAX_OPERATIONS_PER_MINUTE = 100
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm'
 
 // Approved node types whitelist (can be extended)
@@ -195,6 +195,14 @@ export class SecureSessionManager {
   static cleanupSession(sessionId: string): void {
     this.sessions.delete(sessionId)
     logger.info(`Cleaned up session: ${sessionId}`)
+  }
+
+  /**
+   * Clear all sessions - used for testing
+   */
+  static clearAllSessions(): void {
+    this.sessions.clear()
+    logger.debug('Cleared all sessions')
   }
 
   /**
@@ -324,7 +332,7 @@ export class SecureNodeManager {
 
       // Update workflow via API
       const updateResult = await api.updateWorkflow(session.workflowId, {
-        nodes: session.currentNodes,
+        nodes: session.currentNodes as unknown as Array<Record<string, unknown>>,
       })
 
       if (!updateResult) {
@@ -346,6 +354,12 @@ export class SecureNodeManager {
       return true
     }
     catch (error) {
+      // Rollback: remove node if it was added before API failure
+      if (session.currentNodes.length > 0 && 
+          session.currentNodes[session.currentNodes.length - 1]?.type === node?.type) {
+        session.currentNodes.pop()
+      }
+
       // Audit log failure
       session.securityContext.auditLog.push({
         timestamp: new Date(),
@@ -483,7 +497,7 @@ export class SecureRollbackManager {
 
       // Update workflow via API
       const updateResult = await api.updateWorkflow(session.workflowId, {
-        nodes: restoredNodes,
+        nodes: restoredNodes as unknown as Array<Record<string, unknown>>,
       })
 
       if (!updateResult) {

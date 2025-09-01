@@ -5,11 +5,27 @@
       "command": "npx",
       "args": [
         "-y",
-        "@eekfonky/n8n-mcp-modern"
+        "@eekfonky/n8n-mcp-modern@latest"
       ],
       "env": {
         "N8N_API_URL": "https://n8n.srv925321.hstgr.cloud",
-        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3NjYwNWZlZi0yMjdlLTQ4ZGEtODhkOC05ZTJkNGMwMTM2ZjIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzU1NTU1MDU5fQ.kUQtb9aLt1RFcO-azJIbXRyUriGMKCwo_djgWJP0QKo"
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3NjYwNWZlZi0yMjdlLTQ4ZGEtODhkOC05ZTJkNGMwMTM2ZjIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzU1NTU1MDU5fQ.kUQtb9aLt1RFcO-azJIbXRyUriGMKCwo_djgWJP0QKo",
+        "ENABLE_AGENT_HANDOVERS": "true",
+        "LOG_LEVEL": "info",
+        "ENABLE_CACHE": "true"
+      }
+    },
+    "supabase": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase"
+      ],
+      "env": {
+        "SUPABASE_URL": "https://dmgnrakqkfkjvyeviijg.supabase.co",
+        "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtZ25yYWtxa2ZranZ5ZXZpaWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTAzNzksImV4cCI6MjA2OTIyNjM3OX0.GcJsdME4CXGEol-fSTAFkOxp8voziZedvWsRceLhfLQ",
+        "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtZ25yYWtxa2ZranZ5ZXZpaWpnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzY1MDM3OSwiZXhwIjoyMDY5MjI2Mzc5fQ.-4LYepF5i_tLiIPsNsXvD291O9aU88HoHfjavm-tC3I"
       }
     }
   }

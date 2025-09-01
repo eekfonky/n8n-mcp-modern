@@ -6,7 +6,7 @@
 
 import assert from 'node:assert'
 import { performance } from 'node:perf_hooks'
-import { describe, it } from 'node:test'
+import { describe, it } from 'vitest'
 
 describe('mCP Protocol Integration', () => {
   it('mCP server components should be importable', async () => {
