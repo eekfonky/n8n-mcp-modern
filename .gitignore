@@ -41,6 +41,7 @@ config/secrets.json
 secrets.json
 .secrets/
 auth-tokens.json
+.mcp.json
 
 # GitHub tokens and credentials
 .github-auth

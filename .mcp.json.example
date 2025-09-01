@@ -8,7 +8,7 @@
         "@eekfonky/n8n-mcp-modern@latest"
       ],
       "env": {
-        "N8N_API_URL": "https://n8n.srv925321.hstgr.cloud",
+        "N8N_API_URL": "https://your-n8n-instance.com",
         "N8N_API_KEY": "YOUR_N8N_API_KEY_HERE",
         "ENABLE_AGENT_HANDOVERS": "true",
         "LOG_LEVEL": "info",
@@ -23,7 +23,7 @@
         "@supabase/mcp-server-supabase"
       ],
       "env": {
-        "SUPABASE_URL": "https://dmgnrakqkfkjvyeviijg.supabase.co",
+        "SUPABASE_URL": "https://your-project-id.supabase.co",
         "SUPABASE_ANON_KEY": "YOUR_SUPABASE_ANON_KEY_HERE",
         "SUPABASE_SERVICE_ROLE_KEY": "YOUR_SUPABASE_SERVICE_ROLE_KEY_HERE"
       }
