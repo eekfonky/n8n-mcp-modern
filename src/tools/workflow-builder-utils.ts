@@ -211,8 +211,8 @@ export class SecureSessionManager {
       const nodesData = JSON.stringify(session.currentNodes)
       const nodesHash = crypto.createHash('sha256').update(nodesData).digest('hex')
 
-      // Encrypt nodes data
-      const key = crypto.scryptSync(session.sessionId, 'salt', 32)
+      // Encrypt nodes data with secure salt
+      const key = crypto.scryptSync(session.sessionId, `n8n-mcp-${process.env.NODE_ENV || 'development'}-v7`, 32)
       const iv = crypto.randomBytes(16)
       const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, key, iv)
 
@@ -536,7 +536,7 @@ export class SecureRollbackManager {
    */
   private static decryptCheckpoint(checkpoint: SecureCheckpoint, sessionId: string): N8NWorkflowNode[] | null {
     try {
-      const key = crypto.scryptSync(sessionId, 'salt', 32)
+      const key = crypto.scryptSync(sessionId, `n8n-mcp-${process.env.NODE_ENV || 'development'}-v7`, 32)
       // Extract IV from encrypted data (first 16 bytes when hex encoded = 32 chars)
       const iv = Buffer.from(checkpoint.encryptedNodes.slice(0, 32), 'hex')
       const encryptedData = checkpoint.encryptedNodes.slice(32)

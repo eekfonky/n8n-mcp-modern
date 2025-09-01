@@ -82,15 +82,15 @@ export class ColdStartOptimizer {
       criticalModules: [
         '@modelcontextprotocol/sdk/server/index.js',
         '@modelcontextprotocol/sdk/server/stdio.js',
-        './server/logger.js',
-        './server/config.js',
-        './types/fast-types.js',
+        './logger.js',
+        './config.js',
+        '../types/fast-types.js',
       ],
       lazyModules: [
-        './discovery/credential-discovery.js',
-        './discovery/scheduler.js',
-        './tools/mcp-tool-generator.js',
-        './utils/memory-profiler.js',
+        '../discovery/credential-discovery.js',
+        '../discovery/scheduler.js',
+        '../tools/mcp-tool-generator.js',
+        '../utils/memory-profiler.js',
       ],
       preloadTimeout: 5000, // 5 seconds
       parallelPreload: true,

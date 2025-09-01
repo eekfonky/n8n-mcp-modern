@@ -1,6 +1,6 @@
 {
   "name": "@eekfonky/n8n-mcp-modern",
-  "version": "7.0.0",
+  "version": "7.0.1",
   "description": "Modern n8n MCP server with agent handovers - intelligent complexity assessment, collaborative multi-agent workflows, and context preservation for complex n8n integrations",
   "type": "module",
   "main": "dist/index.js",
