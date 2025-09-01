@@ -8,14 +8,14 @@
 
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { createRequire } from 'node:module'
+import { join } from 'node:path'
 import process from 'node:process'
 
 // Import GitHub auth validator and interactive setup (CommonJS modules)
 const require = createRequire(import.meta.url)
+const { runInteractiveSetup } = require('./interactive-setup.cjs')
 const { validateGitHubAuthentication } = require('./validate-github-auth.cjs')
-const { runInteractiveSetup, detectN8nSetup } = require('./interactive-setup.cjs')
 
 const N8N_API_URL = process.env.N8N_API_URL || 'https://your-n8n-instance.com'
 const N8N_API_KEY = process.env.N8N_API_KEY || 'your-api-key'
@@ -199,10 +199,10 @@ async function extractExistingEnvVars() {
 async function validateEnvironment() {
   // Pre-flight check: Validate GitHub Packages authentication
   console.log('🔍 Validating GitHub Packages authentication...')
-  
+
   try {
     const authResults = await validateGitHubAuthentication(false)
-    
+
     if (!authResults.overall) {
       console.log('❌ GitHub Packages authentication validation failed')
       console.log('   This will prevent seamless installation from GitHub Packages.')
@@ -213,11 +213,13 @@ async function validateEnvironment() {
       console.log('⚠️  Proceeding with installation attempt anyway...')
       console.log('   (Installation may fail without proper authentication)')
       console.log('')
-    } else {
+    }
+    else {
       console.log('✅ GitHub Packages authentication verified')
       console.log('')
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.log('⚠️  Could not validate GitHub authentication:', error.message)
     console.log('   Installation may fail if authentication is not properly configured')
     console.log('')
@@ -251,9 +253,9 @@ async function validateEnvironment() {
     console.log('')
 
     // Check if this is an automated environment (CI, non-interactive terminal)
-    const isAutomated = process.env.CI || 
-                       process.env.DEBIAN_FRONTEND === 'noninteractive' || 
-                       !process.stdin.isTTY
+    const isAutomated = process.env.CI
+      || process.env.DEBIAN_FRONTEND === 'noninteractive'
+      || !process.stdin.isTTY
 
     if (isAutomated) {
       console.log('🤖 Automated environment detected - skipping interactive setup')
@@ -273,16 +275,16 @@ async function validateEnvironment() {
       console.log('Starting interactive setup in 3 seconds...')
       console.log('(Press Ctrl+C to skip and install in offline mode)')
       console.log('')
-      
+
       // Give user a chance to cancel
       await new Promise(resolve => setTimeout(resolve, 3000))
-      
+
       console.log('🚀 Launching interactive setup...')
       console.log('')
-      
+
       // Run interactive setup
       await runInteractiveSetup()
-      
+
       // After successful interactive setup, we can proceed with installation
       // The setup script will have created the configuration files
       console.log('')
@@ -290,13 +292,14 @@ async function validateEnvironment() {
       console.log('Proceeding with MCP server installation...')
       console.log('')
       return false // Fresh install but now configured
-      
-    } catch (error) {
+    }
+    catch (error) {
       if (error.message === 'USER_CANCELLED') {
         console.log('')
         console.log('⏭️  Interactive setup cancelled by user')
         console.log('')
-      } else {
+      }
+      else {
         console.log('')
         console.log('⚠️  Interactive setup failed:', error.message)
         console.log('')
@@ -307,7 +310,7 @@ async function validateEnvironment() {
         console.log('  export N8N_API_KEY="your-api-key"')
         console.log('')
       }
-      
+
       console.log('Proceeding with installation in offline mode...')
       console.log('You can configure the integration later.')
       console.log('')
@@ -408,12 +411,12 @@ async function main() {
   catch (error) {
     const errorMessage = error?.message || 'Unknown error occurred'
     const errorOutput = error?.stderr || ''
-    
+
     console.log('🐛 Debug - Error message:', errorMessage)
 
     // Check if this is a GitHub authentication/package access error
-    const isAuthError = errorOutput.includes('401') || errorOutput.includes('Unauthorized') 
-      || errorOutput.includes('npm error code E401') 
+    const isAuthError = errorOutput.includes('401') || errorOutput.includes('Unauthorized')
+      || errorOutput.includes('npm error code E401')
       || errorMessage.includes('unauthenticated')
       || errorMessage.includes('Bad credentials')
 

@@ -14,9 +14,11 @@
 import type { N8NNodeDatabase } from '../types/core.js'
 import process from 'node:process'
 import { database, VersionManager } from '../database/index.js'
+import { features } from '../server/config.js'
 import { logger } from '../server/logger.js'
-import { config } from '../simple-config.js'
 import { SimpleHttpClient } from '../utils/simple-http-client.js'
+
+const { hasN8nApi } = features
 
 const httpClient = new SimpleHttpClient()
 
@@ -160,9 +162,10 @@ export class CredentialDiscovery {
     const startMemory = process.memoryUsage().heapUsed
 
     try {
-      // Use provided credentials or fall back to config
-      const url = instanceUrl || config.n8nUrl
-      const key = apiKey || config.apiKey
+      // Use provided credentials or configuration
+      const { config } = await import('../server/config.js')
+      const url = instanceUrl || config.n8nApiUrl
+      const key = apiKey || config.n8nApiKey
 
       if (!url || !key) {
         throw new Error('n8n API URL and key required for discovery')

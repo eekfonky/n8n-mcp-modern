@@ -7,6 +7,7 @@ import type { SimpleN8nApi } from '../n8n/simple-api.js'
 import type { N8NWorkflowNode } from '../types/core.js'
 import { Buffer } from 'node:buffer'
 import * as crypto from 'node:crypto'
+import process from 'node:process'
 import { logger } from '../server/logger.js'
 
 // Additional type definitions
@@ -355,8 +356,8 @@ export class SecureNodeManager {
     }
     catch (error) {
       // Rollback: remove node if it was added before API failure
-      if (session.currentNodes.length > 0 && 
-          session.currentNodes[session.currentNodes.length - 1]?.type === node?.type) {
+      if (session.currentNodes.length > 0
+        && session.currentNodes[session.currentNodes.length - 1]?.type === node?.type) {
         session.currentNodes.pop()
       }
 

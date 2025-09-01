@@ -6,7 +6,7 @@
  */
 
 import type { ErrorCode } from './enhanced-error-handler.js'
-import { EnhancedError, errorRecoveryManager, ErrorSeverity } from './enhanced-error-handler.js'
+import { EnhancedError, ErrorSeverity } from './enhanced-error-handler.js'
 import { logger } from './logger.js'
 
 // ============================================================================
@@ -34,7 +34,6 @@ export interface HealthStatus {
   timestamp: Date
   uptime: number
   errorRate: number
-  recoveryRate: number
   criticalErrors: number
   components: {
     database: 'healthy' | 'degraded' | 'failed'
@@ -45,7 +44,6 @@ export interface HealthStatus {
   metrics: {
     totalErrors: number
     errorsByHour: number[]
-    averageRecoveryTime: number
     memoryUsage: number
     cpuUsage?: number
   }
@@ -146,10 +144,6 @@ export class ErrorMonitoringService {
     ).length
 
     const errorRate = recentErrors.length / (3600000 / 1000) // errors per second
-    const recoveryStats = errorRecoveryManager.getRecoveryStats()
-    const recoveryRate = recoveryStats.length > 0
-      ? recoveryStats.reduce((sum, stat) => sum + stat.successRate, 0) / recoveryStats.length
-      : 1.0
 
     // Component health checks
     const components = await this.checkComponentsHealth()
@@ -166,13 +160,11 @@ export class ErrorMonitoringService {
       timestamp: now,
       uptime,
       errorRate,
-      recoveryRate,
       criticalErrors,
       components,
       metrics: {
         totalErrors: this.errorHistory.length,
         errorsByHour,
-        averageRecoveryTime: this.calculateAverageRecoveryTime(),
         memoryUsage: memoryUsagePercent,
       },
     }
@@ -246,7 +238,6 @@ export class ErrorMonitoringService {
     byHour: number[]
     trends: {
       errorRate: 'increasing' | 'decreasing' | 'stable'
-      recoveryRate: 'improving' | 'degrading' | 'stable'
     }
   } {
     const bySeverity = {
@@ -421,15 +412,8 @@ export class ErrorMonitoringService {
    * Calculate average recovery time
    */
   private calculateAverageRecoveryTime(): number {
-    const recoveryStats = errorRecoveryManager.getRecoveryStats()
-
-    if (recoveryStats.length === 0)
-      return 0
-
-    // This is a simplified calculation - in practice you'd track actual recovery times
-    return recoveryStats.reduce((sum, stat) => {
-      return sum + (stat.attempts > 0 ? stat.attempts * 1000 : 0) // Estimate based on attempts
-    }, 0) / recoveryStats.length
+    // With fail-fast approach, recovery time is zero (no retries)
+    return 0
   }
 
   /**
@@ -437,10 +421,9 @@ export class ErrorMonitoringService {
    */
   private calculateTrends(): {
     errorRate: 'increasing' | 'decreasing' | 'stable'
-    recoveryRate: 'improving' | 'degrading' | 'stable'
   } {
     if (this.healthHistory.length < 2) {
-      return { errorRate: 'stable', recoveryRate: 'stable' }
+      return { errorRate: 'stable' }
     }
 
     const recent = this.healthHistory.slice(-5) // Last 5 health checks
@@ -451,18 +434,10 @@ export class ErrorMonitoringService {
       ? older.reduce((sum, h) => sum + h.errorRate, 0) / older.length
       : recentErrorRate
 
-    const recentRecoveryRate = recent.reduce((sum, h) => sum + h.recoveryRate, 0) / recent.length
-    const olderRecoveryRate = older.length > 0
-      ? older.reduce((sum, h) => sum + h.recoveryRate, 0) / older.length
-      : recentRecoveryRate
-
     return {
       errorRate: recentErrorRate > olderErrorRate * 1.1
         ? 'increasing'
         : recentErrorRate < olderErrorRate * 0.9 ? 'decreasing' : 'stable',
-      recoveryRate: recentRecoveryRate > olderRecoveryRate * 1.05
-        ? 'improving'
-        : recentRecoveryRate < olderRecoveryRate * 0.95 ? 'degrading' : 'stable',
     }
   }
 

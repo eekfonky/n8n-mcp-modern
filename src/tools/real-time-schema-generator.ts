@@ -17,6 +17,30 @@ export const SchemaGeneratorConfigSchema = z.object({
 
 export type SchemaGeneratorConfig = z.infer<typeof SchemaGeneratorConfigSchema>
 
+// Supporting types for N8N node definitions
+export interface NodeProperty {
+  name: string
+  type: string
+  required?: boolean
+  default?: unknown
+  options?: Array<{ name: string, value: unknown }>
+}
+
+export interface NodeCredential {
+  name: string
+  required?: boolean
+}
+
+export interface NodeInput {
+  type: string
+  displayName?: string
+}
+
+export interface NodeOutput {
+  type: string
+  displayName?: string
+}
+
 // Schema Generation Context
 export interface SchemaGenerationContext {
   nodeType: string
@@ -24,10 +48,10 @@ export interface SchemaGenerationContext {
   category: string
   displayName: string
   description?: string
-  properties?: any[]
-  credentials?: any[]
-  inputs?: any[]
-  outputs?: any[]
+  properties?: NodeProperty[]
+  credentials?: NodeCredential[]
+  inputs?: NodeInput[]
+  outputs?: NodeOutput[]
 }
 
 // Generated Schema Result
@@ -104,7 +128,11 @@ export class RealTimeSchemaGenerator {
     // Check cache first
     if (this.schemaCache.has(cacheKey)) {
       this.generationStats.cacheHits++
-      return this.schemaCache.get(cacheKey)!
+      const cachedResult = this.schemaCache.get(cacheKey)
+      if (!cachedResult) {
+        throw new Error('Cache corruption detected')
+      }
+      return cachedResult
     }
 
     try {
@@ -133,8 +161,8 @@ export class RealTimeSchemaGenerator {
   async generateSchemaFromEndpoint(
     method: string,
     path: string,
-    parameters?: any[],
-    responses?: any,
+    parameters?: Array<Record<string, unknown>>,
+    _responses?: Record<string, unknown>,
   ): Promise<GeneratedSchemaResult> {
     const context: SchemaGenerationContext = {
       nodeType: `api_${path.replace(/[^a-z0-9]/gi, '_')}`,
@@ -179,7 +207,9 @@ export class RealTimeSchemaGenerator {
 
       // Small delay between batches to avoid overwhelming the system
       if (i + batchSize < contexts.length) {
-        await new Promise<void>(resolve => setTimeout(resolve, 100))
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 100)
+        })
       }
     }
 
@@ -192,7 +222,7 @@ export class RealTimeSchemaGenerator {
    */
   async updateSchema(
     nodeType: string,
-    newProperties: any[],
+    newProperties: NodeProperty[],
   ): Promise<GeneratedSchemaResult | null> {
     const cacheKey = `${nodeType}-latest`
     const existingSchema = this.schemaCache.get(cacheKey)
@@ -225,7 +255,7 @@ export class RealTimeSchemaGenerator {
   /**
    * Get generation statistics
    */
-  getStats() {
+  getStats(): Record<string, unknown> {
     return {
       ...this.generationStats,
       cacheSize: this.schemaCache.size,
@@ -313,13 +343,13 @@ export class RealTimeSchemaGenerator {
     }
   }
 
-  private generateFieldSchema(prop: any): { jsonSchema: any, zodType: z.ZodTypeAny } | null {
+  private generateFieldSchema(prop: NodeProperty): { jsonSchema: Record<string, unknown>, zodType: z.ZodTypeAny } | null {
     if (!prop.name || !prop.type) {
       return null
     }
 
     const baseType = PROPERTY_TYPE_MAP[prop.type as keyof typeof PROPERTY_TYPE_MAP] || 'string'
-    let jsonSchema: any = { type: baseType }
+    let jsonSchema: Record<string, unknown> = { type: baseType }
     let zodType: z.ZodTypeAny
 
     // Handle different property types
@@ -368,7 +398,7 @@ export class RealTimeSchemaGenerator {
 
       case 'options':
         if (prop.options && Array.isArray(prop.options)) {
-          const enumValues = prop.options.map((opt: any) => opt.value || opt.name || opt)
+          const enumValues = prop.options.map(opt => (opt as Record<string, unknown>).value || (opt as Record<string, unknown>).name || opt)
           jsonSchema = {
             type: 'string',
             enum: enumValues,
@@ -384,7 +414,7 @@ export class RealTimeSchemaGenerator {
 
       case 'multiOptions':
         if (prop.options && Array.isArray(prop.options)) {
-          const enumValues = prop.options.map((opt: any) => opt.value || opt.name || opt)
+          const enumValues = prop.options.map(opt => (opt as Record<string, unknown>).value || (opt as Record<string, unknown>).name || opt)
           jsonSchema = {
             type: 'array',
             items: { type: 'string', enum: enumValues },
@@ -452,7 +482,7 @@ export class RealTimeSchemaGenerator {
     return { jsonSchema, zodType }
   }
 
-  private generateValidationRules(prop: any): ValidationRule[] {
+  private generateValidationRules(prop: NodeProperty): ValidationRule[] {
     const rules: ValidationRule[] = []
 
     // Required field rule
@@ -658,13 +688,11 @@ export class RealTimeSchemaGenerator {
     return Array.from(capabilities)
   }
 
-  private convertEndpointParametersToProperties(parameters: any[]): any[] {
+  private convertEndpointParametersToProperties(parameters: Array<Record<string, unknown>>): NodeProperty[] {
     return parameters.map(param => ({
-      name: param.name,
-      type: this.mapEndpointParameterType(param.type),
-      description: param.description,
-      required: param.required,
-      displayName: param.name,
+      name: String(param.name || 'unnamed'),
+      type: this.mapEndpointParameterType(String(param.type || 'string')),
+      required: Boolean(param.required),
       default: param.default,
     }))
   }

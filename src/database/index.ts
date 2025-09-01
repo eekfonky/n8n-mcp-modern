@@ -39,12 +39,6 @@ async function loadDatabase(): Promise<any> {
 }
 
 /**
- * n8n Node metadata
- * @deprecated Use N8NNodeDatabase from types/core.ts instead
- */
-export type N8NNode = N8NNodeDatabase
-
-/**
  * Tool usage statistics
  */
 export interface ToolUsage {
@@ -455,21 +449,10 @@ export class DatabaseManager {
   }
 
   /**
-   * Provide fallback results when SQLite is not available
+   * Fail fast when SQLite is not available
    */
   private getFallbackResult<T>(operation: string): T {
-    switch (operation) {
-      case 'getNodes':
-      case 'searchNodes':
-        return [] as T
-      case 'getToolUsage':
-        return [] as T
-      case 'getAgentRoute':
-        return null as T
-      default:
-        logger.debug(`No fallback available for operation: ${operation}`)
-        return [] as T
-    }
+    throw new DatabaseConnectionError(`Database operation failed: ${operation}. SQLite is required for n8n-MCP Modern.`)
   }
 
   /**
@@ -477,13 +460,11 @@ export class DatabaseManager {
    */
   async initialize(): Promise<void> {
     try {
-      // Try to load SQLite database
+      // Load SQLite database (required)
       const DatabaseClass = await loadDatabase()
 
       if (!DatabaseClass) {
-        logger.info('SQLite not available - running in API-only mode without local database')
-        this.sqliteAvailable = false
-        return
+        throw new DatabaseConnectionError('SQLite is required for n8n-MCP Modern but could not be loaded')
       }
 
       this.sqliteAvailable = true
@@ -498,11 +479,13 @@ export class DatabaseManager {
 
       // Open database connection
       this.db = new DatabaseClass(this.dbPath, {
-        verbose: config.debug ? ((message?: unknown): void => {
-          if (typeof message === 'string') {
-            logger.debug('Database query:', { sql: message })
-          }
-        }) : undefined,
+        verbose: config.debug
+          ? (message?: unknown): void => {
+              if (typeof message === 'string') {
+                logger.debug('Database query:', { sql: message })
+              }
+            }
+          : undefined,
       })
 
       // Enhanced performance optimizations
@@ -511,8 +494,7 @@ export class DatabaseManager {
       // Initialize schema manager and run migrations
       await this.initializeSchemaManager()
 
-      // Initialize with default data (only if needed)
-      await this.initializeDefaultData()
+      // Database initialized successfully
 
       logger.info(`Database initialized: ${this.dbPath}`, {
         schemaVersion: this.schemaManager?.getCurrentSchemaVersion() || 0,
@@ -624,82 +606,8 @@ export class DatabaseManager {
     }
     catch (error) {
       logger.error('Failed to initialize schema manager:', error)
-
-      // Fallback to legacy schema creation if schema manager fails
-      logger.warn('Falling back to legacy schema creation...')
-      await this.createLegacySchema()
+      throw new DatabaseError('Schema initialization failed - database cannot be used', 'initializeSchemaManager', error)
     }
-  }
-
-  /**
-   * Legacy schema creation (fallback only)
-   * @deprecated Use SchemaManager instead
-   */
-  private async createLegacySchema(): Promise<void> {
-    if (!this.db)
-      throw new Error('Database not initialized')
-
-    const schemas = [
-      // n8n nodes table
-      `CREATE TABLE IF NOT EXISTS nodes (
-        name TEXT PRIMARY KEY,
-        display_name TEXT NOT NULL,
-        description TEXT,
-        version INTEGER DEFAULT 1,
-        category TEXT NOT NULL,
-        icon TEXT,
-        inputs TEXT, -- JSON array
-        outputs TEXT, -- JSON array
-        properties TEXT, -- JSON object
-        credentials TEXT, -- JSON array
-        webhooks BOOLEAN DEFAULT FALSE,
-        polling BOOLEAN DEFAULT FALSE,
-        last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
-      )`,
-
-      // Tool usage statistics
-      `CREATE TABLE IF NOT EXISTS tool_usage (
-        tool_name TEXT PRIMARY KEY,
-        usage_count INTEGER DEFAULT 0,
-        last_used DATETIME,
-        total_execution_time INTEGER DEFAULT 0, -- milliseconds
-        success_count INTEGER DEFAULT 0,
-        error_count INTEGER DEFAULT 0
-      )`,
-
-      // Agent routing table
-      `CREATE TABLE IF NOT EXISTS agent_routes (
-        tool_name TEXT,
-        agent_name TEXT,
-        priority INTEGER DEFAULT 1,
-        capabilities TEXT, -- JSON array
-        PRIMARY KEY (tool_name, agent_name)
-      )`,
-
-      // Create indexes for performance
-      `CREATE INDEX IF NOT EXISTS idx_nodes_category ON nodes(category)`,
-      `CREATE INDEX IF NOT EXISTS idx_nodes_updated ON nodes(last_updated)`,
-      `CREATE INDEX IF NOT EXISTS idx_usage_count ON tool_usage(usage_count DESC)`,
-      `CREATE INDEX IF NOT EXISTS idx_agent_priority ON agent_routes(priority DESC)`,
-    ]
-
-    for (const schema of schemas) {
-      this.db.exec(schema)
-    }
-
-    logger.debug('Database schema created')
-  }
-
-  /**
-   * Initialize with default n8n node data
-   * @deprecated Node data now comes from n8n API, not database
-   */
-  private async initializeDefaultData(): Promise<void> {
-    if (!this.db)
-      throw new Error('Database not initialized')
-
-    // Skip node initialization - using API-first architecture
-    logger.debug('Skipping default node initialization - using n8n API for node discovery')
   }
 
   /**

@@ -221,7 +221,7 @@ export async function getMemoryProfilerStatus(args: Record<string, any>) {
           monitoringDuration: `${(stats.uptimeHours * 60).toFixed(0)} minutes`,
         },
         capabilities: {
-          manualGC: typeof global.gc === 'function',
+          manualGC: typeof globalThis.gc === 'function',
           gcMonitoring: config.gcMonitoring,
           heapSnapshots: false, // Would require additional deps
         },

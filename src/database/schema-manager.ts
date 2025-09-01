@@ -639,7 +639,7 @@ export class SchemaManager {
       },
     })
 
-    // Migration 4: Add update notification system  
+    // Migration 4: Add update notification system
     this.registerMigration({
       version: 4,
       name: 'add_update_notifications',

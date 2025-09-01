@@ -1,4 +1,6 @@
-import { logLevel } from '../simple-config.js'
+import { config } from './config.js'
+
+const logLevel = config.logLevel
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 

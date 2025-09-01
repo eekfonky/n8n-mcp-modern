@@ -10,8 +10,10 @@ import type {
 import { EventEmitter } from 'node:events'
 import process from 'node:process'
 import { simpleN8nApi } from '../n8n/simple-api.js'
+import { features } from '../server/config.js'
 import { logger } from '../server/logger.js'
-import { hasN8nApi } from '../simple-config.js'
+
+const { hasN8nApi } = features
 
 // Type for cached resource data
 interface CachedResourceData {

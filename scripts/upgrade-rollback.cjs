@@ -7,8 +7,9 @@
 
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
-const path = require('node:path')
 const os = require('node:os')
+const path = require('node:path')
+const process = require('node:process')
 
 /**
  * Execute command safely with timeout and error handling
@@ -16,7 +17,7 @@ const os = require('node:os')
 function execCommand(command, args = [], options = {}) {
   return new Promise((resolve, reject) => {
     const timeout = options.timeout || 30000
-    
+
     const proc = spawn(command, args, {
       stdio: options.stdio || 'pipe',
       ...options,
@@ -46,7 +47,8 @@ function execCommand(command, args = [], options = {}) {
       clearTimeout(timer)
       if (code === 0) {
         resolve({ stdout, stderr, code })
-      } else {
+      }
+      else {
         const error = new Error(`Command failed with exit code ${code}`)
         error.stdout = stdout
         error.stderr = stderr
@@ -67,22 +69,22 @@ function execCommand(command, args = [], options = {}) {
  */
 async function createBackup(scope = 'local') {
   console.log('💾 Creating configuration backup...')
-  
+
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
   const backupDir = path.join(os.homedir(), '.n8n-mcp-backups', timestamp)
-  
+
   try {
     // Create backup directory
     fs.mkdirSync(backupDir, { recursive: true })
-    
+
     const backupManifest = {
       timestamp,
       scope,
       version: 'unknown',
       files: [],
-      configuration: null
+      configuration: null,
     }
-    
+
     // Backup project-scoped configuration
     if (scope === 'project') {
       const projectMcpPath = path.join(process.cwd(), '.mcp.json')
@@ -90,7 +92,7 @@ async function createBackup(scope = 'local') {
         const backupPath = path.join(backupDir, 'project-mcp.json')
         fs.copyFileSync(projectMcpPath, backupPath)
         backupManifest.files.push({ original: projectMcpPath, backup: backupPath })
-        
+
         // Extract current configuration
         try {
           const content = fs.readFileSync(projectMcpPath, 'utf8')
@@ -98,65 +100,69 @@ async function createBackup(scope = 'local') {
           if (config.mcpServers && config.mcpServers['n8n-mcp-modern']) {
             backupManifest.configuration = config.mcpServers['n8n-mcp-modern']
           }
-        } catch (error) {
+        }
+        catch {
           console.log('⚠️  Could not parse project configuration for backup')
         }
       }
     }
-    
-    // Backup global Claude MCP configuration  
+
+    // Backup global Claude MCP configuration
     try {
       const result = await execCommand('claude', ['mcp', 'list', '--json'])
       const globalConfig = JSON.parse(result.stdout)
-      
+
       if (globalConfig.servers && globalConfig.servers['n8n-mcp-modern']) {
         backupManifest.configuration = globalConfig.servers['n8n-mcp-modern']
-        
+
         // Save global config to backup
         const globalBackupPath = path.join(backupDir, 'global-mcp-config.json')
         fs.writeFileSync(globalBackupPath, JSON.stringify(globalConfig, null, 2))
         backupManifest.files.push({ type: 'global-config', backup: globalBackupPath })
       }
-    } catch (error) {
+    }
+    catch {
       console.log('ℹ️  Could not backup global Claude MCP configuration (this is optional)')
     }
-    
+
     // Try to detect current version
     try {
       const result = await execCommand('npm', ['list', '-g', '@eekfonky/n8n-mcp-modern', '--depth=0'])
-      const versionMatch = result.stdout.match(/@eekfonky\/n8n-mcp-modern@([\d\.\w-]+)/)
+      const versionMatch = result.stdout.match(/@eekfonky\/n8n-mcp-modern@([.\w-]+)/)
       if (versionMatch) {
         backupManifest.version = versionMatch[1]
       }
-    } catch {
+    }
+    catch {
       // Try npx version check
       try {
         const result = await execCommand('npx', ['@eekfonky/n8n-mcp-modern', '--version'], { timeout: 10000 })
         backupManifest.version = result.stdout.trim()
-      } catch {
+      }
+      catch {
         console.log('ℹ️  Could not detect current version')
       }
     }
-    
+
     // Save backup manifest
     const manifestPath = path.join(backupDir, 'backup-manifest.json')
     fs.writeFileSync(manifestPath, JSON.stringify(backupManifest, null, 2))
-    
+
     console.log(`✅ Backup created: ${backupDir}`)
     console.log(`   Version: ${backupManifest.version}`)
     console.log(`   Files: ${backupManifest.files.length}`)
-    
+
     return {
       success: true,
       backupDir,
-      manifest: backupManifest
+      manifest: backupManifest,
     }
-    
-  } catch (error) {
+  }
+  catch (error) {
     console.error('❌ Backup creation failed:', error.message)
     return {
       success: false,
-      error: error.message
+      error: error.message,
     }
   }
 }
@@ -166,16 +172,16 @@ async function createBackup(scope = 'local') {
  */
 async function restoreFromBackup(backupDir, scope = 'local') {
   console.log(`🔄 Restoring configuration from backup: ${backupDir}`)
-  
+
   try {
     const manifestPath = path.join(backupDir, 'backup-manifest.json')
     if (!fs.existsSync(manifestPath)) {
       throw new Error('Backup manifest not found')
     }
-    
+
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
     console.log(`   Restoring version: ${manifest.version}`)
-    
+
     // Restore project configuration
     if (scope === 'project' || manifest.scope === 'project') {
       const projectBackup = manifest.files.find(f => f.original && f.original.endsWith('.mcp.json'))
@@ -184,19 +190,20 @@ async function restoreFromBackup(backupDir, scope = 'local') {
         console.log('✅ Restored project configuration')
       }
     }
-    
+
     // Restore global configuration using Claude CLI
     if (manifest.configuration) {
       try {
         console.log('🔄 Restoring Claude MCP configuration...')
-        
+
         // Remove current configuration
         try {
           await execCommand('claude', ['mcp', 'remove', 'n8n-mcp-modern', '--scope', scope])
-        } catch {
+        }
+        catch {
           // Ignore removal errors - may not exist
         }
-        
+
         // Restore configuration with environment variables
         const envArgs = []
         if (manifest.configuration.env) {
@@ -204,28 +211,31 @@ async function restoreFromBackup(backupDir, scope = 'local') {
             envArgs.push('--env', `${key}=${value}`)
           })
         }
-        
+
         // Reconstruct the add command
         await execCommand('claude', [
-          'mcp', 'add', 'n8n-mcp-modern',
-          '--scope', scope,
+          'mcp',
+          'add',
+          'n8n-mcp-modern',
+          '--scope',
+          scope,
           ...envArgs,
           '--',
-          ...(manifest.configuration.args || ['npx', '-y', '@eekfonky/n8n-mcp-modern'])
+          ...(manifest.configuration.args || ['npx', '-y', '@eekfonky/n8n-mcp-modern']),
         ])
-        
+
         console.log('✅ Restored Claude MCP configuration')
-        
-      } catch (error) {
+      }
+      catch (error) {
         console.log('⚠️  Could not restore global configuration:', error.message)
         console.log('   Manual reconfiguration may be required')
       }
     }
-    
+
     console.log('✅ Configuration restoration completed')
     return { success: true, manifest }
-    
-  } catch (error) {
+  }
+  catch (error) {
     console.error('❌ Restore failed:', error.message)
     return { success: false, error: error.message }
   }
@@ -236,46 +246,47 @@ async function restoreFromBackup(backupDir, scope = 'local') {
  */
 async function rollbackToPreviousVersion(backupDir, scope = 'local') {
   console.log('🔄 Rolling back to previous version...')
-  
+
   try {
     const manifestPath = path.join(backupDir, 'backup-manifest.json')
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-    
+
     console.log(`   Target version: ${manifest.version}`)
-    
+
     // First, restore configuration
     const restoreResult = await restoreFromBackup(backupDir, scope)
     if (!restoreResult.success) {
       throw new Error(`Configuration restore failed: ${restoreResult.error}`)
     }
-    
+
     // For global installations, try to install the specific version
     if (manifest.version !== 'unknown') {
       try {
         console.log(`🔄 Installing previous version: ${manifest.version}`)
-        
+
         // Remove current version
         try {
           await execCommand('npm', ['uninstall', '-g', '@eekfonky/n8n-mcp-modern'])
-        } catch {
+        }
+        catch {
           // Ignore uninstall errors
         }
-        
+
         // Install specific version
         await execCommand('npm', ['install', '-g', `@eekfonky/n8n-mcp-modern@${manifest.version}`])
         console.log('✅ Previous version installed successfully')
-        
-      } catch (error) {
+      }
+      catch (error) {
         console.log('⚠️  Could not install previous version:', error.message)
         console.log('   Configuration has been restored but version rollback failed')
         console.log(`   Manual installation required: npm install -g @eekfonky/n8n-mcp-modern@${manifest.version}`)
       }
     }
-    
+
     console.log('✅ Rollback completed successfully')
     return { success: true, manifest }
-    
-  } catch (error) {
+  }
+  catch (error) {
     console.error('❌ Rollback failed:', error.message)
     return { success: false, error: error.message }
   }
@@ -286,44 +297,44 @@ async function rollbackToPreviousVersion(backupDir, scope = 'local') {
  */
 function listBackups() {
   console.log('📋 Available backups:')
-  
+
   const backupsDir = path.join(os.homedir(), '.n8n-mcp-backups')
-  
+
   if (!fs.existsSync(backupsDir)) {
     console.log('   No backups found')
     return []
   }
-  
+
   const backups = []
   const entries = fs.readdirSync(backupsDir, { withFileTypes: true })
-  
+
   for (const entry of entries) {
     if (entry.isDirectory()) {
       const manifestPath = path.join(backupsDir, entry.name, 'backup-manifest.json')
-      
+
       if (fs.existsSync(manifestPath)) {
         try {
           const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
           backups.push({
             name: entry.name,
             path: path.join(backupsDir, entry.name),
-            manifest
+            manifest,
           })
-          
+
           console.log(`   📁 ${entry.name}`)
           console.log(`      Version: ${manifest.version}`)
           console.log(`      Scope: ${manifest.scope}`)
           console.log(`      Files: ${manifest.files.length}`)
           console.log(`      Date: ${new Date(manifest.timestamp).toLocaleString()}`)
           console.log()
-          
-        } catch (error) {
+        }
+        catch {
           console.log(`   📁 ${entry.name} (invalid manifest)`)
         }
       }
     }
   }
-  
+
   return backups.sort((a, b) => new Date(b.manifest.timestamp) - new Date(a.manifest.timestamp))
 }
 
@@ -332,23 +343,24 @@ function listBackups() {
  */
 function cleanupOldBackups() {
   const backupsDir = path.join(os.homedir(), '.n8n-mcp-backups')
-  
+
   if (!fs.existsSync(backupsDir)) {
     return
   }
-  
+
   const backups = listBackups()
-  
+
   if (backups.length > 5) {
     console.log(`🧹 Cleaning up old backups (keeping 5 most recent)...`)
-    
+
     const toDelete = backups.slice(5)
-    
+
     for (const backup of toDelete) {
       try {
         fs.rmSync(backup.path, { recursive: true, force: true })
         console.log(`   Deleted: ${backup.name}`)
-      } catch (error) {
+      }
+      catch {
         console.log(`   Failed to delete: ${backup.name}`)
       }
     }
@@ -361,15 +373,16 @@ function cleanupOldBackups() {
 async function main() {
   const args = process.argv.slice(2)
   const command = args[0]
-  
+
   switch (command) {
-    case 'backup':
+    case 'backup': {
       const scope = args[1] || 'local'
       const result = await createBackup(scope)
       process.exit(result.success ? 0 : 1)
       break
-      
-    case 'restore':
+    }
+
+    case 'restore': {
       const backupDir = args[1]
       if (!backupDir) {
         console.error('Usage: node upgrade-rollback.cjs restore <backup-directory>')
@@ -379,8 +392,9 @@ async function main() {
       const restoreResult = await restoreFromBackup(backupDir, restoreScope)
       process.exit(restoreResult.success ? 0 : 1)
       break
-      
-    case 'rollback':
+    }
+
+    case 'rollback': {
       const rollbackDir = args[1]
       if (!rollbackDir) {
         console.error('Usage: node upgrade-rollback.cjs rollback <backup-directory>')
@@ -390,15 +404,16 @@ async function main() {
       const rollbackResult = await rollbackToPreviousVersion(rollbackDir, rollbackScope)
       process.exit(rollbackResult.success ? 0 : 1)
       break
-      
+    }
+
     case 'list':
       listBackups()
       break
-      
+
     case 'cleanup':
       cleanupOldBackups()
       break
-      
+
     default:
       console.log('n8n-MCP Modern - Upgrade Rollback Tool')
       console.log('')
@@ -420,12 +435,12 @@ module.exports = {
   restoreFromBackup,
   rollbackToPreviousVersion,
   listBackups,
-  cleanupOldBackups
+  cleanupOldBackups,
 }
 
 // Run if called directly
 if (require.main === module) {
-  main().catch(error => {
+  main().catch((error) => {
     console.error('❌ Command failed:', error.message)
     process.exit(1)
   })

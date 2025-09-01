@@ -16,12 +16,14 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import { coldStartOptimizer, startupAnalyzer } from './server/cold-start-optimizer.js'
-import { safeExecute } from './server/enhanced-error-handler.js'
+import { features } from './server/config.js'
 import { setupErrorMonitoring } from './server/error-monitoring.js'
 import { logger } from './server/logger.js'
 import { cleanup, executeToolHandler, getAllTools, initializeDynamicTools } from './tools/index.js'
 import { initializePerformanceOptimizations } from './tools/performance-optimized.js'
 import { getQuickMemoryStats, memoryProfiler, setupMemoryMonitoring } from './utils/memory-profiler.js'
+
+const { hasN8nApi } = features
 
 const startTime = performance.now()
 
@@ -30,6 +32,37 @@ const startTime = performance.now()
  */
 async function main() {
   startupAnalyzer.startPhase('startup-initialization')
+
+  // Handle help flag
+  if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    console.log('n8n-MCP Modern - Dynamic n8n MCP Server')
+    console.log('')
+    console.log('Usage: n8n-mcp [options]')
+    console.log('')
+    console.log('Options:')
+    console.log('  -h, --help             Show this help message')
+    console.log('')
+    console.log('Environment Variables:')
+    console.log('  N8N_API_URL            Your n8n instance URL (e.g., https://n8n.example.com)')
+    console.log('  N8N_API_KEY            Your n8n API key')
+    console.log('  LOG_LEVEL              Log level (debug, info, warn, error)')
+    console.log('')
+    process.exit(0)
+  }
+
+  // Fail fast if n8n is not configured - no fallback modes
+  if (!hasN8nApi) {
+    logger.error('❌ STARTUP FAILED: n8n API configuration missing')
+    logger.error('Missing required environment variables:')
+    logger.error('  - N8N_API_URL: Your n8n instance URL')
+    logger.error('  - N8N_API_KEY: Your n8n API key')
+    logger.error('')
+    logger.error('To fix this:')
+    logger.error('  1. Set the required environment variables')
+    logger.error('  2. Ensure your n8n instance is accessible')
+    process.exit(1)
+  }
+
   logger.info('🚀 Starting n8n-MCP Modern - Dynamic Discovery...')
 
   // Phase 1: Cold start optimization
@@ -79,28 +112,28 @@ async function main() {
 
   // Phase 6: Dynamic tool discovery
   startupAnalyzer.startPhase('dynamic-tool-discovery')
-  const discoveryResult = await safeExecute(
-    async () => {
-      await initializeDynamicTools()
-      const initTime = performance.now() - startTime
-      logger.info(`✅ Dynamic discovery complete in ${Math.round(initTime)}ms`)
-      return initTime
-    },
-    {
-      maxRetries: 2,
-      baseDelayMs: 2000,
-      onRetry: (attempt) => {
-        logger.warn(`Dynamic discovery failed, retrying (attempt ${attempt})`)
-      },
-    },
-  )
-  startupAnalyzer.endPhase('dynamic-tool-discovery')
 
-  if (!discoveryResult.success) {
-    logger.warn('Dynamic discovery failed after retries, running in basic mode:', {
-      error: discoveryResult.error.getErrorInfo(),
-    })
+  try {
+    await initializeDynamicTools()
+    const initTime = performance.now() - startTime
+    logger.info(`✅ Dynamic discovery complete in ${Math.round(initTime)}ms`)
   }
+  catch (error) {
+    logger.error('❌ STARTUP FAILED: Dynamic discovery failed')
+    logger.error('Error details:', error instanceof Error ? error.message : String(error))
+    logger.error('')
+    logger.error('This usually indicates:')
+    logger.error('  - n8n API connection failure (check N8N_API_URL and N8N_API_KEY)')
+    logger.error('  - n8n instance is unreachable or down')
+    logger.error('  - Invalid API credentials')
+    logger.error('')
+    logger.error('To troubleshoot:')
+    logger.error('  1. Verify your n8n instance is running and accessible')
+    logger.error('  2. Test API connection manually: curl -H "X-N8N-API-KEY: your_key" "your_n8n_url/api/v1/workflows"')
+    process.exit(1)
+  }
+
+  startupAnalyzer.endPhase('dynamic-tool-discovery')
 
   // List tools (dynamically discovered)
   server.setRequestHandler(ListToolsRequestSchema, async (_request: ListToolsRequest) => {
@@ -121,37 +154,25 @@ async function main() {
 
     logger.debug(`Executing dynamic tool: ${name}`)
 
-    const executionResult = await safeExecute(
-      async () => {
-        const result = await executeToolHandler(name, args || {})
-        return typeof result === 'string' ? result : JSON.stringify(result, null, 2)
-      },
-      {
-        maxRetries: 1,
-        baseDelayMs: 1000,
-        onRetry: () => {
-          logger.warn(`Tool execution failed, retrying: ${name}`)
-        },
-      },
-    )
+    try {
+      const result = await executeToolHandler(name, args || {})
+      const resultText = typeof result === 'string' ? result : JSON.stringify(result, null, 2)
 
-    if (executionResult.success) {
       return {
         content: [{
           type: 'text' as const,
-          text: executionResult.data,
+          text: resultText,
         }],
       }
     }
-    else {
-      // Handle execution failure with enhanced error information
-      const errorInfo = executionResult.error.getErrorInfo()
-      logger.error(`Tool execution failed for ${name}:`, errorInfo)
+    catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      logger.error(`Tool execution failed for ${name}:`, errorMessage)
 
       return {
         content: [{
           type: 'text' as const,
-          text: `Error executing tool "${name}": ${executionResult.error.message} (Code: ${errorInfo.code}, ID: ${errorInfo.errorId})`,
+          text: `Error executing tool "${name}": ${errorMessage}`,
         }],
         isError: true,
       }

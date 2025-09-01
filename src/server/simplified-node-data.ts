@@ -126,7 +126,7 @@ export class SimplifiedNodeRecommender {
     const keywordRecommendations = this.getKeywordBasedRecommendations(userInput)
     recommendations.push(...keywordRecommendations)
 
-    // Step 3: Popular node recommendations (fallback)
+    // Step 3: Popular node recommendations if needed
     if (recommendations.length < 3) {
       const popularRecommendations = this.getPopularRecommendations()
       recommendations.push(...popularRecommendations)
@@ -252,7 +252,7 @@ export class SimplifiedNodeRecommender {
   }
 
   /**
-   * Get popular node recommendations as fallback
+   * Get popular node recommendations
    */
   private static getPopularRecommendations(): SimpleNodeRecommendation[] {
     return NODE_CATEGORIES.popular.map(nodeType => ({

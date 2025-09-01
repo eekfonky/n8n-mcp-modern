@@ -21,9 +21,9 @@ interface Agent {
 }
 
 // Pre-compiled schema cache (using native Map for performance)
-const compiledSchemas = new Map<string, Function>()
+const compiledSchemas = new Map<string, (...args: unknown[]) => unknown>()
 const toolCache = new Map<string, Tool>()
-const handlerCache = new Map<string, Function>()
+const handlerCache = new Map<string, (...args: unknown[]) => unknown>()
 
 // Performance timing using native performance.now()
 const startTime = performance.now()
@@ -33,7 +33,7 @@ const startTime = performance.now()
  */
 const agentRegistry = new Map<string, Agent>()
 
-function getAgent(type: string) {
+function _unusedGetAgent(type: string): Agent | null {
   if (!agentRegistry.has(type)) {
     // Lazy load agent classes only when needed
     switch (type) {
@@ -56,7 +56,7 @@ function getAgent(type: string) {
         agentRegistry.set(type, createSimpleAgent('default'))
     }
   }
-  return agentRegistry.get(type)
+  return agentRegistry.get(type) || null
 }
 
 /**
@@ -99,8 +99,8 @@ function createSimpleAgent(type: string): Agent {
 /**
  * Pre-compile frequently used schemas
  */
-export function preCompileSchemas() {
-  const basicSchema = {
+export function preCompileSchemas(): void {
+  const _basicSchema = {
     type: 'object',
     properties: {
       operation: { type: 'string' },
@@ -109,7 +109,7 @@ export function preCompileSchemas() {
   }
 
   // Simple validation function (avoiding zod overhead for hot paths)
-  compiledSchemas.set('basic', (data: any) => {
+  compiledSchemas.set('basic', (data: unknown) => {
     return typeof data === 'object' && data !== null
   })
 
@@ -119,7 +119,7 @@ export function preCompileSchemas() {
 /**
  * Fast tool registration with minimal overhead
  */
-export function registerTool(name: string, description: string, handler: Function) {
+export function registerTool(name: string, description: string, handler: (...args: unknown[]) => unknown): void {
   const tool: Tool = {
     name,
     description,
@@ -139,7 +139,7 @@ export function registerTool(name: string, description: string, handler: Functio
 /**
  * Fast tool execution with performance monitoring
  */
-export async function executeTool(name: string, args: Record<string, unknown>) {
+export async function executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
   const executeStart = performance.now()
 
   try {
@@ -184,7 +184,7 @@ export function getAllTools(): Tool[] {
 /**
  * Initialize performance optimizations
  */
-export function initializePerformanceOptimizations() {
+export function initializePerformanceOptimizations(): void {
   // Pre-compile schemas
   preCompileSchemas()
 
@@ -197,8 +197,8 @@ export function initializePerformanceOptimizations() {
   }))
 
   // Force garbage collection if available (Node.js with --expose-gc)
-  if (global.gc) {
-    global.gc()
+  if (globalThis.gc) {
+    globalThis.gc()
     logger.debug('Forced garbage collection for optimal startup')
   }
 
@@ -209,13 +209,13 @@ export function initializePerformanceOptimizations() {
 /**
  * Memory cleanup for performance
  */
-export function performanceCleanup() {
+export function performanceCleanup(): void {
   toolCache.clear()
   handlerCache.clear()
   compiledSchemas.clear()
   agentRegistry.clear()
 
-  if (global.gc) {
-    global.gc()
+  if (globalThis.gc) {
+    globalThis.gc()
   }
 }

@@ -13,13 +13,18 @@
 
 import type { Buffer } from 'node:buffer'
 import { createHmac } from 'node:crypto'
+import path from 'node:path'
 import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 import { database, VersionManager } from '../database/index.js'
 import { config } from '../server/config.js'
 import { logger } from '../server/logger.js'
 import { MCPToolGenerator } from '../tools/mcp-tool-generator.js'
 import { CredentialDiscovery } from './credential-discovery.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // Discovery environment variables validation schema
 const DiscoveryEnvSchema = z.object({
@@ -254,10 +259,9 @@ export class DiscoveryScheduler {
         return null
       }
 
-      // Check if n8n API is configured
+      // n8n API must be configured for discovery
       if (!config.n8nApiUrl || !config.n8nApiKey) {
-        logger.debug('Skipping discovery: n8n API not configured')
-        return null
+        throw new Error('Discovery requires n8n API configuration (N8N_API_URL and N8N_API_KEY)')
       }
 
       logger.info('Triggering discovery session', { trigger, reason })
@@ -282,15 +286,19 @@ export class DiscoveryScheduler {
 
       // Execute discovery in background
       this.executeDiscoverySession(sessionStatus)
-        .catch((error) => {
-          logger.error(`Discovery session ${sessionId} failed:`, error)
-          sessionStatus.status = 'failed'
-        })
-        .finally(() => {
+        .then(() => {
           // Cleanup completed session after 5 minutes
           setTimeout(() => {
             this.activeSessions.delete(sessionId)
           }, 5 * 60 * 1000)
+        })
+        .catch((error) => {
+          logger.error(`Discovery session ${sessionId} failed:`, error)
+          sessionStatus.status = 'failed'
+          // Cleanup failed session after 1 minute
+          setTimeout(() => {
+            this.activeSessions.delete(sessionId)
+          }, 60 * 1000)
         })
 
       return sessionId
@@ -484,7 +492,7 @@ export class DiscoveryScheduler {
         await this.checkN8nVersionChanges()
       }
 
-      // Check n8n-mcp-modern server updates (new functionality)  
+      // Check n8n-mcp-modern server updates (new functionality)
       await this.checkServerUpdates()
     }
     catch (error) {
@@ -535,7 +543,7 @@ export class DiscoveryScheduler {
   private async checkServerUpdates(): Promise<void> {
     try {
       logger.debug('Checking for n8n-mcp-modern server updates...')
-      
+
       const updateInfo = await this.getServerUpdateInfo()
       if (!updateInfo) {
         return
@@ -545,15 +553,16 @@ export class DiscoveryScheduler {
         logger.info('n8n-mcp-modern server update available', {
           currentVersion: updateInfo.currentVersion,
           latestVersion: updateInfo.latestVersion,
-          updateAvailable: true
+          updateAvailable: true,
         })
 
         // Store update notification (could be used by MCP tools or agents)
         await this.storeUpdateNotification(updateInfo)
-      } else {
+      }
+      else {
         logger.debug('n8n-mcp-modern server is up to date', {
           currentVersion: updateInfo.currentVersion,
-          latestVersion: updateInfo.latestVersion
+          latestVersion: updateInfo.latestVersion,
         })
       }
     }
@@ -567,9 +576,14 @@ export class DiscoveryScheduler {
    */
   private async getCurrentN8nVersion(): Promise<string | null> {
     try {
-      // This would make an API call to get n8n version
-      // For now, return a placeholder since we don't have a direct version endpoint
-      return '1.0.0' // Placeholder - would implement actual version detection
+      // Get n8n version from API
+      const { simpleN8nApi } = await import('../n8n/simple-api.js')
+      if (!simpleN8nApi) {
+        throw new Error('n8n API not available for version detection')
+      }
+
+      const versionInfo = await simpleN8nApi.getVersion()
+      return versionInfo?.version || '1.0.0'
     }
     catch (error) {
       logger.error('Failed to get n8n version:', error)
@@ -765,13 +779,28 @@ export class DiscoveryScheduler {
       // - Credential changes
       // For now, return false as placeholder
 
-      // In a real implementation, you would:
-      // 1. Query n8n API for recent executions
-      // 2. Check for workflow modifications
-      // 3. Monitor credential/variable changes
-      // 4. Use activity threshold to determine if high activity
+      // Get recent execution activity from n8n API
+      const { simpleN8nApi } = await import('../n8n/simple-api.js')
+      if (!simpleN8nApi) {
+        return false
+      }
 
-      return false // Placeholder - would implement actual activity detection
+      // Check for recent workflow executions (using a sample workflow ID)
+      const workflows = await simpleN8nApi.getWorkflows()
+      if (!Array.isArray(workflows) || workflows.length === 0) {
+        return false
+      }
+
+      const sampleWorkflowId = workflows[0]?.id?.toString()
+      if (!sampleWorkflowId) {
+        return false
+      }
+
+      const recentExecutions = await simpleN8nApi.getExecutions(sampleWorkflowId)
+      const recentCount = Array.isArray(recentExecutions) ? recentExecutions.length : 0
+
+      // Consider high activity if more than 10 executions in recent period
+      return recentCount > 10
     }
     catch (error) {
       logger.error('High activity detection failed:', error)
@@ -854,7 +883,7 @@ export class DiscoveryScheduler {
       const path = await import('node:path')
 
       // Helper function to execute commands
-      const execCommand = (command: string, args: string[] = []): Promise<{stdout: string, stderr: string, code: number}> => {
+      const execCommand = (command: string, args: string[] = []): Promise<{ stdout: string, stderr: string, code: number }> => {
         return new Promise((resolve) => {
           const proc = spawn(command, args, { stdio: 'pipe' })
           let stdout = ''
@@ -888,7 +917,8 @@ export class DiscoveryScheduler {
         const packageJsonPath = path.resolve(__dirname, '../../package.json')
         const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'))
         currentVersion = packageJson.version
-      } catch (error) {
+      }
+      catch (error) {
         logger.warn('Could not read current version from package.json:', error)
         return null
       }
@@ -900,13 +930,14 @@ export class DiscoveryScheduler {
           'view',
           '@eekfonky/n8n-mcp-modern',
           'version',
-          '--registry=https://npm.pkg.github.com'
+          '--registry=https://npm.pkg.github.com',
         ])
 
         if (result.code === 0 && result.stdout.trim()) {
           latestVersion = result.stdout.trim().replace(/['"]/g, '')
         }
-      } catch (error) {
+      }
+      catch (error) {
         logger.warn('Could not check latest version from GitHub Packages:', error)
         return null
       }
@@ -918,7 +949,7 @@ export class DiscoveryScheduler {
       return {
         currentVersion,
         latestVersion,
-        updateAvailable: currentVersion !== latestVersion
+        updateAvailable: currentVersion !== latestVersion,
       }
     }
     catch (error) {
@@ -934,21 +965,25 @@ export class DiscoveryScheduler {
     try {
       // Store in database for persistence
       const database = await import('../database/index.js').then(m => m.database)
-      
-      const stmt = database.prepare(`
-        INSERT OR REPLACE INTO update_notifications (
-          id, current_version, latest_version, update_available, detected_at, notified
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `)
 
-      stmt.run(
-        'n8n-mcp-modern',
-        updateInfo.currentVersion,
-        updateInfo.latestVersion,
-        updateInfo.updateAvailable ? 1 : 0,
-        new Date().toISOString(),
-        0
-      )
+      database.executeCustomSQL('storeUpdateNotification', (db) => {
+        const stmt = db.prepare(`
+          INSERT OR REPLACE INTO update_notifications (
+            id, current_version, latest_version, update_available, detected_at, notified
+          ) VALUES (?, ?, ?, ?, ?, ?)
+        `)
+
+        stmt.run(
+          'n8n-mcp-modern',
+          updateInfo.currentVersion,
+          updateInfo.latestVersion,
+          updateInfo.updateAvailable ? 1 : 0,
+          new Date().toISOString(),
+          0,
+        )
+
+        return true
+      })
 
       logger.debug('Stored update notification in database', updateInfo)
     }

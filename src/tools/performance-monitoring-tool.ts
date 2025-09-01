@@ -332,7 +332,7 @@ export async function generateHealthReport(args: Record<string, any>) {
               : healthStatus.errorRate > 0.1 ? 'warning' : 'healthy',
             errorRate: `${(healthStatus.errorRate * 100).toFixed(2)}/s`,
             criticalErrors: healthStatus.criticalErrors,
-            recoveryRate: `${(healthStatus.recoveryRate * 100).toFixed(1)}%`,
+            errorCount: healthStatus.criticalErrors,
           },
           system: {
             status: systemHealth.cpu.usage > 90
@@ -346,7 +346,7 @@ export async function generateHealthReport(args: Record<string, any>) {
 
         // Performance metrics summary
         metrics: {
-          responseTime: healthStatus.metrics.averageRecoveryTime,
+          errorRate: healthStatus.errorRate,
           memoryUsage: `${healthStatus.metrics.memoryUsage.toFixed(1)}%`,
           errorsByHour: healthStatus.metrics.errorsByHour.slice(-6), // Last 6 hours
           totalErrors: healthStatus.metrics.totalErrors,
@@ -446,8 +446,7 @@ export async function getPerformanceDashboard(args: Record<string, any>) {
           uptime: `${Math.round(memoryStats.uptimeHours * 60)} minutes`,
           memoryUsage: `${memoryStats.current.heapUsage.toFixed(1)}%`,
           cpuUsage: `${systemHealth.cpu.usage.toFixed(1)}%`,
-          errorRate: relevantErrors.reduce((sum, count) => sum + count, 0) / hours,
-          responseTime: healthStatus.metrics.averageRecoveryTime,
+          errorRate: healthStatus.errorRate,
         },
 
         // Performance trends
@@ -478,8 +477,7 @@ export async function getPerformanceDashboard(args: Record<string, any>) {
         topMetrics: [
           { name: 'Memory Usage', value: `${memoryStats.current.heapUsage.toFixed(1)}%`, status: memoryStats.current.heapUsage > 80 ? 'warning' : 'good' },
           { name: 'CPU Usage', value: `${systemHealth.cpu.usage.toFixed(1)}%`, status: systemHealth.cpu.usage > 75 ? 'warning' : 'good' },
-          { name: 'Error Rate', value: `${(healthStatus.errorRate * 100).toFixed(2)}/s`, status: healthStatus.errorRate > 0.1 ? 'warning' : 'good' },
-          { name: 'Recovery Rate', value: `${(healthStatus.recoveryRate * 100).toFixed(1)}%`, status: healthStatus.recoveryRate < 0.9 ? 'warning' : 'good' },
+          { name: 'Error Rate', value: `${healthStatus.errorRate.toFixed(2)}/s`, status: healthStatus.errorRate > 1 ? 'warning' : 'good' },
         ],
 
         // Alerts
@@ -718,7 +716,7 @@ function generateHealthRecommendations(healthStatus: any): string[] {
     recommendations.push('High error rate detected - investigate error patterns and implement additional error handling')
   }
 
-  if (healthStatus.recoveryRate < 0.9) {
+  if (healthStatus.errorRate > 1) {
     recommendations.push('Low recovery rate - review error recovery mechanisms and retry logic')
   }
 

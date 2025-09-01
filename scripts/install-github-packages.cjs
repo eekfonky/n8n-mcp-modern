@@ -10,7 +10,7 @@ const path = require('node:path')
  */
 
 // Import authentication validator
-const { validateGitHubAuthentication, checkNpmrcConfiguration } = require('./validate-github-auth.cjs')
+const { validateGitHubAuthentication } = require('./validate-github-auth.cjs')
 
 console.log('📦 n8n-mcp-modern GitHub Packages Installation Helper')
 console.log('='.repeat(60))
@@ -19,8 +19,8 @@ const homeDir = os.homedir()
 const npmrcPath = path.join(homeDir, '.npmrc')
 const templatePath = path.join(__dirname, '..', '.npmrc.template')
 
-// Check if .npmrc exists and has GitHub Packages configuration
-function checkNpmrcConfiguration() {
+// Check if .npmrc exists and has GitHub Packages configuration (local fallback)
+function checkNpmrcConfigurationLocal() {
   try {
     if (!fs.existsSync(npmrcPath)) {
       return false
@@ -112,10 +112,10 @@ function provideAlternatives() {
 // Main execution with comprehensive validation
 async function main() {
   console.log('\n🔍 Running comprehensive GitHub Packages validation...')
-  
+
   try {
     const results = await validateGitHubAuthentication(true)
-    
+
     if (results.overall) {
       console.log('\n✅ All validation checks passed!')
       console.log('Your system is ready for seamless n8n-mcp-modern installation.')
@@ -125,16 +125,16 @@ async function main() {
       console.log('   node scripts/install-mcp.js')
       return
     }
-    
+
     console.log('\n⚠️  Validation identified issues that need to be resolved.')
     console.log('The validator has provided specific guidance above.')
-    
-  } catch (error) {
+  }
+  catch (error) {
     console.error('\n❌ Validation failed with error:', error.message)
     console.log('\n🔄 Falling back to legacy setup process...')
-    
+
     // Fallback to original logic
-    const configCheck = checkNpmrcConfiguration()
+    const configCheck = checkNpmrcConfigurationLocal()
 
     if (configCheck.configured) {
       console.log('✅ GitHub Packages configuration already present')
@@ -164,4 +164,4 @@ if (require.main === module) {
   main()
 }
 
-module.exports = { checkNpmrcConfiguration, setupNpmrc }
+module.exports = { checkNpmrcConfigurationLocal, setupNpmrc }

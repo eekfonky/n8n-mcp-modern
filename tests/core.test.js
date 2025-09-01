@@ -7,13 +7,12 @@
 import assert from 'node:assert'
 import { performance } from 'node:perf_hooks'
 import { describe, it } from 'vitest'
-import { config, getNormalizedN8nUrl, hasN8nApi } from '../dist/simple-config.js'
-import { SimpleHttpClient } from '../dist/utils/simple-http-client.js'
+import { config, getNormalizedN8nUrl } from '../src/server/config.js'
+import { SimpleHttpClient } from '../src/utils/simple-http-client.js'
 
 describe('core Configuration Tests', () => {
   it('config should have expected structure', () => {
     assert.ok(typeof config === 'object', 'config should be an object')
-    assert.ok(typeof hasN8nApi === 'boolean', 'hasN8nApi should be boolean')
   })
 
   it('getNormalizedN8nUrl should handle various URL formats', () => {

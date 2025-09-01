@@ -4,23 +4,30 @@
  */
 
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
-import type { N8NNodeAPI } from '../types/fast-types.js'
+import type { NodeTemplate } from './comprehensive-node-registry.js'
+import type { DynamicAgentTools } from './dynamic-agent-tools.js'
+import { spawn } from 'node:child_process'
+import { promises as fs } from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { CredentialDiscovery } from '../discovery/credential-discovery.js'
 import { DiscoveryScheduler } from '../discovery/scheduler.js'
 import { simpleN8nApi } from '../n8n/simple-api.js'
+import { features } from '../server/config.js'
 import { logger } from '../server/logger.js'
-import { hasN8nApi } from '../simple-config.js'
 import { coldStartOptimizationTools } from './cold-start-optimization-tool.js'
-import { getAllCategories, getAllNodeTemplates, type NodeTemplate } from './comprehensive-node-registry.js'
-import { createDynamicAgentTools, type DynamicAgentTools } from './dynamic-agent-tools.js'
+import { getAllNodeTemplates } from './comprehensive-node-registry.js'
+import { createDynamicAgentTools } from './dynamic-agent-tools.js'
 import { MCPToolGenerator } from './mcp-tool-generator.js'
 import { memoryOptimizationTools } from './memory-optimization-tool.js'
 import { performanceMonitoringTools } from './performance-monitoring-tool.js'
 import { WorkflowBuilderUtils } from './workflow-builder-utils.js'
-import { promises as fs } from 'node:fs'
-import { spawn } from 'node:child_process'
-import path from 'node:path'
-import os from 'node:os'
+
+const { hasN8nApi } = features
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 let discoveredTools: Tool[] = []
 const toolHandlers: Map<string, (args: Record<string, unknown>) => Promise<unknown>> = new Map()
@@ -32,7 +39,7 @@ let dynamicAgentTools: DynamicAgentTools | null = null
 /**
  * Execute command safely with proper error handling
  */
-function execCommand(command: string, args: string[] = [], options: Record<string, any> = {}): Promise<{stdout: string, stderr: string, code: number}> {
+function execCommand(command: string, args: string[] = [], options: Record<string, any> = {}): Promise<{ stdout: string, stderr: string, code: number }> {
   return new Promise((resolve, reject) => {
     const proc = spawn(command, args, {
       stdio: options.stdio || 'pipe',
@@ -75,7 +82,8 @@ async function getCurrentVersion(): Promise<string | null> {
     const packageJsonPath = path.resolve(__dirname, '../../package.json')
     const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'))
     return packageJson.version
-  } catch (error) {
+  }
+  catch (error) {
     logger.error('Failed to read current version:', error)
     return null
   }
@@ -84,27 +92,28 @@ async function getCurrentVersion(): Promise<string | null> {
 /**
  * Get latest version from GitHub Packages
  */
-async function getLatestVersion(): Promise<{version: string, available: boolean} | null> {
+async function getLatestVersion(): Promise<{ version: string, available: boolean } | null> {
   try {
     const result = await execCommand('npm', [
       'view',
       '@eekfonky/n8n-mcp-modern',
       'version',
-      '--registry=https://npm.pkg.github.com'
+      '--registry=https://npm.pkg.github.com',
     ])
 
     if (result.code === 0 && result.stdout.trim()) {
       const latestVersion = result.stdout.trim().replace(/['"]/g, '')
       const currentVersion = await getCurrentVersion()
-      
+
       return {
         version: latestVersion,
-        available: currentVersion !== latestVersion
+        available: currentVersion !== latestVersion,
       }
     }
 
     return null
-  } catch (error) {
+  }
+  catch (error) {
     logger.error('Failed to check latest version:', error)
     return null
   }
@@ -113,23 +122,26 @@ async function getLatestVersion(): Promise<{version: string, available: boolean}
 /**
  * Validate GitHub Packages authentication
  */
-async function validateGitHubAuth(): Promise<{valid: boolean, message: string}> {
+async function validateGitHubAuth(): Promise<{ valid: boolean, message: string }> {
   try {
     const result = await execCommand('npm', [
       'view',
       '@eekfonky/n8n-mcp-modern',
       'version',
-      '--registry=https://npm.pkg.github.com'
+      '--registry=https://npm.pkg.github.com',
     ])
 
     if (result.code === 0) {
       return { valid: true, message: 'GitHub Packages authentication is working' }
-    } else if (result.stderr.includes('401') || result.stderr.includes('Unauthorized')) {
+    }
+    else if (result.stderr.includes('401') || result.stderr.includes('Unauthorized')) {
       return { valid: false, message: 'GitHub Packages authentication failed - check your .npmrc configuration' }
-    } else {
+    }
+    else {
       return { valid: false, message: `Authentication check failed: ${result.stderr}` }
     }
-  } catch (error) {
+  }
+  catch (error) {
     return { valid: false, message: `Authentication validation error: ${(error as Error).message}` }
   }
 }
@@ -137,43 +149,46 @@ async function validateGitHubAuth(): Promise<{valid: boolean, message: string}> 
 /**
  * Create backup of current installation
  */
-async function createBackup(): Promise<{success: boolean, backupPath?: string, message: string}> {
+async function createBackup(): Promise<{ success: boolean, backupPath?: string, message: string }> {
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
     const backupDir = path.join(os.tmpdir(), `n8n-mcp-modern-backup-${timestamp}`)
-    
+
     await fs.mkdir(backupDir, { recursive: true })
-    
+
     // Copy critical files
     const currentDir = path.resolve(__dirname, '../..')
     const criticalFiles = ['package.json', 'data', 'dist']
-    
+
     for (const file of criticalFiles) {
       const sourcePath = path.join(currentDir, file)
       const destPath = path.join(backupDir, file)
-      
+
       try {
         const stats = await fs.stat(sourcePath)
         if (stats.isDirectory()) {
           await execCommand('cp', ['-r', sourcePath, destPath])
-        } else {
+        }
+        else {
           await fs.copyFile(sourcePath, destPath)
         }
-      } catch (error) {
+      }
+      catch (error) {
         // File might not exist, continue
         logger.warn(`Could not backup ${file}:`, error)
       }
     }
-    
+
     return {
       success: true,
       backupPath: backupDir,
-      message: `Backup created at ${backupDir}`
+      message: `Backup created at ${backupDir}`,
     }
-  } catch (error) {
+  }
+  catch (error) {
     return {
       success: false,
-      message: `Backup failed: ${(error as Error).message}`
+      message: `Backup failed: ${(error as Error).message}`,
     }
   }
 }
@@ -181,7 +196,7 @@ async function createBackup(): Promise<{success: boolean, backupPath?: string, m
 /**
  * Perform the actual update
  */
-async function performUpdate(preserveData: boolean = true): Promise<{success: boolean, message: string, details?: any}> {
+async function performUpdate(preserveData: boolean = true): Promise<{ success: boolean, message: string, details?: any }> {
   try {
     // Check for existing .mcp.json to preserve
     let mcpConfig: any = null
@@ -190,7 +205,8 @@ async function performUpdate(preserveData: boolean = true): Promise<{success: bo
         const mcpJsonPath = path.resolve('.mcp.json')
         mcpConfig = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'))
         logger.info('Preserved .mcp.json configuration for update')
-      } catch (error) {
+      }
+      catch (error) {
         logger.info('No .mcp.json found to preserve')
       }
     }
@@ -200,7 +216,7 @@ async function performUpdate(preserveData: boolean = true): Promise<{success: bo
     const globalResult = await execCommand('npm', [
       'update',
       '-g',
-      '@eekfonky/n8n-mcp-modern'
+      '@eekfonky/n8n-mcp-modern',
     ])
 
     if (globalResult.code === 0) {
@@ -210,8 +226,8 @@ async function performUpdate(preserveData: boolean = true): Promise<{success: bo
         details: {
           method: 'global',
           stdout: globalResult.stdout,
-          preservedData: !!mcpConfig
-        }
+          preservedData: !!mcpConfig,
+        },
       }
     }
 
@@ -220,7 +236,7 @@ async function performUpdate(preserveData: boolean = true): Promise<{success: bo
     const installResult = await execCommand('npm', [
       'install',
       '-g',
-      '@eekfonky/n8n-mcp-modern@latest'
+      '@eekfonky/n8n-mcp-modern@latest',
     ])
 
     if (installResult.code === 0) {
@@ -230,8 +246,8 @@ async function performUpdate(preserveData: boolean = true): Promise<{success: bo
         details: {
           method: 'install',
           stdout: installResult.stdout,
-          preservedData: !!mcpConfig
-        }
+          preservedData: !!mcpConfig,
+        },
       }
     }
 
@@ -240,13 +256,14 @@ async function performUpdate(preserveData: boolean = true): Promise<{success: bo
       message: `Update failed: ${installResult.stderr || 'Unknown error'}`,
       details: {
         globalResult: globalResult.stderr,
-        installResult: installResult.stderr
-      }
+        installResult: installResult.stderr,
+      },
     }
-  } catch (error) {
+  }
+  catch (error) {
     return {
       success: false,
-      message: `Update failed with error: ${(error as Error).message}`
+      message: `Update failed with error: ${(error as Error).message}`,
     }
   }
 }
@@ -266,10 +283,10 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
         total: 0,
         passed: 0,
         failed: 0,
-        warnings: 0
+        warnings: 0,
       },
       recommendations: [],
-      system: {}
+      system: {},
     }
 
     // Determine which checks to run
@@ -279,19 +296,19 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     // System Information Check
     if (runAll || checksToRun.includes('system_info')) {
       logger.debug('Running system info check...')
-      const systemCheck = await validateSystemInfo(detailed)
+      const systemCheck = await validateSystemInfo(detailed as boolean)
       results.checks.system_info = systemCheck
       results.system = systemCheck.details
       updateSummary(results.summary, systemCheck)
     }
 
-    // Dependencies Check  
+    // Dependencies Check
     if (runAll || checksToRun.includes('dependencies')) {
       logger.debug('Running dependencies check...')
-      const depsCheck = await validateDependencies(detailed)
+      const depsCheck = await validateDependencies(detailed as boolean)
       results.checks.dependencies = depsCheck
       updateSummary(results.summary, depsCheck)
-      
+
       if (includeRecommendations && depsCheck.recommendations) {
         results.recommendations.push(...depsCheck.recommendations)
       }
@@ -300,10 +317,10 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     // Database Check
     if (runAll || checksToRun.includes('database')) {
       logger.debug('Running database check...')
-      const dbCheck = await validateDatabase(detailed)
+      const dbCheck = await validateDatabase(detailed as boolean)
       results.checks.database = dbCheck
       updateSummary(results.summary, dbCheck)
-      
+
       if (includeRecommendations && dbCheck.recommendations) {
         results.recommendations.push(...dbCheck.recommendations)
       }
@@ -312,10 +329,10 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     // MCP Configuration Check
     if (runAll || checksToRun.includes('mcp_config')) {
       logger.debug('Running MCP config check...')
-      const mcpCheck = await validateMcpConfig(detailed)
+      const mcpCheck = await validateMcpConfig(detailed as boolean)
       results.checks.mcp_config = mcpCheck
       updateSummary(results.summary, mcpCheck)
-      
+
       if (includeRecommendations && mcpCheck.recommendations) {
         results.recommendations.push(...mcpCheck.recommendations)
       }
@@ -328,10 +345,10 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
       results.checks.github_auth = {
         status: authCheck.valid ? 'passed' : 'failed',
         message: authCheck.message,
-        details: authCheck
+        details: authCheck,
       }
       updateSummary(results.summary, results.checks.github_auth)
-      
+
       if (includeRecommendations && !authCheck.valid) {
         results.recommendations.push('Configure GitHub Packages authentication in ~/.npmrc')
       }
@@ -340,10 +357,10 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     // n8n Connectivity Check
     if (runAll || checksToRun.includes('n8n_connectivity')) {
       logger.debug('Running n8n connectivity check...')
-      const n8nCheck = await validateN8nConnectivity(detailed)
+      const n8nCheck = await validateN8nConnectivity(detailed as boolean)
       results.checks.n8n_connectivity = n8nCheck
       updateSummary(results.summary, n8nCheck)
-      
+
       if (includeRecommendations && n8nCheck.recommendations) {
         results.recommendations.push(...n8nCheck.recommendations)
       }
@@ -352,10 +369,10 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     // Permissions Check
     if (runAll || checksToRun.includes('permissions')) {
       logger.debug('Running permissions check...')
-      const permCheck = await validatePermissions(detailed)
+      const permCheck = await validatePermissions(detailed as boolean)
       results.checks.permissions = permCheck
       updateSummary(results.summary, permCheck)
-      
+
       if (includeRecommendations && permCheck.recommendations) {
         results.recommendations.push(...permCheck.recommendations)
       }
@@ -364,10 +381,10 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     // Disk Space Check
     if (runAll || checksToRun.includes('disk_space')) {
       logger.debug('Running disk space check...')
-      const diskCheck = await validateDiskSpace(detailed)
+      const diskCheck = await validateDiskSpace(detailed as boolean)
       results.checks.disk_space = diskCheck
       updateSummary(results.summary, diskCheck)
-      
+
       if (includeRecommendations && diskCheck.recommendations) {
         results.recommendations.push(...diskCheck.recommendations)
       }
@@ -376,10 +393,10 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     // Memory Usage Check
     if (runAll || checksToRun.includes('memory_usage')) {
       logger.debug('Running memory usage check...')
-      const memCheck = await validateMemoryUsage(detailed)
+      const memCheck = await validateMemoryUsage(detailed as boolean)
       results.checks.memory_usage = memCheck
       updateSummary(results.summary, memCheck)
-      
+
       if (includeRecommendations && memCheck.recommendations) {
         results.recommendations.push(...memCheck.recommendations)
       }
@@ -397,7 +414,7 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
       overall: false,
       error: 'Validation failed',
       message: (error as Error).message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }
   }
 }
@@ -409,9 +426,11 @@ function updateSummary(summary: any, check: any): void {
   summary.total++
   if (check.status === 'passed') {
     summary.passed++
-  } else if (check.status === 'failed') {
+  }
+  else if (check.status === 'failed') {
     summary.failed++
-  } else if (check.status === 'warning') {
+  }
+  else if (check.status === 'warning') {
     summary.warnings++
   }
 }
@@ -426,11 +445,11 @@ async function validateSystemInfo(detailed: boolean): Promise<any> {
     const arch = process.arch
     const uptime = process.uptime()
     const memoryUsage = process.memoryUsage()
-    
+
     // Check Node.js version requirement (>=22.0.0)
-    const nodeVersionNum = parseInt(nodeVersion.slice(1).split('.')[0])
+    const nodeVersionNum = Number.parseInt(nodeVersion.slice(1).split('.')[0] || '0', 10)
     const nodeVersionValid = nodeVersionNum >= 22
-    
+
     const details = {
       node_version: nodeVersion,
       platform,
@@ -440,28 +459,28 @@ async function validateSystemInfo(detailed: boolean): Promise<any> {
         rss: `${Math.round(memoryUsage.rss / 1024 / 1024)}MB`,
         heap_used: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
         heap_total: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
-        external: `${Math.round(memoryUsage.external / 1024 / 1024)}MB`
-      }
+        external: `${Math.round(memoryUsage.external / 1024 / 1024)}MB`,
+      },
     }
 
     if (detailed) {
-      const os = await import('node:os')
-      details.system = {
-        hostname: os.hostname(),
-        cpus: os.cpus().length,
-        total_memory: `${Math.round(os.totalmem() / 1024 / 1024 / 1024)}GB`,
-        free_memory: `${Math.round(os.freemem() / 1024 / 1024 / 1024)}GB`,
-        load_average: os.loadavg()
+      const osModule = await import('node:os')
+      ;(details as any).system = {
+        hostname: osModule.hostname(),
+        cpus: osModule.cpus().length,
+        total_memory: `${Math.round(osModule.totalmem() / 1024 / 1024 / 1024)}GB`,
+        free_memory: `${Math.round(osModule.freemem() / 1024 / 1024 / 1024)}GB`,
+        load_average: osModule.loadavg(),
       }
     }
 
     return {
       status: nodeVersionValid ? 'passed' : 'failed',
-      message: nodeVersionValid 
-        ? `System check passed (Node.js ${nodeVersion})` 
+      message: nodeVersionValid
+        ? `System check passed (Node.js ${nodeVersion})`
         : `Node.js version ${nodeVersion} is below required >=22.0.0`,
       details,
-      recommendations: nodeVersionValid ? [] : ['Upgrade to Node.js 22 or higher']
+      recommendations: nodeVersionValid ? [] : ['Upgrade to Node.js 22 or higher'],
     }
   }
   catch (error) {
@@ -469,7 +488,7 @@ async function validateSystemInfo(detailed: boolean): Promise<any> {
       status: 'failed',
       message: `System info check failed: ${(error as Error).message}`,
       details: {},
-      recommendations: []
+      recommendations: [],
     }
   }
 }
@@ -482,7 +501,7 @@ async function validateDependencies(detailed: boolean): Promise<any> {
     const packageJson = JSON.parse(await fs.readFile(path.resolve(__dirname, '../../package.json'), 'utf8'))
     const dependencies = packageJson.dependencies || {}
     const devDependencies = packageJson.devDependencies || {}
-    
+
     const allDeps = { ...dependencies, ...devDependencies }
     const installedPackages: any = {}
     const missing: string[] = []
@@ -490,7 +509,7 @@ async function validateDependencies(detailed: boolean): Promise<any> {
 
     // Check critical dependencies
     const criticalDeps = ['@modelcontextprotocol/sdk', 'zod', 'better-sqlite3']
-    
+
     for (const [pkg, version] of Object.entries(allDeps)) {
       try {
         const pkgPath = path.resolve(__dirname, '../../node_modules', pkg, 'package.json')
@@ -498,37 +517,40 @@ async function validateDependencies(detailed: boolean): Promise<any> {
         installedPackages[pkg] = {
           required: version,
           installed: installedPkg.version,
-          status: 'installed'
+          status: 'installed',
         }
-      } catch (error) {
+      }
+      catch (error) {
         missing.push(pkg)
         installedPackages[pkg] = {
           required: version,
           installed: null,
-          status: 'missing'
+          status: 'missing',
         }
       }
     }
 
     const allInstalled = missing.length === 0
     const criticalMissing = missing.filter(pkg => criticalDeps.includes(pkg))
-    
+
     if (missing.length > 0) {
       recommendations.push(`Run 'npm install' to install missing dependencies: ${missing.join(', ')}`)
     }
 
     return {
       status: criticalMissing.length === 0 ? (allInstalled ? 'passed' : 'warning') : 'failed',
-      message: allInstalled 
-        ? 'All dependencies are installed' 
+      message: allInstalled
+        ? 'All dependencies are installed'
         : `${missing.length} missing dependencies${criticalMissing.length > 0 ? ` (${criticalMissing.length} critical)` : ''}`,
-      details: detailed ? installedPackages : {
-        total: Object.keys(allDeps).length,
-        installed: Object.keys(allDeps).length - missing.length,
-        missing: missing.length,
-        critical_missing: criticalMissing.length
-      },
-      recommendations
+      details: detailed
+        ? installedPackages
+        : {
+            total: Object.keys(allDeps).length,
+            installed: Object.keys(allDeps).length - missing.length,
+            missing: missing.length,
+            critical_missing: criticalMissing.length,
+          },
+      recommendations,
     }
   }
   catch (error) {
@@ -536,7 +558,7 @@ async function validateDependencies(detailed: boolean): Promise<any> {
       status: 'failed',
       message: `Dependencies check failed: ${(error as Error).message}`,
       details: {},
-      recommendations: []
+      recommendations: [],
     }
   }
 }
@@ -547,22 +569,26 @@ async function validateDependencies(detailed: boolean): Promise<any> {
 async function validateDatabase(detailed: boolean): Promise<any> {
   try {
     const { database } = await import('../database/index.js')
-    
+
     // Test basic connectivity
-    const testQuery = database.prepare('SELECT 1 as test').get()
+    const testQuery = database.executeCustomSQL('connectivityTest', (db) => {
+      return db.prepare('SELECT 1 as test').get()
+    })
     if (!testQuery || (testQuery as any).test !== 1) {
       throw new Error('Database connectivity test failed')
     }
 
     // Check tables exist
-    const tables = database.prepare(`
-      SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
-    `).all() as Array<{name: string}>
+    const tables = database.executeCustomSQL('getTables', (db) => {
+      return db.prepare(`
+        SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
+      `).all()
+    }) as Array<{ name: string }> | null
 
     const expectedTables = ['nodes', 'tool_usage', 'n8n_instances', 'discovery_sessions', 'mcp_tools', 'version_changes']
-    const existingTables = tables.map(t => t.name)
+    const existingTables = tables ? tables.map(t => t.name) : []
     const missingTables = expectedTables.filter(t => !existingTables.includes(t))
-    
+
     // Check database file size and permissions
     const dbPath = path.resolve('./data/nodes.db')
     let dbStats: any = {}
@@ -573,9 +599,10 @@ async function validateDatabase(detailed: boolean): Promise<any> {
         created: stats.birthtime.toISOString(),
         modified: stats.mtime.toISOString(),
         readable: true,
-        writable: true
+        writable: true,
       }
-    } catch (error) {
+    }
+    catch (error) {
       dbStats.error = (error as Error).message
     }
 
@@ -589,15 +616,17 @@ async function validateDatabase(detailed: boolean): Promise<any> {
       message: missingTables.length === 0
         ? `Database OK (${existingTables.length} tables)`
         : `Missing ${missingTables.length} required tables`,
-      details: detailed ? {
-        existing_tables: existingTables,
-        missing_tables: missingTables,
-        database_file: dbStats
-      } : {
-        tables_count: existingTables.length,
-        missing_count: missingTables.length
-      },
-      recommendations
+      details: detailed
+        ? {
+            existing_tables: existingTables,
+            missing_tables: missingTables,
+            database_file: dbStats,
+          }
+        : {
+            tables_count: existingTables.length,
+            missing_count: missingTables.length,
+          },
+      recommendations,
     }
   }
   catch (error) {
@@ -605,7 +634,7 @@ async function validateDatabase(detailed: boolean): Promise<any> {
       status: 'failed',
       message: `Database check failed: ${(error as Error).message}`,
       details: {},
-      recommendations: ['Check database file permissions and SQLite installation']
+      recommendations: ['Check database file permissions and SQLite installation'],
     }
   }
 }
@@ -624,7 +653,7 @@ async function validateMcpConfig(detailed: boolean): Promise<any> {
     const possiblePaths = [
       path.resolve('.mcp.json'),
       path.resolve('../.mcp.json'),
-      path.resolve('../../.mcp.json')
+      path.resolve('../../.mcp.json'),
     ]
 
     for (const tryPath of possiblePaths) {
@@ -632,7 +661,8 @@ async function validateMcpConfig(detailed: boolean): Promise<any> {
         mcpConfig = JSON.parse(await fs.readFile(tryPath, 'utf8'))
         configPath = tryPath
         break
-      } catch (error) {
+      }
+      catch (error) {
         // Continue trying other paths
       }
     }
@@ -640,12 +670,12 @@ async function validateMcpConfig(detailed: boolean): Promise<any> {
     if (!mcpConfig) {
       recommendations.push('Create .mcp.json configuration file')
       recommendations.push('Run: node scripts/install-mcp.js')
-      
+
       return {
         status: 'warning',
         message: 'No .mcp.json configuration found',
         details: { searched_paths: possiblePaths },
-        recommendations
+        recommendations,
       }
     }
 
@@ -654,10 +684,10 @@ async function validateMcpConfig(detailed: boolean): Promise<any> {
     const hasN8nServer = hasServers && mcpConfig.mcpServers['n8n-mcp-modern']
     const serverConfig = hasN8nServer ? mcpConfig.mcpServers['n8n-mcp-modern'] : null
 
-    configValid = hasServers && hasN8nServer && 
-                  serverConfig.type === 'stdio' && 
-                  serverConfig.command && 
-                  Array.isArray(serverConfig.args)
+    configValid = hasServers && hasN8nServer
+      && serverConfig.type === 'stdio'
+      && serverConfig.command
+      && Array.isArray(serverConfig.args)
 
     if (!configValid) {
       recommendations.push('Validate .mcp.json structure')
@@ -674,22 +704,24 @@ async function validateMcpConfig(detailed: boolean): Promise<any> {
 
     return {
       status: configValid ? 'passed' : 'failed',
-      message: configValid 
+      message: configValid
         ? `MCP config valid${hasN8nConfig ? ' with n8n API settings' : ' (missing n8n API config)'}`
         : 'Invalid or incomplete MCP configuration',
-      details: detailed ? {
-        config_path: configPath,
-        has_servers: hasServers,
-        has_n8n_server: hasN8nServer,
-        has_env_config: hasEnvConfig,
-        has_n8n_config: hasN8nConfig,
-        server_config: serverConfig
-      } : {
-        config_found: !!mcpConfig,
-        valid_structure: configValid,
-        n8n_configured: hasN8nConfig
-      },
-      recommendations
+      details: detailed
+        ? {
+            config_path: configPath,
+            has_servers: hasServers,
+            has_n8n_server: hasN8nServer,
+            has_env_config: hasEnvConfig,
+            has_n8n_config: hasN8nConfig,
+            server_config: serverConfig,
+          }
+        : {
+            config_found: !!mcpConfig,
+            valid_structure: configValid,
+            n8n_configured: hasN8nConfig,
+          },
+      recommendations,
     }
   }
   catch (error) {
@@ -697,51 +729,34 @@ async function validateMcpConfig(detailed: boolean): Promise<any> {
       status: 'failed',
       message: `MCP config check failed: ${(error as Error).message}`,
       details: {},
-      recommendations: ['Check .mcp.json file syntax and permissions']
+      recommendations: ['Check .mcp.json file syntax and permissions'],
     }
   }
 }
 
 /**
- * Validate n8n connectivity 
+ * Validate n8n connectivity
  */
 async function validateN8nConnectivity(detailed: boolean): Promise<any> {
-  try {
-    if (!hasN8nApi()) {
-      return {
-        status: 'warning',
-        message: 'n8n API not configured - server running in offline mode',
-        details: { api_configured: false },
-        recommendations: ['Configure N8N_API_URL and N8N_API_KEY environment variables']
-      }
-    }
-
-    // Test n8n API connectivity
-    const connectivityTest = await simpleN8nApi.testConnection()
-    
-    return {
-      status: connectivityTest.success ? 'passed' : 'failed',
-      message: connectivityTest.success 
-        ? `n8n API connected (${connectivityTest.version || 'unknown version'})`
-        : `n8n API connection failed: ${connectivityTest.error}`,
-      details: detailed ? connectivityTest : {
-        connected: connectivityTest.success,
-        version: connectivityTest.version
-      },
-      recommendations: connectivityTest.success ? [] : [
-        'Check n8n server is running',
-        'Verify API URL and key are correct',
-        'Check network connectivity to n8n instance'
-      ]
-    }
+  if (!hasN8nApi) {
+    throw new Error('n8n API not configured - missing N8N_API_URL or N8N_API_KEY')
   }
-  catch (error) {
-    return {
-      status: 'failed',
-      message: `n8n connectivity check failed: ${(error as Error).message}`,
-      details: {},
-      recommendations: []
-    }
+
+  if (!simpleN8nApi) {
+    throw new Error('n8n API client not initialized')
+  }
+
+  const isConnected = await simpleN8nApi.testConnection()
+
+  if (!isConnected) {
+    throw new Error('n8n API connection failed - check server status and credentials')
+  }
+
+  return {
+    status: 'passed',
+    message: 'n8n API connected successfully',
+    details: { connected: true },
+    recommendations: [],
   }
 }
 
@@ -759,7 +774,8 @@ async function validatePermissions(detailed: boolean): Promise<any> {
     try {
       await fs.access(dataDir, fs.constants.R_OK | fs.constants.W_OK)
       checks.data_directory = { readable: true, writable: true }
-    } catch (error) {
+    }
+    catch (error) {
       checks.data_directory = { readable: false, writable: false, error: (error as Error).message }
       issues.push('Data directory not accessible')
       recommendations.push('Ensure read/write permissions on ./data directory')
@@ -770,20 +786,22 @@ async function validatePermissions(detailed: boolean): Promise<any> {
     try {
       await fs.access(dbPath, fs.constants.R_OK | fs.constants.W_OK)
       checks.database_file = { readable: true, writable: true }
-    } catch (error) {
+    }
+    catch (error) {
       checks.database_file = { readable: false, writable: false, error: (error as Error).message }
       issues.push('Database file not accessible')
       recommendations.push('Ensure read/write permissions on database file')
     }
 
-    // Check temp directory permissions  
+    // Check temp directory permissions
     const tmpDir = os.tmpdir()
     try {
       const testFile = path.join(tmpDir, `n8n-mcp-test-${Date.now()}`)
       await fs.writeFile(testFile, 'test')
       await fs.unlink(testFile)
       checks.temp_directory = { readable: true, writable: true }
-    } catch (error) {
+    }
+    catch (error) {
       checks.temp_directory = { readable: false, writable: false, error: (error as Error).message }
       issues.push('Temp directory not accessible')
       recommendations.push('Ensure write permissions on system temp directory')
@@ -793,15 +811,15 @@ async function validatePermissions(detailed: boolean): Promise<any> {
       status: issues.length === 0 ? 'passed' : 'failed',
       message: issues.length === 0 ? 'All permission checks passed' : `${issues.length} permission issues found`,
       details: detailed ? checks : { issues_count: issues.length },
-      recommendations
+      recommendations,
     }
   }
   catch (error) {
     return {
-      status: 'failed', 
+      status: 'failed',
       message: `Permissions check failed: ${(error as Error).message}`,
       details: {},
-      recommendations: []
+      recommendations: [],
     }
   }
 }
@@ -811,41 +829,46 @@ async function validatePermissions(detailed: boolean): Promise<any> {
  */
 async function validateDiskSpace(detailed: boolean): Promise<any> {
   try {
-    const { execCommand } = { execCommand }
+    // Use the execCommand function defined above
     const result = await execCommand('df', ['-h', '.'])
-    
+
     // Parse df output (simplified - may need adjustment for different systems)
     const lines = result.stdout.trim().split('\n')
     const dataLine = lines[lines.length - 1]
+    if (!dataLine) {
+      throw new Error('Could not parse df output')
+    }
     const parts = dataLine.split(/\s+/)
-    
+
     const usage = {
       filesystem: parts[0],
       size: parts[1],
-      used: parts[2], 
+      used: parts[2],
       available: parts[3],
       use_percent: parts[4],
-      mount: parts[5]
+      mount: parts[5],
     }
-    
-    const usePercent = parseInt(usage.use_percent?.replace('%', '') || '0')
+
+    const usePercent = Number.parseInt(usage.use_percent?.replace('%', '') || '0')
     const availableBytes = usage.available || '0'
-    
+
     const recommendations: string[] = []
     let status = 'passed'
-    
+
     if (usePercent > 90) {
       status = 'failed'
       recommendations.push('Disk usage is critically high - free up space immediately')
-    } else if (usePercent > 80) {
-      status = 'warning' 
+    }
+    else if (usePercent > 80) {
+      status = 'warning'
       recommendations.push('Disk usage is high - consider freeing up space')
     }
-    
+
     // Check if we have less than 100MB available
-    const availableMB = availableBytes.includes('G') ? parseFloat(availableBytes) * 1024 : 
-                       availableBytes.includes('M') ? parseFloat(availableBytes) : 0
-    
+    const availableMB = availableBytes.includes('G')
+      ? Number.parseFloat(availableBytes) * 1024
+      : availableBytes.includes('M') ? Number.parseFloat(availableBytes) : 0
+
     if (availableMB < 100) {
       status = 'failed'
       recommendations.push('Less than 100MB available - critical space issue')
@@ -854,21 +877,17 @@ async function validateDiskSpace(detailed: boolean): Promise<any> {
     return {
       status,
       message: `Disk usage: ${usage.use_percent} (${usage.available} available)`,
-      details: detailed ? usage : { 
-        use_percent: usage.use_percent,
-        available: usage.available
-      },
-      recommendations
+      details: detailed
+        ? usage
+        : {
+            use_percent: usage.use_percent,
+            available: usage.available,
+          },
+      recommendations,
     }
   }
   catch (error) {
-    // Fallback for systems without df command
-    return {
-      status: 'warning',
-      message: `Could not check disk space: ${(error as Error).message}`,
-      details: {},
-      recommendations: ['Manually verify sufficient disk space is available']
-    }
+    throw new Error(`Disk space check failed: ${(error as Error).message}`)
   }
 }
 
@@ -880,47 +899,49 @@ async function validateMemoryUsage(detailed: boolean): Promise<any> {
     const memUsage = process.memoryUsage()
     const totalMemory = os.totalmem()
     const freeMemory = os.freemem()
-    
+
     const processMemoryMB = Math.round(memUsage.rss / 1024 / 1024)
     const systemMemoryGB = Math.round(totalMemory / 1024 / 1024 / 1024)
     const freeMemoryGB = Math.round(freeMemory / 1024 / 1024 / 1024)
     const memoryUsagePercent = Math.round((processMemoryMB / (systemMemoryGB * 1024)) * 100)
-    
+
     const recommendations: string[] = []
     let status = 'passed'
-    
+
     if (processMemoryMB > 1024) { // > 1GB
       status = 'warning'
       recommendations.push('Process memory usage is high - consider restarting if performance issues occur')
     }
-    
+
     if (freeMemoryGB < 1) { // < 1GB free
       status = 'warning'
       recommendations.push('System memory is low - consider closing other applications')
     }
-    
+
     const details = {
       process: {
         rss: `${processMemoryMB}MB`,
         heap_used: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
         heap_total: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
-        external: `${Math.round(memUsage.external / 1024 / 1024)}MB`
+        external: `${Math.round(memUsage.external / 1024 / 1024)}MB`,
       },
       system: {
         total: `${systemMemoryGB}GB`,
         free: `${freeMemoryGB}GB`,
-        process_usage_percent: `${memoryUsagePercent}%`
-      }
+        process_usage_percent: `${memoryUsagePercent}%`,
+      },
     }
 
     return {
       status,
       message: `Memory: ${processMemoryMB}MB process, ${freeMemoryGB}GB system free`,
-      details: detailed ? details : {
-        process_memory_mb: processMemoryMB,
-        system_free_gb: freeMemoryGB
-      },
-      recommendations
+      details: detailed
+        ? details
+        : {
+            process_memory_mb: processMemoryMB,
+            system_free_gb: freeMemoryGB,
+          },
+      recommendations,
     }
   }
   catch (error) {
@@ -928,7 +949,7 @@ async function validateMemoryUsage(detailed: boolean): Promise<any> {
       status: 'failed',
       message: `Memory check failed: ${(error as Error).message}`,
       details: {},
-      recommendations: []
+      recommendations: [],
     }
   }
 }
@@ -950,7 +971,7 @@ async function handleServerUpdate(args: Record<string, unknown>): Promise<any> {
           return {
             error: 'Could not determine current version',
             currentVersion: null,
-            latestVersion: null
+            latestVersion: null,
           }
         }
 
@@ -959,7 +980,7 @@ async function handleServerUpdate(args: Record<string, unknown>): Promise<any> {
             error: 'Could not check latest version - authentication or network issue',
             currentVersion,
             latestVersion: null,
-            suggestion: 'Run validate_auth action to check GitHub Packages access'
+            suggestion: 'Run validate_auth action to check GitHub Packages access',
           }
         }
 
@@ -967,35 +988,35 @@ async function handleServerUpdate(args: Record<string, unknown>): Promise<any> {
           currentVersion,
           latestVersion: latestInfo.version,
           updateAvailable: latestInfo.available,
-          message: latestInfo.available 
+          message: latestInfo.available
             ? `Update available: ${currentVersion} → ${latestInfo.version}`
             : 'Already on latest version',
-          nextSteps: latestInfo.available 
+          nextSteps: latestInfo.available
             ? ['Run validate_auth to check authentication', 'Run perform_update to upgrade']
-            : []
+            : [],
         }
       }
 
       case 'validate_auth': {
         logger.info('Validating GitHub Packages authentication...')
         const authResult = await validateGitHubAuth()
-        
+
         return {
           authenticationValid: authResult.valid,
           message: authResult.message,
-          nextSteps: authResult.valid 
+          nextSteps: authResult.valid
             ? ['Authentication is working - you can proceed with updates']
             : [
-              'Fix authentication by running: node scripts/validate-github-auth.cjs --verbose',
-              'Configure GitHub token in ~/.npmrc',
-              'Ensure token has read:packages permission'
-            ]
+                'Fix authentication by running: node scripts/validate-github-auth.cjs --verbose',
+                'Configure GitHub token in ~/.npmrc',
+                'Ensure token has read:packages permission',
+              ],
         }
       }
 
       case 'perform_update': {
         logger.info('Starting server update process...')
-        
+
         // Validate authentication first unless forced
         if (!force) {
           const authResult = await validateGitHubAuth()
@@ -1003,7 +1024,7 @@ async function handleServerUpdate(args: Record<string, unknown>): Promise<any> {
             return {
               error: 'GitHub Packages authentication failed',
               message: authResult.message,
-              suggestion: 'Run validate_auth action first, or use force:true to bypass (not recommended)'
+              suggestion: 'Run validate_auth action first, or use force:true to bypass (not recommended)',
             }
           }
         }
@@ -1017,30 +1038,30 @@ async function handleServerUpdate(args: Record<string, unknown>): Promise<any> {
             return {
               error: 'Backup failed and force is not enabled',
               message: backupResult.message,
-              suggestion: 'Use force:true to bypass backup requirement'
+              suggestion: 'Use force:true to bypass backup requirement',
             }
           }
         }
 
         // Perform the update
-        const updateResult = await performUpdate(preserveData)
-        
+        const updateResult = await performUpdate(preserveData as boolean)
+
         return {
           success: updateResult.success,
           message: updateResult.message,
           details: updateResult.details,
           backup: backupResult,
-          nextSteps: updateResult.success 
+          nextSteps: updateResult.success
             ? [
-              'Server updated successfully',
-              'Restart your MCP client (Claude Code) to use the new version',
-              'Run check_updates to confirm new version'
-            ]
+                'Server updated successfully',
+                'Restart your MCP client (Claude Code) to use the new version',
+                'Run check_updates to confirm new version',
+              ]
             : [
-              'Update failed - check error details',
-              'Verify GitHub Packages authentication',
-              'Check network connectivity'
-            ]
+                'Update failed - check error details',
+                'Verify GitHub Packages authentication',
+                'Check network connectivity',
+              ],
         }
       }
 
@@ -1048,22 +1069,23 @@ async function handleServerUpdate(args: Record<string, unknown>): Promise<any> {
         return {
           error: 'Rollback functionality not yet implemented',
           message: 'Manual rollback required - reinstall previous version or restore from backup',
-          suggestion: 'Use npm install -g @eekfonky/n8n-mcp-modern@<previous-version>'
+          suggestion: 'Use npm install -g @eekfonky/n8n-mcp-modern@<previous-version>',
         }
       }
 
       default:
         return {
           error: 'Invalid action',
-          validActions: ['check_updates', 'validate_auth', 'perform_update', 'rollback_update']
+          validActions: ['check_updates', 'validate_auth', 'perform_update', 'rollback_update'],
         }
     }
-  } catch (error) {
+  }
+  catch (error) {
     logger.error('Server update error:', error)
     return {
       error: 'Update operation failed',
       message: (error as Error).message,
-      stack: (error as Error).stack
+      stack: (error as Error).stack,
     }
   }
 }
@@ -1138,26 +1160,26 @@ export async function initializeDynamicTools(): Promise<void> {
           action: {
             type: 'string',
             enum: ['check_updates', 'validate_auth', 'perform_update', 'rollback_update'],
-            description: 'Update action to perform'
+            description: 'Update action to perform',
           },
           force: {
             type: 'boolean',
             default: false,
-            description: 'Force update even if validation fails (use with caution)'
+            description: 'Force update even if validation fails (use with caution)',
           },
           preserveData: {
             type: 'boolean',
             default: true,
-            description: 'Preserve user data and configurations during update'
+            description: 'Preserve user data and configurations during update',
           },
           backupBeforeUpdate: {
             type: 'boolean',
             default: true,
-            description: 'Create backup before performing update'
-          }
+            description: 'Create backup before performing update',
+          },
         },
-        required: ['action']
-      }
+        required: ['action'],
+      },
     })
 
     // Add installation validation and health check tool
@@ -1173,7 +1195,7 @@ export async function initializeDynamicTools(): Promise<void> {
               type: 'string',
               enum: [
                 'system_info',
-                'dependencies', 
+                'dependencies',
                 'database',
                 'mcp_config',
                 'github_auth',
@@ -1181,24 +1203,24 @@ export async function initializeDynamicTools(): Promise<void> {
                 'permissions',
                 'disk_space',
                 'memory_usage',
-                'all'
-              ]
+                'all',
+              ],
             },
             default: ['all'],
-            description: 'Specific validation checks to perform'
+            description: 'Specific validation checks to perform',
           },
           includeRecommendations: {
             type: 'boolean',
             default: true,
-            description: 'Include improvement recommendations in results'
+            description: 'Include improvement recommendations in results',
           },
           detailed: {
-            type: 'boolean', 
+            type: 'boolean',
             default: false,
-            description: 'Include detailed diagnostic information'
-          }
-        }
-      }
+            description: 'Include detailed diagnostic information',
+          },
+        },
+      },
     })
 
     // Add dynamic agent tools
@@ -1629,51 +1651,40 @@ export async function initializeDynamicTools(): Promise<void> {
       }
     })
 
-    // Run Phase 2 discovery if n8n API is available
-    if (hasN8nApi && simpleN8nApi && await testN8nConnection()) {
-      logger.info('Running Phase 2: Credential-based node discovery...')
-      const discoveryStats = await credentialDiscovery.discover()
-      logger.info(`Phase 2 complete: ${discoveryStats.nodesDiscovered} nodes discovered`)
-
-      // Run Phase 3: Generate MCP tools from discovered nodes
-      logger.info('Running Phase 3: MCP tool generation with lazy loading...')
-      const generationStats = await toolGenerator.generateAllTools()
-      logger.info(`Phase 3 complete: ${generationStats.totalGenerated} tools generated (${generationStats.toolsWithOperations} with operations)`)
-
-      // Load the generated tools into the MCP system
-      await loadGeneratedTools(generationStats.totalGenerated)
-
-      // Initialize Phase 4: Discovery Scheduler
-      logger.info('Initializing Phase 4: Discovery automation scheduler...')
-      discoveryScheduler = new DiscoveryScheduler()
-      await discoveryScheduler.start()
-      logger.info('Phase 4 complete: Discovery scheduler initialized')
+    // Run Phase 2 discovery - n8n API must be available
+    if (!hasN8nApi || !simpleN8nApi) {
+      throw new Error('n8n API connection required for dynamic tool discovery')
     }
-    else {
-      logger.warn('No n8n API connection - running with basic tools only')
 
-      // Still initialize scheduler for potential future connections
-      discoveryScheduler = new DiscoveryScheduler()
-      await discoveryScheduler.start()
+    // Test connection first
+    const isConnected = await simpleN8nApi.testConnection()
+    if (!isConnected) {
+      throw new Error('n8n API connection test failed - check server status and credentials')
     }
+
+    logger.info('Running Phase 2: Credential-based node discovery...')
+    const discoveryStats = await credentialDiscovery.discover()
+    logger.info(`Phase 2 complete: ${discoveryStats.nodesDiscovered} nodes discovered`)
+
+    // Run Phase 3: Generate MCP tools from discovered nodes
+    logger.info('Running Phase 3: MCP tool generation with lazy loading...')
+    const generationStats = await toolGenerator.generateAllTools()
+    logger.info(`Phase 3 complete: ${generationStats.totalGenerated} tools generated (${generationStats.toolsWithOperations} with operations)`)
+
+    // Load the generated tools into the MCP system
+    await loadGeneratedTools(generationStats.totalGenerated)
+
+    // Initialize Phase 4: Discovery Scheduler
+    logger.info('Initializing Phase 4: Discovery automation scheduler...')
+    discoveryScheduler = new DiscoveryScheduler()
+    await discoveryScheduler.start()
+    logger.info('Phase 4 complete: Discovery scheduler initialized')
 
     logger.info(`Dynamic discovery complete: ${discoveredTools.length} tools available`)
   }
   catch (error) {
     logger.error('Dynamic discovery failed:', error)
     throw error
-  }
-}
-
-/**
- * Test n8n API connectivity
- */
-async function testN8nConnection(): Promise<boolean> {
-  try {
-    return await simpleN8nApi?.testConnection() || false
-  }
-  catch {
-    return false
   }
 }
 
@@ -1764,181 +1775,6 @@ function createLazyToolHandler(toolId: string) {
         error: error instanceof Error ? error.message : String(error),
       }
     }
-  }
-}
-
-/**
- * Discover n8n capabilities and generate comprehensive tools (Legacy fallback)
- */
-async function _discoverN8nNodes(): Promise<void> {
-  try {
-    // Generate dynamic tools for comprehensive workflow operations
-    const coreOperations = [
-      'list_workflows',
-      'get_workflow',
-      'create_workflow',
-      'execute_workflow',
-      'get_executions',
-
-      // Extended workflow operations
-      'update_workflow',
-      'delete_workflow',
-      'activate_workflow',
-      'deactivate_workflow',
-      'duplicate_workflow',
-
-      // Execution operations
-      'get_execution',
-      'delete_execution',
-      'retry_execution',
-      'stop_execution',
-
-      // Credential operations
-      'list_credentials',
-      'get_credential',
-      'create_credential',
-      'update_credential',
-      'delete_credential',
-      'test_credential',
-
-      // Import/Export operations
-      'export_workflow',
-      'import_workflow',
-
-      // Tag operations
-      'list_tags',
-      'create_tag',
-      'tag_workflow',
-
-      // Variable operations
-      'list_variables',
-      'create_variable',
-      'update_variable',
-      'delete_variable',
-
-      // System operations
-      'get_health',
-      'get_version',
-      'list_event_destinations',
-
-      // Batch operations
-      'batch_delete_workflows',
-      'batch_activate_workflows',
-      'batch_deactivate_workflows',
-    ]
-
-    for (const operation of coreOperations) {
-      discoveredTools.push({
-        name: operation,
-        description: `Dynamic ${operation.replace('_', ' ')} operation`,
-        inputSchema: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', description: 'Resource ID' },
-            name: { type: 'string', description: 'Resource name' },
-            data: { type: 'object', description: 'Operation data' },
-          },
-        },
-      })
-
-      toolHandlers.set(operation, createDynamicHandler(operation))
-    }
-
-    // Generate tools for comprehensive node registry
-    const allNodes = getAllNodeTemplates()
-    logger.info(`Generating tools for ${allNodes.length} n8n node types from comprehensive registry`)
-
-    for (const nodeTemplate of allNodes) {
-      // Create a general tool for the node
-      const nodeToolName = `node_${nodeTemplate.name.replace(/[^a-z0-9]/g, '_')}`
-
-      discoveredTools.push({
-        name: nodeToolName,
-        description: `${nodeTemplate.displayName}: ${nodeTemplate.description}`,
-        inputSchema: {
-          type: 'object',
-          properties: {
-            operation: {
-              type: 'string',
-              description: `Operation to perform. Available: ${nodeTemplate.commonOperations.join(', ')}`,
-            },
-            parameters: {
-              type: 'object',
-              description: 'Node-specific parameters',
-            },
-            credentials: {
-              type: 'object',
-              description: 'Authentication credentials if required',
-            },
-          },
-          required: ['operation'],
-        },
-      })
-
-      toolHandlers.set(nodeToolName, createNodeTemplateHandler(nodeTemplate))
-
-      // Create specific operation tools for common operations
-      for (const operation of nodeTemplate.commonOperations.slice(0, 3)) { // Limit to avoid tool explosion
-        const operationToolName = `${nodeTemplate.name.replace(/[^a-z0-9]/g, '_')}_${operation}`
-
-        discoveredTools.push({
-          name: operationToolName,
-          description: `${nodeTemplate.displayName} - ${operation}: ${nodeTemplate.description}`,
-          inputSchema: {
-            type: 'object',
-            properties: {
-              parameters: {
-                type: 'object',
-                description: `Parameters for ${operation} operation`,
-              },
-              credentials: {
-                type: 'object',
-                description: 'Authentication credentials if required',
-              },
-            },
-          },
-        })
-
-        toolHandlers.set(operationToolName, createOperationHandler(nodeTemplate, operation))
-      }
-    }
-
-    // Generate category overview tools
-    const categories = getAllCategories()
-    for (const category of categories) {
-      const categoryToolName = `category_${category.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
-
-      discoveredTools.push({
-        name: categoryToolName,
-        description: `List all ${category} nodes and their capabilities`,
-        inputSchema: {
-          type: 'object',
-          properties: {
-            detailed: { type: 'boolean', description: 'Return detailed information about each node' },
-          },
-        },
-      })
-
-      toolHandlers.set(categoryToolName, createCategoryHandler(category))
-    }
-
-    // Try to detect additional nodes from API if available
-    try {
-      const apiNodes = await simpleN8nApi?.getNodeTypes() || []
-      if (apiNodes.length > 0) {
-        logger.info(`Additionally discovered ${apiNodes.length} nodes from live API`)
-        // We could add these but our registry is already comprehensive
-      }
-    }
-    catch (_nodeError) {
-      logger.debug('Live node discovery not available - using comprehensive registry')
-    }
-
-    logger.info(`Comprehensive discovery complete: ${discoveredTools.length} tools generated from registry + API`)
-  }
-  catch (error) {
-    logger.error('n8n discovery failed:', error)
-    throw error
   }
 }
 
@@ -2070,20 +1906,6 @@ function createDynamicHandler(operation: string) {
     }
     catch (error) {
       return { error: error instanceof Error ? error.message : String(error) }
-    }
-  }
-}
-
-/**
- * Create handler for specific node (legacy - for API discovered nodes)
- */
-function _createNodeHandler(node: N8NNodeAPI) {
-  return async (args: Record<string, unknown>) => {
-    return {
-      node: node.name,
-      operation: args.operation || 'info',
-      parameters: args.parameters || {},
-      status: 'node_ready',
     }
   }
 }

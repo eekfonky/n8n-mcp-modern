@@ -144,7 +144,7 @@ describe('iterative Workflow Builder - Phase 1 Test Suite', () => {
       expect(allowed1).toBe(true)
       expect(session.securityContext.rateLimits.currentOperations).toBe(1)
 
-      // Exhaust rate limit  
+      // Exhaust rate limit
       for (let i = 0; i < 99; i++) {
         WorkflowBuilderUtils.SessionManager.checkRateLimit(session)
       }
@@ -213,7 +213,7 @@ describe('iterative Workflow Builder - Phase 1 Test Suite', () => {
       uuidCounter = 0
       vi.clearAllMocks()
       WorkflowBuilderUtils.SessionManager.clearAllSessions()
-      
+
       const workflowId = 'test-workflow-123'
       mockSession = WorkflowBuilderUtils.SessionManager.createSession(workflowId)
     })
@@ -405,7 +405,7 @@ describe('iterative Workflow Builder - Phase 1 Test Suite', () => {
       uuidCounter = 0
       vi.clearAllMocks()
       WorkflowBuilderUtils.SessionManager.clearAllSessions()
-      
+
       const workflowId = 'test-workflow-123'
       mockSession = WorkflowBuilderUtils.SessionManager.createSession(workflowId)
 
@@ -476,7 +476,7 @@ describe('iterative Workflow Builder - Phase 1 Test Suite', () => {
     beforeEach(() => {
       // Reset UUID counter for consistent test results
       uuidCounter = 0
-      
+
       // Create a mock API instance
       api = mockSimpleN8nApi
       vi.clearAllMocks()

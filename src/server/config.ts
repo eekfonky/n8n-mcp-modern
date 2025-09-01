@@ -16,8 +16,14 @@ const MCP_MODES = ['stdio', 'http'] as const
 // Environment variable parsing with validation using enhanced TypeScript patterns
 const envSchema = z.object({
   NODE_ENV: z.enum(NODE_ENVIRONMENTS).default('production'),
-  N8N_API_URL: z.string().url().optional(),
-  N8N_API_KEY: z.string().optional(),
+  N8N_API_URL: z.preprocess(
+    val => (val === '' || val === undefined) ? undefined : val,
+    z.string().url().optional(),
+  ),
+  N8N_API_KEY: z.preprocess(
+    val => (val === '' || val === undefined) ? undefined : val,
+    z.string().optional(),
+  ),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
   DISABLE_CONSOLE_OUTPUT: z
     .string()

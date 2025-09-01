@@ -303,7 +303,7 @@ function sanitizeResponse(response: unknown): unknown {
  */
 export type ValidationResult<T>
   = | { success: true, data: T, warnings?: string[] }
-    | { success: false, error: ApiValidationError, fallbackData?: T }
+    | { success: false, error: ApiValidationError }
 
 /**
  * Safe validation that never throws, returns result object instead
@@ -333,7 +333,6 @@ export async function safeValidateResponse<T>(
       return {
         success: false,
         error,
-        fallbackData: response as T, // Provide fallback for graceful degradation
       }
     }
     else {
@@ -356,7 +355,6 @@ export async function safeValidateResponse<T>(
       return {
         success: false,
         error: validationError,
-        fallbackData: response as T,
       }
     }
   }

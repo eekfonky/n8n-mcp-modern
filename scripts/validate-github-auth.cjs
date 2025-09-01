@@ -9,6 +9,7 @@ const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
+const process = require('node:process')
 
 /**
  * Execute command safely with proper error handling
@@ -59,13 +60,13 @@ function execCommand(command, args = [], options = {}) {
  */
 function checkNpmrcConfiguration() {
   const npmrcPath = path.join(os.homedir(), '.npmrc')
-  
+
   if (!fs.existsSync(npmrcPath)) {
     return {
       exists: false,
       configured: false,
       path: npmrcPath,
-      message: '.npmrc file not found in home directory'
+      message: '.npmrc file not found in home directory',
     }
   }
 
@@ -81,9 +82,9 @@ function checkNpmrcConfiguration() {
       hasPlaceholder,
       path: npmrcPath,
       content,
-      message: hasRegistry && hasAuthToken 
+      message: hasRegistry && hasAuthToken
         ? (hasPlaceholder ? 'Configuration present but token is placeholder' : 'Properly configured')
-        : 'Missing GitHub Packages configuration'
+        : 'Missing GitHub Packages configuration',
     }
   }
   catch (error) {
@@ -91,7 +92,7 @@ function checkNpmrcConfiguration() {
       exists: true,
       configured: false,
       path: npmrcPath,
-      message: `Error reading .npmrc: ${error.message}`
+      message: `Error reading .npmrc: ${error.message}`,
     }
   }
 }
@@ -101,18 +102,18 @@ function checkNpmrcConfiguration() {
  */
 function extractGitHubToken() {
   const npmrcCheck = checkNpmrcConfiguration()
-  
+
   if (!npmrcCheck.configured || !npmrcCheck.content) {
     return null
   }
 
-  const tokenMatch = npmrcCheck.content.match(/\/\/npm\.pkg\.github\.com\/:_authToken=([^\s\n]+)/)
+  const tokenMatch = npmrcCheck.content.match(/\/\/npm\.pkg\.github\.com\/:_authToken=(\S+)/)
   if (!tokenMatch) {
     return null
   }
 
   const token = tokenMatch[1]
-  if (token === 'YOUR_GITHUB_TOKEN' || token === '${GITHUB_TOKEN}') {
+  if (token === 'YOUR_GITHUB_TOKEN' || token === '$' + '{GITHUB_TOKEN}') {
     return null
   }
 
@@ -126,24 +127,26 @@ async function validateGitHubToken(token) {
   if (!token) {
     return {
       valid: false,
-      message: 'No token provided'
+      message: 'No token provided',
     }
   }
 
   try {
     const result = await execCommand('curl', [
       '-s',
-      '-H', `Authorization: token ${token}`,
-      '-H', 'Accept: application/vnd.github.v3+json',
-      'https://api.github.com/user'
+      '-H',
+      `Authorization: token ${token}`,
+      '-H',
+      'Accept: application/vnd.github.v3+json',
+      'https://api.github.com/user',
     ])
 
     const response = JSON.parse(result.stdout)
-    
+
     if (response.message === 'Bad credentials') {
       return {
         valid: false,
-        message: 'Invalid GitHub token'
+        message: 'Invalid GitHub token',
       }
     }
 
@@ -151,19 +154,19 @@ async function validateGitHubToken(token) {
       return {
         valid: true,
         message: `Valid token for user: ${response.login}`,
-        user: response.login
+        user: response.login,
       }
     }
 
     return {
       valid: false,
-      message: 'Unexpected API response'
+      message: 'Unexpected API response',
     }
   }
   catch (error) {
     return {
       valid: false,
-      message: `Token validation failed: ${error.message}`
+      message: `Token validation failed: ${error.message}`,
     }
   }
 }
@@ -175,7 +178,7 @@ async function testPackageAccess(token) {
   if (!token) {
     return {
       accessible: false,
-      message: 'No token to test with'
+      message: 'No token to test with',
     }
   }
 
@@ -184,25 +187,25 @@ async function testPackageAccess(token) {
       'view',
       '@eekfonky/n8n-mcp-modern',
       'version',
-      '--registry=https://npm.pkg.github.com'
+      '--registry=https://npm.pkg.github.com',
     ], {
       env: {
         ...process.env,
-        NPM_TOKEN: token
-      }
+        NPM_TOKEN: token,
+      },
     })
 
     if (result.stdout.trim()) {
       return {
         accessible: true,
         message: `Package accessible, latest version: ${result.stdout.trim()}`,
-        version: result.stdout.trim()
+        version: result.stdout.trim(),
       }
     }
 
     return {
       accessible: false,
-      message: 'Package not accessible or version not found'
+      message: 'Package not accessible or version not found',
     }
   }
   catch (error) {
@@ -210,13 +213,13 @@ async function testPackageAccess(token) {
     if (error.stderr.includes('401') || error.stderr.includes('Unauthorized')) {
       return {
         accessible: false,
-        message: 'Authentication failed - token may not have read:packages permission'
+        message: 'Authentication failed - token may not have read:packages permission',
       }
     }
 
     return {
       accessible: false,
-      message: `Package access test failed: ${error.message}`
+      message: `Package access test failed: ${error.message}`,
     }
   }
 }
@@ -228,16 +231,16 @@ async function testNpmInstall() {
   try {
     // Test in a temporary directory to avoid affecting current project
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npm-test-'))
-    
-    const result = await execCommand('npm', [
+
+    await execCommand('npm', [
       'install',
       '@eekfonky/n8n-mcp-modern',
       '--dry-run',
       '--no-audit',
       '--no-fund',
-      '--silent'
+      '--silent',
     ], {
-      cwd: tmpDir
+      cwd: tmpDir,
     })
 
     // Cleanup
@@ -245,20 +248,20 @@ async function testNpmInstall() {
 
     return {
       installable: true,
-      message: 'Package can be installed successfully'
+      message: 'Package can be installed successfully',
     }
   }
   catch (error) {
     if (error.stderr.includes('401') || error.stderr.includes('Unauthorized')) {
       return {
         installable: false,
-        message: 'Installation failed - authentication required'
+        message: 'Installation failed - authentication required',
       }
     }
 
     return {
       installable: false,
-      message: `Installation test failed: ${error.message.split('\n')[0]}`
+      message: `Installation test failed: ${error.message.split('\n')[0]}`,
     }
   }
 }
@@ -328,21 +331,21 @@ function provideGuidance(results) {
  */
 async function validateGitHubAuthentication(verbose = false) {
   console.log('🔍 n8n-MCP Modern - GitHub Authentication Validator')
-  console.log('=' .repeat(55))
+  console.log('='.repeat(55))
 
   const results = {
     npmrc: null,
     token: null,
     packageAccess: null,
     npmInstall: null,
-    overall: false
+    overall: false,
   }
 
   // Check .npmrc configuration
   console.log('\n📋 Checking .npmrc configuration...')
   results.npmrc = checkNpmrcConfiguration()
   console.log(`   ${results.npmrc.configured ? '✅' : '❌'} ${results.npmrc.message}`)
-  
+
   if (verbose && results.npmrc.exists) {
     console.log(`   Path: ${results.npmrc.path}`)
   }
@@ -356,7 +359,7 @@ async function validateGitHubAuthentication(verbose = false) {
   // Extract and validate GitHub token
   console.log('\n🔑 Validating GitHub token...')
   const token = extractGitHubToken()
-  
+
   if (!token) {
     results.token = { valid: false, message: 'No valid token found in .npmrc' }
     console.log('   ❌ No valid token found in .npmrc')
@@ -367,7 +370,7 @@ async function validateGitHubAuthentication(verbose = false) {
 
   results.token = await validateGitHubToken(token)
   console.log(`   ${results.token.valid ? '✅' : '❌'} ${results.token.message}`)
-  
+
   if (!results.token.valid) {
     results.overall = false
     provideGuidance(results)
@@ -378,7 +381,7 @@ async function validateGitHubAuthentication(verbose = false) {
   console.log('\n📦 Testing package access...')
   results.packageAccess = await testPackageAccess(token)
   console.log(`   ${results.packageAccess.accessible ? '✅' : '❌'} ${results.packageAccess.message}`)
-  
+
   if (!results.packageAccess.accessible) {
     results.overall = false
     provideGuidance(results)
@@ -389,7 +392,7 @@ async function validateGitHubAuthentication(verbose = false) {
   console.log('\n🧪 Testing npm install capability...')
   results.npmInstall = await testNpmInstall()
   console.log(`   ${results.npmInstall.installable ? '✅' : '❌'} ${results.npmInstall.message}`)
-  
+
   if (!results.npmInstall.installable) {
     results.overall = false
     provideGuidance(results)
@@ -404,7 +407,7 @@ async function validateGitHubAuthentication(verbose = false) {
 // CLI interface
 async function main() {
   const verbose = process.argv.includes('--verbose') || process.argv.includes('-v')
-  
+
   try {
     const results = await validateGitHubAuthentication(verbose)
     process.exit(results.overall ? 0 : 1)
@@ -423,7 +426,7 @@ module.exports = {
   extractGitHubToken,
   validateGitHubToken,
   testPackageAccess,
-  testNpmInstall
+  testNpmInstall,
 }
 
 // Run if called directly

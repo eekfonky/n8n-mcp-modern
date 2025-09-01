@@ -204,12 +204,12 @@ export class DynamicAgentDB {
       }
       return Buffer.from(envKey, 'hex')
     }
-    
+
     // For production, require explicit key to ensure data persistence
     if (process.env.NODE_ENV === 'production') {
       logger.warn(`${envVarName} not provided in production - using deterministic fallback`)
     }
-    
+
     // Generate deterministic key for MCP compliance (ensures data persistence)
     const seed = process.env.DETERMINISTIC_SEED || `n8n-mcp-${envVarName}-fallback`
     return crypto.scryptSync(seed, `n8n-mcp-salt-${process.env.NODE_ENV || 'development'}`, 32)

@@ -91,11 +91,7 @@ export enum ErrorSeverity {
  */
 export enum RecoveryStrategy {
   NONE = 'none',
-  RETRY = 'retry',
-  RETRY_WITH_BACKOFF = 'retry_with_backoff',
-  FALLBACK = 'fallback',
-  RESET_CONNECTION = 'reset_connection',
-  RESTART_SERVICE = 'restart_service',
+  FAIL_FAST = 'fail_fast',
   MANUAL_INTERVENTION = 'manual_intervention',
 }
 
@@ -240,32 +236,14 @@ export class ConnectionError extends EnhancedError {
     )
   }
 
-  private static getRecoveryStrategy(code: ErrorCode): RecoveryStrategy {
-    switch (code) {
-      case ErrorCode.CONNECTION_TIMEOUT:
-      case ErrorCode.CONNECTION_LOST:
-        return RecoveryStrategy.RETRY_WITH_BACKOFF
-      case ErrorCode.CONNECTION_REFUSED:
-        return RecoveryStrategy.RESET_CONNECTION
-      case ErrorCode.CONNECTION_RATE_LIMITED:
-        return RecoveryStrategy.RETRY_WITH_BACKOFF
-      case ErrorCode.CONNECTION_UNAUTHORIZED:
-      case ErrorCode.CONNECTION_FORBIDDEN:
-        return RecoveryStrategy.MANUAL_INTERVENTION
-      default:
-        return RecoveryStrategy.RETRY
-    }
+  private static getRecoveryStrategy(_code: ErrorCode): RecoveryStrategy {
+    // With fail-fast approach, all connection errors require manual intervention
+    return RecoveryStrategy.MANUAL_INTERVENTION
   }
 
-  private static isRetryable(code: ErrorCode): boolean {
-    switch (code) {
-      case ErrorCode.CONNECTION_UNAUTHORIZED:
-      case ErrorCode.CONNECTION_FORBIDDEN:
-      case ErrorCode.CONNECTION_NOT_FOUND:
-        return false
-      default:
-        return true
-    }
+  private static isRetryable(_code: ErrorCode): boolean {
+    // With fail-fast approach, errors are not retryable
+    return false
   }
 }
 
@@ -279,17 +257,13 @@ export class DiscoveryError extends EnhancedError {
     context?: Record<string, unknown>,
     cause?: unknown,
   ) {
-    const recoveryStrategy = code === ErrorCode.DISCOVERY_TIMEOUT
-      ? RecoveryStrategy.RETRY_WITH_BACKOFF
-      : RecoveryStrategy.RETRY
-
     super(
       message,
       code,
-      ErrorSeverity.MEDIUM,
-      recoveryStrategy,
+      ErrorSeverity.HIGH,
+      RecoveryStrategy.FAIL_FAST,
       context,
-      true,
+      false,
       cause,
     )
   }
@@ -324,14 +298,10 @@ export class DatabaseError extends EnhancedError {
 
   private static getRecoveryStrategy(code: ErrorCode): RecoveryStrategy {
     switch (code) {
-      case ErrorCode.DATABASE_LOCKED:
-        return RecoveryStrategy.RETRY_WITH_BACKOFF
       case ErrorCode.DATABASE_CORRUPTED:
         return RecoveryStrategy.MANUAL_INTERVENTION
-      case ErrorCode.DATABASE_CONNECTION_FAILED:
-        return RecoveryStrategy.RESTART_SERVICE
       default:
-        return RecoveryStrategy.RETRY
+        return RecoveryStrategy.FAIL_FAST
     }
   }
 }
@@ -354,7 +324,7 @@ export class PerformanceError extends EnhancedError {
       message,
       code,
       severity,
-      RecoveryStrategy.RESTART_SERVICE,
+      RecoveryStrategy.FAIL_FAST,
       context,
       false,
       cause,
@@ -392,111 +362,22 @@ export const defaultRecoveryContext: RecoveryContext = {
 }
 
 /**
- * Error Recovery Manager
+ * Simplified Error Manager for fail-fast approach
  */
 export class ErrorRecoveryManager {
-  private recoveryStats = new Map<ErrorCode, {
-    attempts: number
-    successes: number
-    failures: number
-    lastAttempt: Date
-  }>()
-
   /**
-   * Execute operation with automatic recovery
+   * Execute operation with fail-fast error handling
    */
   async executeWithRecovery<T>(
     operation: () => Promise<T>,
-    context: Partial<RecoveryContext> = {},
+    _context: Partial<RecoveryContext> = {},
   ): Promise<T> {
-    const recoveryContext = { ...defaultRecoveryContext, ...context }
-
-    while (recoveryContext.currentRetry <= recoveryContext.maxRetries) {
-      try {
-        const result = await operation()
-
-        // Success callback
-        if (recoveryContext.currentRetry > 0 && recoveryContext.onRecovery) {
-          recoveryContext.onRecovery(recoveryContext.currentRetry)
-        }
-
-        return result
-      }
-      catch (error) {
-        const enhancedError = this.enhanceError(error)
-
-        // Update stats
-        this.updateRecoveryStats(enhancedError.code, false)
-
-        // Check if retryable
-        if (!enhancedError.retryable || recoveryContext.currentRetry >= recoveryContext.maxRetries) {
-          if (recoveryContext.onFailure) {
-            recoveryContext.onFailure(enhancedError)
-          }
-          throw enhancedError
-        }
-
-        // Execute recovery strategy
-        await this.executeRecoveryStrategy(enhancedError, recoveryContext)
-
-        recoveryContext.currentRetry++
-
-        // Retry callback
-        if (recoveryContext.onRetry) {
-          recoveryContext.onRetry(recoveryContext.currentRetry, enhancedError)
-        }
-      }
+    try {
+      return await operation()
     }
-
-    throw new EnhancedError(
-      'Maximum recovery attempts exceeded',
-      ErrorCode.INTERNAL_ERROR,
-      ErrorSeverity.HIGH,
-    )
-  }
-
-  /**
-   * Execute specific recovery strategy
-   */
-  private async executeRecoveryStrategy(
-    error: EnhancedError,
-    context: RecoveryContext,
-  ): Promise<void> {
-    switch (error.recoveryStrategy) {
-      case RecoveryStrategy.RETRY:
-        await this.delay(context.baseDelayMs)
-        break
-
-      case RecoveryStrategy.RETRY_WITH_BACKOFF:
-        const delay = Math.min(
-          context.baseDelayMs * context.backoffMultiplier ** context.currentRetry,
-          context.maxDelayMs,
-        )
-        await this.delay(delay)
-        break
-
-      case RecoveryStrategy.RESET_CONNECTION:
-        // Implement connection reset logic
-        logger.info('Attempting connection reset', { errorId: error.errorId })
-        await this.delay(context.baseDelayMs * 2)
-        break
-
-      case RecoveryStrategy.FALLBACK:
-        // Implement fallback logic
-        logger.info('Attempting fallback strategy', { errorId: error.errorId })
-        break
-
-      case RecoveryStrategy.RESTART_SERVICE:
-      case RecoveryStrategy.MANUAL_INTERVENTION:
-        logger.error('Critical error requires manual intervention', {
-          errorId: error.errorId,
-          code: error.code,
-          recoveryStrategy: error.recoveryStrategy,
-        })
-        break
-
-      default:
-        break
+    catch (error) {
+      const enhancedError = this.enhanceError(error)
+      throw enhancedError
     }
   }
 
@@ -512,14 +393,14 @@ export class ErrorRecoveryManager {
       return new EnhancedError(
         error.message,
         ErrorCode.API_VALIDATION_FAILED,
-        ErrorSeverity.MEDIUM,
-        RecoveryStrategy.RETRY,
+        ErrorSeverity.HIGH,
+        RecoveryStrategy.FAIL_FAST,
         {
           endpoint: error.endpoint,
           httpStatus: error.httpStatus,
           validationErrors: error.getValidationDetails(),
         },
-        true,
+        false,
         error,
       )
     }
@@ -538,61 +419,12 @@ export class ErrorRecoveryManager {
     return new EnhancedError(
       message,
       ErrorCode.UNKNOWN_ERROR,
-      ErrorSeverity.MEDIUM,
-      RecoveryStrategy.RETRY,
+      ErrorSeverity.HIGH,
+      RecoveryStrategy.FAIL_FAST,
       undefined,
-      true,
+      false,
       error,
     )
-  }
-
-  /**
-   * Update recovery statistics
-   */
-  private updateRecoveryStats(code: ErrorCode, success: boolean): void {
-    const stats = this.recoveryStats.get(code) || {
-      attempts: 0,
-      successes: 0,
-      failures: 0,
-      lastAttempt: new Date(),
-    }
-
-    stats.attempts++
-    if (success) {
-      stats.successes++
-    }
-    else {
-      stats.failures++
-    }
-    stats.lastAttempt = new Date()
-
-    this.recoveryStats.set(code, stats)
-  }
-
-  /**
-   * Get recovery statistics
-   */
-  getRecoveryStats(): Array<{
-    code: ErrorCode
-    attempts: number
-    successes: number
-    failures: number
-    successRate: number
-    lastAttempt: string
-  }> {
-    return Array.from(this.recoveryStats.entries()).map(([code, stats]) => ({
-      code,
-      ...stats,
-      successRate: stats.attempts > 0 ? stats.successes / stats.attempts : 0,
-      lastAttempt: stats.lastAttempt.toISOString(),
-    }))
-  }
-
-  /**
-   * Simple delay utility
-   */
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
   }
 }
 
@@ -651,10 +483,10 @@ export const createError = {
  */
 export async function safeExecute<T>(
   operation: () => Promise<T>,
-  context?: Partial<RecoveryContext>,
+  _context?: Partial<RecoveryContext>,
 ): Promise<{ success: true, data: T } | { success: false, error: EnhancedError }> {
   try {
-    const data = await errorRecoveryManager.executeWithRecovery(operation, context)
+    const data = await operation()
     return { success: true, data }
   }
   catch (error) {

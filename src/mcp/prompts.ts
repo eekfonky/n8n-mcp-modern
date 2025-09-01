@@ -8,8 +8,10 @@ import type {
   PromptMessage,
 } from '@modelcontextprotocol/sdk/types.js'
 import { simpleN8nApi } from '../n8n/simple-api.js'
+import { features } from '../server/config.js'
 import { logger } from '../server/logger.js'
-import { hasN8nApi } from '../simple-config.js'
+
+const { hasN8nApi } = features
 
 export class PromptManager {
   private prompts: Map<string, {
