@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "n8n-mcp-modern": {
+      "command": "npx",
+      "args": ["-y", "@eekfonky/n8n-mcp-modern"],
+      "env": {
+        "N8N_API_URL": "https://your-n8n-instance.com",
+        "N8N_API_KEY": "your-api-key-here",
+        "LOG_LEVEL": "info",
+        "ENABLE_CACHE": "true"
+      }
+    }
+  }
+}

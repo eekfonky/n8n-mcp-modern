@@ -3,12 +3,19 @@
 /**
  * Smart MCP Installation Script
  * Automatically detects project context and installs with appropriate scope
+ * Now with GitHub Packages authentication validation for seamless experience
  */
 
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { createRequire } from 'node:module'
 import process from 'node:process'
+
+// Import GitHub auth validator and interactive setup (CommonJS modules)
+const require = createRequire(import.meta.url)
+const { validateGitHubAuthentication } = require('./validate-github-auth.cjs')
+const { runInteractiveSetup, detectN8nSetup } = require('./interactive-setup.cjs')
 
 const N8N_API_URL = process.env.N8N_API_URL || 'https://your-n8n-instance.com'
 const N8N_API_KEY = process.env.N8N_API_KEY || 'your-api-key'
@@ -190,6 +197,32 @@ async function extractExistingEnvVars() {
 }
 
 async function validateEnvironment() {
+  // Pre-flight check: Validate GitHub Packages authentication
+  console.log('🔍 Validating GitHub Packages authentication...')
+  
+  try {
+    const authResults = await validateGitHubAuthentication(false)
+    
+    if (!authResults.overall) {
+      console.log('❌ GitHub Packages authentication validation failed')
+      console.log('   This will prevent seamless installation from GitHub Packages.')
+      console.log('')
+      console.log('💡 To fix authentication issues, run:')
+      console.log('   node scripts/validate-github-auth.cjs --verbose')
+      console.log('')
+      console.log('⚠️  Proceeding with installation attempt anyway...')
+      console.log('   (Installation may fail without proper authentication)')
+      console.log('')
+    } else {
+      console.log('✅ GitHub Packages authentication verified')
+      console.log('')
+    }
+  } catch (error) {
+    console.log('⚠️  Could not validate GitHub authentication:', error.message)
+    console.log('   Installation may fail if authentication is not properly configured')
+    console.log('')
+  }
+
   // Check if already installed (might be an upgrade)
   const isInstalled = await checkExistingInstallation()
 
@@ -202,34 +235,84 @@ async function validateEnvironment() {
     return true // Allow proceed with existing config
   }
 
-  // For fresh installs, warn about environment variables but allow installation
+  // For fresh installs, check if we need interactive setup
   if (
     N8N_API_URL === 'https://your-n8n-instance.com'
     || N8N_API_KEY === 'your-api-key'
   ) {
-    console.log(
-      '⚠️  N8N_API_URL and N8N_API_KEY environment variables not configured',
-    )
+    console.log('🔧 First-time setup detected!')
     console.log('')
-    console.log(
-      'The MCP server will install successfully but will run in offline mode.',
-    )
-    console.log(
-      'To enable n8n API integration, set these environment variables:',
-    )
+    console.log('n8n-MCP Modern needs your n8n instance URL and API key to work.')
     console.log('')
-    console.log('Example:')
-    console.log('export N8N_API_URL="https://your-n8n-instance.com"')
-    console.log('export N8N_API_KEY="your-jwt-token"')
+    console.log('You have 3 options:')
+    console.log('1. 🤖 Interactive setup (recommended) - we\'ll guide you through it')
+    console.log('2. 📋 Manual configuration - set environment variables yourself')
+    console.log('3. 🚀 Install now, configure later - runs in offline mode')
     console.log('')
-    console.log('Or run with:')
-    console.log(
-      'N8N_API_URL="https://..." N8N_API_KEY="..." npx @eekfonky/n8n-mcp-modern install',
-    )
-    console.log('')
-    console.log('Proceeding with fresh installation in offline mode...')
-    console.log('')
-    return false // Fresh install without env vars
+
+    // Check if this is an automated environment (CI, non-interactive terminal)
+    const isAutomated = process.env.CI || 
+                       process.env.DEBIAN_FRONTEND === 'noninteractive' || 
+                       !process.stdin.isTTY
+
+    if (isAutomated) {
+      console.log('🤖 Automated environment detected - skipping interactive setup')
+      console.log('')
+      console.log('To configure later:')
+      console.log('• Run: node scripts/interactive-setup.cjs')
+      console.log('• Or set environment variables manually')
+      console.log('• See: config-templates/ for examples')
+      console.log('')
+      console.log('Proceeding with installation in offline mode...')
+      console.log('')
+      return false
+    }
+
+    // Interactive setup for first-time users
+    try {
+      console.log('Starting interactive setup in 3 seconds...')
+      console.log('(Press Ctrl+C to skip and install in offline mode)')
+      console.log('')
+      
+      // Give user a chance to cancel
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      
+      console.log('🚀 Launching interactive setup...')
+      console.log('')
+      
+      // Run interactive setup
+      await runInteractiveSetup()
+      
+      // After successful interactive setup, we can proceed with installation
+      // The setup script will have created the configuration files
+      console.log('')
+      console.log('✅ Interactive setup completed!')
+      console.log('Proceeding with MCP server installation...')
+      console.log('')
+      return false // Fresh install but now configured
+      
+    } catch (error) {
+      if (error.message === 'USER_CANCELLED') {
+        console.log('')
+        console.log('⏭️  Interactive setup cancelled by user')
+        console.log('')
+      } else {
+        console.log('')
+        console.log('⚠️  Interactive setup failed:', error.message)
+        console.log('')
+        console.log('Don\'t worry! You can configure manually:')
+        console.log('• Run: node scripts/interactive-setup.cjs')
+        console.log('• Or set environment variables:')
+        console.log('  export N8N_API_URL="https://your-n8n-instance.com"')
+        console.log('  export N8N_API_KEY="your-api-key"')
+        console.log('')
+      }
+      
+      console.log('Proceeding with installation in offline mode...')
+      console.log('You can configure the integration later.')
+      console.log('')
+      return false // Fresh install without env vars
+    }
   }
 
   console.log('✅ Environment configured - proceeding with fresh installation')
@@ -324,7 +407,29 @@ async function main() {
   }
   catch (error) {
     const errorMessage = error?.message || 'Unknown error occurred'
+    const errorOutput = error?.stderr || ''
+    
     console.log('🐛 Debug - Error message:', errorMessage)
+
+    // Check if this is a GitHub authentication/package access error
+    const isAuthError = errorOutput.includes('401') || errorOutput.includes('Unauthorized') 
+      || errorOutput.includes('npm error code E401') 
+      || errorMessage.includes('unauthenticated')
+      || errorMessage.includes('Bad credentials')
+
+    if (isAuthError) {
+      console.error('')
+      console.error('❌ GitHub Packages authentication failed!')
+      console.error('   The installation failed because GitHub Packages authentication is not properly configured.')
+      console.error('')
+      console.error('🔧 To fix this issue:')
+      console.error('1. Run authentication validator: node scripts/validate-github-auth.cjs --verbose')
+      console.error('2. Follow the guidance to configure GitHub token')
+      console.error('3. Re-run this installation script')
+      console.error('')
+      console.error('📚 Need help? See: https://github.com/eekfonky/n8n-mcp-modern#installation')
+      process.exit(1)
+    }
 
     // Handle case where server already exists - for upgrades, remove and re-add
     const isServerExistsError

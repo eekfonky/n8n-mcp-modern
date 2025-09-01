@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "n8n-mcp-modern": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e", "N8N_API_URL=https://your-n8n-instance.com",
+        "-e", "N8N_API_KEY=your-api-key-here", 
+        "-e", "LOG_LEVEL=info",
+        "-e", "ENABLE_CACHE=true",
+        "-v", "n8n-mcp-data:/app/data",
+        "--name", "n8n-mcp-modern",
+        "n8n-mcp-modern:latest"
+      ]
+    }
+  }
+}

@@ -475,15 +475,29 @@ export class DiscoveryScheduler {
   }
 
   /**
-   * Check for n8n version changes
+   * Check for n8n and server version changes
    */
   private async checkVersionChanges(): Promise<void> {
     try {
-      if (!config.n8nApiUrl || !config.n8nApiKey) {
-        return
+      // Check n8n version changes (existing functionality)
+      if (config.n8nApiUrl && config.n8nApiKey) {
+        await this.checkN8nVersionChanges()
       }
 
-      logger.debug('Checking for version changes...')
+      // Check n8n-mcp-modern server updates (new functionality)  
+      await this.checkServerUpdates()
+    }
+    catch (error) {
+      logger.error('Version change detection failed:', error)
+    }
+  }
+
+  /**
+   * Check for n8n version changes (existing functionality)
+   */
+  private async checkN8nVersionChanges(): Promise<void> {
+    try {
+      logger.debug('Checking for n8n version changes...')
 
       // Get current version from n8n API
       const currentVersion = await this.getCurrentN8nVersion()
@@ -496,7 +510,7 @@ export class DiscoveryScheduler {
 
       for (const instance of instances) {
         if (instance.version !== currentVersion) {
-          logger.info('Detected version change', {
+          logger.info('Detected n8n version change', {
             instanceId: instance.id,
             oldVersion: instance.version,
             newVersion: currentVersion,
@@ -506,12 +520,45 @@ export class DiscoveryScheduler {
           await this.versionManager.detectVersionChange(instance.id, currentVersion)
 
           // Trigger rediscovery
-          this.triggerDiscovery('version_change', `Version change: ${instance.version} → ${currentVersion}`)
+          this.triggerDiscovery('version_change', `n8n version change: ${instance.version} → ${currentVersion}`)
         }
       }
     }
     catch (error) {
-      logger.error('Version change detection failed:', error)
+      logger.error('n8n version change detection failed:', error)
+    }
+  }
+
+  /**
+   * Check for n8n-mcp-modern server updates
+   */
+  private async checkServerUpdates(): Promise<void> {
+    try {
+      logger.debug('Checking for n8n-mcp-modern server updates...')
+      
+      const updateInfo = await this.getServerUpdateInfo()
+      if (!updateInfo) {
+        return
+      }
+
+      if (updateInfo.updateAvailable) {
+        logger.info('n8n-mcp-modern server update available', {
+          currentVersion: updateInfo.currentVersion,
+          latestVersion: updateInfo.latestVersion,
+          updateAvailable: true
+        })
+
+        // Store update notification (could be used by MCP tools or agents)
+        await this.storeUpdateNotification(updateInfo)
+      } else {
+        logger.debug('n8n-mcp-modern server is up to date', {
+          currentVersion: updateInfo.currentVersion,
+          latestVersion: updateInfo.latestVersion
+        })
+      }
+    }
+    catch (error) {
+      logger.error('Server update check failed:', error)
     }
   }
 
@@ -793,6 +840,121 @@ export class DiscoveryScheduler {
         smartIntervals: true,
         highActivityMode: this.isHighActivityMode,
       }),
+    }
+  }
+
+  /**
+   * Get server update information
+   */
+  private async getServerUpdateInfo(): Promise<{ currentVersion: string, latestVersion: string, updateAvailable: boolean } | null> {
+    try {
+      // Import necessary modules
+      const { promises: fs } = await import('node:fs')
+      const { spawn } = await import('node:child_process')
+      const path = await import('node:path')
+
+      // Helper function to execute commands
+      const execCommand = (command: string, args: string[] = []): Promise<{stdout: string, stderr: string, code: number}> => {
+        return new Promise((resolve) => {
+          const proc = spawn(command, args, { stdio: 'pipe' })
+          let stdout = ''
+          let stderr = ''
+
+          if (proc.stdout) {
+            proc.stdout.on('data', (data) => {
+              stdout += data.toString()
+            })
+          }
+
+          if (proc.stderr) {
+            proc.stderr.on('data', (data) => {
+              stderr += data.toString()
+            })
+          }
+
+          proc.on('close', (code) => {
+            resolve({ stdout, stderr, code: code || 0 })
+          })
+
+          proc.on('error', () => {
+            resolve({ stdout, stderr, code: 1 })
+          })
+        })
+      }
+
+      // Get current version
+      let currentVersion: string | null = null
+      try {
+        const packageJsonPath = path.resolve(__dirname, '../../package.json')
+        const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'))
+        currentVersion = packageJson.version
+      } catch (error) {
+        logger.warn('Could not read current version from package.json:', error)
+        return null
+      }
+
+      // Get latest version from GitHub Packages
+      let latestVersion: string | null = null
+      try {
+        const result = await execCommand('npm', [
+          'view',
+          '@eekfonky/n8n-mcp-modern',
+          'version',
+          '--registry=https://npm.pkg.github.com'
+        ])
+
+        if (result.code === 0 && result.stdout.trim()) {
+          latestVersion = result.stdout.trim().replace(/['"]/g, '')
+        }
+      } catch (error) {
+        logger.warn('Could not check latest version from GitHub Packages:', error)
+        return null
+      }
+
+      if (!currentVersion || !latestVersion) {
+        return null
+      }
+
+      return {
+        currentVersion,
+        latestVersion,
+        updateAvailable: currentVersion !== latestVersion
+      }
+    }
+    catch (error) {
+      logger.error('Failed to get server update info:', error)
+      return null
+    }
+  }
+
+  /**
+   * Store update notification for later retrieval
+   */
+  private async storeUpdateNotification(updateInfo: { currentVersion: string, latestVersion: string, updateAvailable: boolean }): Promise<void> {
+    try {
+      // Store in database for persistence
+      const database = await import('../database/index.js').then(m => m.database)
+      
+      const stmt = database.prepare(`
+        INSERT OR REPLACE INTO update_notifications (
+          id, current_version, latest_version, update_available, detected_at, notified
+        ) VALUES (?, ?, ?, ?, ?, ?)
+      `)
+
+      stmt.run(
+        'n8n-mcp-modern',
+        updateInfo.currentVersion,
+        updateInfo.latestVersion,
+        updateInfo.updateAvailable ? 1 : 0,
+        new Date().toISOString(),
+        0
+      )
+
+      logger.debug('Stored update notification in database', updateInfo)
+    }
+    catch (error) {
+      logger.error('Failed to store update notification:', error)
+      // Non-critical error - continue execution
     }
   }
 }

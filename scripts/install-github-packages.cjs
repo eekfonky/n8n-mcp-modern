@@ -6,8 +6,11 @@ const path = require('node:path')
 
 /**
  * Installation script for n8n-mcp-modern from GitHub Packages
- * Handles authentication setup and provides fallback options
+ * Handles authentication setup with comprehensive validation
  */
+
+// Import authentication validator
+const { validateGitHubAuthentication, checkNpmrcConfiguration } = require('./validate-github-auth.cjs')
 
 console.log('📦 n8n-mcp-modern GitHub Packages Installation Helper')
 console.log('='.repeat(60))
@@ -106,27 +109,51 @@ function provideAlternatives() {
   console.log('  (requires GitHub Packages authentication)')
 }
 
-// Main execution
-function main() {
-  const hasConfiguration = checkNpmrcConfiguration()
+// Main execution with comprehensive validation
+async function main() {
+  console.log('\n🔍 Running comprehensive GitHub Packages validation...')
+  
+  try {
+    const results = await validateGitHubAuthentication(true)
+    
+    if (results.overall) {
+      console.log('\n✅ All validation checks passed!')
+      console.log('Your system is ready for seamless n8n-mcp-modern installation.')
+      console.log('\n🚀 You can now install with:')
+      console.log('   npm install -g @eekfonky/n8n-mcp-modern')
+      console.log('   npx @eekfonky/n8n-mcp-modern')
+      console.log('   node scripts/install-mcp.js')
+      return
+    }
+    
+    console.log('\n⚠️  Validation identified issues that need to be resolved.')
+    console.log('The validator has provided specific guidance above.')
+    
+  } catch (error) {
+    console.error('\n❌ Validation failed with error:', error.message)
+    console.log('\n🔄 Falling back to legacy setup process...')
+    
+    // Fallback to original logic
+    const configCheck = checkNpmrcConfiguration()
 
-  if (hasConfiguration) {
-    console.log('✅ GitHub Packages configuration already present')
-    console.log('\n🚀 You can now install with:')
-    console.log('npm install -g @eekfonky/n8n-mcp-modern')
-    return
-  }
+    if (configCheck.configured) {
+      console.log('✅ GitHub Packages configuration already present')
+      console.log('\n🚀 You can now install with:')
+      console.log('npm install -g @eekfonky/n8n-mcp-modern')
+      return
+    }
 
-  console.log('⚙️  GitHub Packages authentication not configured')
+    console.log('⚙️  GitHub Packages authentication not configured')
 
-  const setupSuccess = setupNpmrc()
+    const setupSuccess = setupNpmrc()
 
-  if (setupSuccess) {
-    provideInstructions()
-  }
-  else {
-    console.log('\n❌ Automatic setup failed. Manual configuration required:')
-    provideAlternatives()
+    if (setupSuccess) {
+      provideInstructions()
+    }
+    else {
+      console.log('\n❌ Automatic setup failed. Manual configuration required:')
+      provideAlternatives()
+    }
   }
 
   console.log('\n📚 For more information, see:')

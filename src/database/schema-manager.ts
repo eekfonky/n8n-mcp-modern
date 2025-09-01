@@ -638,6 +638,87 @@ export class SchemaManager {
         return tables.length === 4
       },
     })
+
+    // Migration 4: Add update notification system  
+    this.registerMigration({
+      version: 4,
+      name: 'add_update_notifications',
+      description: 'Phase 4: Add update notification system for seamless server upgrades',
+      dependencies: [3],
+      checksum: this.calculateChecksum('add_update_notifications_v4'),
+      up: async (db) => {
+        // Create update notifications table
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS update_notifications (
+            id TEXT PRIMARY KEY,
+            component_name TEXT NOT NULL DEFAULT 'n8n-mcp-modern',
+            current_version TEXT NOT NULL,
+            latest_version TEXT NOT NULL,
+            update_available BOOLEAN NOT NULL DEFAULT 0,
+            detected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            notified BOOLEAN NOT NULL DEFAULT 0,
+            notified_at TIMESTAMP,
+            dismissed BOOLEAN NOT NULL DEFAULT 0,
+            dismissed_at TIMESTAMP,
+            update_priority TEXT CHECK (update_priority IN ('low', 'medium', 'high', 'critical')) DEFAULT 'medium',
+            security_update BOOLEAN NOT NULL DEFAULT 0,
+            breaking_changes BOOLEAN NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `)
+
+        // Create update history table
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS update_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            component_id TEXT NOT NULL,
+            component_name TEXT NOT NULL,
+            from_version TEXT NOT NULL,
+            to_version TEXT NOT NULL,
+            initiated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            initiated_by TEXT NOT NULL DEFAULT 'system',
+            completed_at TIMESTAMP,
+            success BOOLEAN NOT NULL DEFAULT 0,
+            error_message TEXT,
+            update_method TEXT NOT NULL DEFAULT 'npm',
+            duration_seconds INTEGER
+          )
+        `)
+
+        // Create update preferences table
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS update_preferences (
+            id TEXT PRIMARY KEY DEFAULT 'system',
+            auto_check_enabled BOOLEAN NOT NULL DEFAULT 1,
+            check_interval_minutes INTEGER NOT NULL DEFAULT 60,
+            notify_on_available BOOLEAN NOT NULL DEFAULT 1,
+            backup_before_update BOOLEAN NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `)
+
+        // Insert default preferences
+        await db.exec(`
+          INSERT OR IGNORE INTO update_preferences (id) VALUES ('system')
+        `)
+
+        // Insert initial notification entry for current server
+        await db.exec(`
+          INSERT OR IGNORE INTO update_notifications (
+            id, component_name, current_version, latest_version, update_available
+          ) VALUES (
+            'n8n-mcp-modern', 'n8n-mcp-modern', '7.0.1', '7.0.1', 0
+          )
+        `)
+      },
+      down: async (db) => {
+        await db.exec('DROP TABLE IF EXISTS update_history')
+        await db.exec('DROP TABLE IF EXISTS update_preferences')
+        await db.exec('DROP TABLE IF EXISTS update_notifications')
+      },
+    })
   }
 
   /**

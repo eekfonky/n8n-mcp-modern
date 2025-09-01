@@ -17,6 +17,10 @@ import { MCPToolGenerator } from './mcp-tool-generator.js'
 import { memoryOptimizationTools } from './memory-optimization-tool.js'
 import { performanceMonitoringTools } from './performance-monitoring-tool.js'
 import { WorkflowBuilderUtils } from './workflow-builder-utils.js'
+import { promises as fs } from 'node:fs'
+import { spawn } from 'node:child_process'
+import path from 'node:path'
+import os from 'node:os'
 
 let discoveredTools: Tool[] = []
 const toolHandlers: Map<string, (args: Record<string, unknown>) => Promise<unknown>> = new Map()
@@ -24,6 +28,1045 @@ let toolGenerator: MCPToolGenerator | null = null
 let credentialDiscovery: CredentialDiscovery | null = null
 let discoveryScheduler: DiscoveryScheduler | null = null
 let dynamicAgentTools: DynamicAgentTools | null = null
+
+/**
+ * Execute command safely with proper error handling
+ */
+function execCommand(command: string, args: string[] = [], options: Record<string, any> = {}): Promise<{stdout: string, stderr: string, code: number}> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(command, args, {
+      stdio: options.stdio || 'pipe',
+      cwd: options.cwd || process.cwd(),
+      env: { ...process.env, ...options.env },
+      ...options,
+    })
+
+    let stdout = ''
+    let stderr = ''
+
+    if (proc.stdout) {
+      proc.stdout.on('data', (data) => {
+        stdout += data.toString()
+      })
+    }
+
+    if (proc.stderr) {
+      proc.stderr.on('data', (data) => {
+        stderr += data.toString()
+      })
+    }
+
+    proc.on('close', (code) => {
+      resolve({ stdout, stderr, code: code || 0 })
+    })
+
+    proc.on('error', (error) => {
+      reject(error)
+    })
+  })
+}
+
+/**
+ * Get current package version
+ */
+async function getCurrentVersion(): Promise<string | null> {
+  try {
+    // Try to read from package.json in the module directory
+    const packageJsonPath = path.resolve(__dirname, '../../package.json')
+    const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'))
+    return packageJson.version
+  } catch (error) {
+    logger.error('Failed to read current version:', error)
+    return null
+  }
+}
+
+/**
+ * Get latest version from GitHub Packages
+ */
+async function getLatestVersion(): Promise<{version: string, available: boolean} | null> {
+  try {
+    const result = await execCommand('npm', [
+      'view',
+      '@eekfonky/n8n-mcp-modern',
+      'version',
+      '--registry=https://npm.pkg.github.com'
+    ])
+
+    if (result.code === 0 && result.stdout.trim()) {
+      const latestVersion = result.stdout.trim().replace(/['"]/g, '')
+      const currentVersion = await getCurrentVersion()
+      
+      return {
+        version: latestVersion,
+        available: currentVersion !== latestVersion
+      }
+    }
+
+    return null
+  } catch (error) {
+    logger.error('Failed to check latest version:', error)
+    return null
+  }
+}
+
+/**
+ * Validate GitHub Packages authentication
+ */
+async function validateGitHubAuth(): Promise<{valid: boolean, message: string}> {
+  try {
+    const result = await execCommand('npm', [
+      'view',
+      '@eekfonky/n8n-mcp-modern',
+      'version',
+      '--registry=https://npm.pkg.github.com'
+    ])
+
+    if (result.code === 0) {
+      return { valid: true, message: 'GitHub Packages authentication is working' }
+    } else if (result.stderr.includes('401') || result.stderr.includes('Unauthorized')) {
+      return { valid: false, message: 'GitHub Packages authentication failed - check your .npmrc configuration' }
+    } else {
+      return { valid: false, message: `Authentication check failed: ${result.stderr}` }
+    }
+  } catch (error) {
+    return { valid: false, message: `Authentication validation error: ${(error as Error).message}` }
+  }
+}
+
+/**
+ * Create backup of current installation
+ */
+async function createBackup(): Promise<{success: boolean, backupPath?: string, message: string}> {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const backupDir = path.join(os.tmpdir(), `n8n-mcp-modern-backup-${timestamp}`)
+    
+    await fs.mkdir(backupDir, { recursive: true })
+    
+    // Copy critical files
+    const currentDir = path.resolve(__dirname, '../..')
+    const criticalFiles = ['package.json', 'data', 'dist']
+    
+    for (const file of criticalFiles) {
+      const sourcePath = path.join(currentDir, file)
+      const destPath = path.join(backupDir, file)
+      
+      try {
+        const stats = await fs.stat(sourcePath)
+        if (stats.isDirectory()) {
+          await execCommand('cp', ['-r', sourcePath, destPath])
+        } else {
+          await fs.copyFile(sourcePath, destPath)
+        }
+      } catch (error) {
+        // File might not exist, continue
+        logger.warn(`Could not backup ${file}:`, error)
+      }
+    }
+    
+    return {
+      success: true,
+      backupPath: backupDir,
+      message: `Backup created at ${backupDir}`
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: `Backup failed: ${(error as Error).message}`
+    }
+  }
+}
+
+/**
+ * Perform the actual update
+ */
+async function performUpdate(preserveData: boolean = true): Promise<{success: boolean, message: string, details?: any}> {
+  try {
+    // Check for existing .mcp.json to preserve
+    let mcpConfig: any = null
+    if (preserveData) {
+      try {
+        const mcpJsonPath = path.resolve('.mcp.json')
+        mcpConfig = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'))
+        logger.info('Preserved .mcp.json configuration for update')
+      } catch (error) {
+        logger.info('No .mcp.json found to preserve')
+      }
+    }
+
+    // Try global update first
+    logger.info('Attempting global package update...')
+    const globalResult = await execCommand('npm', [
+      'update',
+      '-g',
+      '@eekfonky/n8n-mcp-modern'
+    ])
+
+    if (globalResult.code === 0) {
+      return {
+        success: true,
+        message: 'Package updated successfully via npm global update',
+        details: {
+          method: 'global',
+          stdout: globalResult.stdout,
+          preservedData: !!mcpConfig
+        }
+      }
+    }
+
+    // Fallback to install
+    logger.info('Global update failed, trying fresh install...')
+    const installResult = await execCommand('npm', [
+      'install',
+      '-g',
+      '@eekfonky/n8n-mcp-modern@latest'
+    ])
+
+    if (installResult.code === 0) {
+      return {
+        success: true,
+        message: 'Package updated successfully via npm install',
+        details: {
+          method: 'install',
+          stdout: installResult.stdout,
+          preservedData: !!mcpConfig
+        }
+      }
+    }
+
+    return {
+      success: false,
+      message: `Update failed: ${installResult.stderr || 'Unknown error'}`,
+      details: {
+        globalResult: globalResult.stderr,
+        installResult: installResult.stderr
+      }
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: `Update failed with error: ${(error as Error).message}`
+    }
+  }
+}
+
+/**
+ * Handle installation validation requests
+ */
+async function handleInstallationValidation(args: Record<string, unknown>): Promise<any> {
+  const { checks = ['all'], includeRecommendations = true, detailed = false } = args
+
+  try {
+    const results: any = {
+      overall: true,
+      timestamp: new Date().toISOString(),
+      checks: {},
+      summary: {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        warnings: 0
+      },
+      recommendations: [],
+      system: {}
+    }
+
+    // Determine which checks to run
+    const checksToRun = Array.isArray(checks) ? checks : [checks]
+    const runAll = checksToRun.includes('all')
+
+    // System Information Check
+    if (runAll || checksToRun.includes('system_info')) {
+      logger.debug('Running system info check...')
+      const systemCheck = await validateSystemInfo(detailed)
+      results.checks.system_info = systemCheck
+      results.system = systemCheck.details
+      updateSummary(results.summary, systemCheck)
+    }
+
+    // Dependencies Check  
+    if (runAll || checksToRun.includes('dependencies')) {
+      logger.debug('Running dependencies check...')
+      const depsCheck = await validateDependencies(detailed)
+      results.checks.dependencies = depsCheck
+      updateSummary(results.summary, depsCheck)
+      
+      if (includeRecommendations && depsCheck.recommendations) {
+        results.recommendations.push(...depsCheck.recommendations)
+      }
+    }
+
+    // Database Check
+    if (runAll || checksToRun.includes('database')) {
+      logger.debug('Running database check...')
+      const dbCheck = await validateDatabase(detailed)
+      results.checks.database = dbCheck
+      updateSummary(results.summary, dbCheck)
+      
+      if (includeRecommendations && dbCheck.recommendations) {
+        results.recommendations.push(...dbCheck.recommendations)
+      }
+    }
+
+    // MCP Configuration Check
+    if (runAll || checksToRun.includes('mcp_config')) {
+      logger.debug('Running MCP config check...')
+      const mcpCheck = await validateMcpConfig(detailed)
+      results.checks.mcp_config = mcpCheck
+      updateSummary(results.summary, mcpCheck)
+      
+      if (includeRecommendations && mcpCheck.recommendations) {
+        results.recommendations.push(...mcpCheck.recommendations)
+      }
+    }
+
+    // GitHub Authentication Check
+    if (runAll || checksToRun.includes('github_auth')) {
+      logger.debug('Running GitHub auth check...')
+      const authCheck = await validateGitHubAuth()
+      results.checks.github_auth = {
+        status: authCheck.valid ? 'passed' : 'failed',
+        message: authCheck.message,
+        details: authCheck
+      }
+      updateSummary(results.summary, results.checks.github_auth)
+      
+      if (includeRecommendations && !authCheck.valid) {
+        results.recommendations.push('Configure GitHub Packages authentication in ~/.npmrc')
+      }
+    }
+
+    // n8n Connectivity Check
+    if (runAll || checksToRun.includes('n8n_connectivity')) {
+      logger.debug('Running n8n connectivity check...')
+      const n8nCheck = await validateN8nConnectivity(detailed)
+      results.checks.n8n_connectivity = n8nCheck
+      updateSummary(results.summary, n8nCheck)
+      
+      if (includeRecommendations && n8nCheck.recommendations) {
+        results.recommendations.push(...n8nCheck.recommendations)
+      }
+    }
+
+    // Permissions Check
+    if (runAll || checksToRun.includes('permissions')) {
+      logger.debug('Running permissions check...')
+      const permCheck = await validatePermissions(detailed)
+      results.checks.permissions = permCheck
+      updateSummary(results.summary, permCheck)
+      
+      if (includeRecommendations && permCheck.recommendations) {
+        results.recommendations.push(...permCheck.recommendations)
+      }
+    }
+
+    // Disk Space Check
+    if (runAll || checksToRun.includes('disk_space')) {
+      logger.debug('Running disk space check...')
+      const diskCheck = await validateDiskSpace(detailed)
+      results.checks.disk_space = diskCheck
+      updateSummary(results.summary, diskCheck)
+      
+      if (includeRecommendations && diskCheck.recommendations) {
+        results.recommendations.push(...diskCheck.recommendations)
+      }
+    }
+
+    // Memory Usage Check
+    if (runAll || checksToRun.includes('memory_usage')) {
+      logger.debug('Running memory usage check...')
+      const memCheck = await validateMemoryUsage(detailed)
+      results.checks.memory_usage = memCheck
+      updateSummary(results.summary, memCheck)
+      
+      if (includeRecommendations && memCheck.recommendations) {
+        results.recommendations.push(...memCheck.recommendations)
+      }
+    }
+
+    // Set overall status
+    results.overall = results.summary.failed === 0
+    results.healthScore = Math.round((results.summary.passed / results.summary.total) * 100)
+
+    return results
+  }
+  catch (error) {
+    logger.error('Installation validation error:', error)
+    return {
+      overall: false,
+      error: 'Validation failed',
+      message: (error as Error).message,
+      timestamp: new Date().toISOString()
+    }
+  }
+}
+
+/**
+ * Helper function to update validation summary
+ */
+function updateSummary(summary: any, check: any): void {
+  summary.total++
+  if (check.status === 'passed') {
+    summary.passed++
+  } else if (check.status === 'failed') {
+    summary.failed++
+  } else if (check.status === 'warning') {
+    summary.warnings++
+  }
+}
+
+/**
+ * Validate system information
+ */
+async function validateSystemInfo(detailed: boolean): Promise<any> {
+  try {
+    const nodeVersion = process.version
+    const platform = process.platform
+    const arch = process.arch
+    const uptime = process.uptime()
+    const memoryUsage = process.memoryUsage()
+    
+    // Check Node.js version requirement (>=22.0.0)
+    const nodeVersionNum = parseInt(nodeVersion.slice(1).split('.')[0])
+    const nodeVersionValid = nodeVersionNum >= 22
+    
+    const details = {
+      node_version: nodeVersion,
+      platform,
+      architecture: arch,
+      uptime_seconds: Math.round(uptime),
+      memory: {
+        rss: `${Math.round(memoryUsage.rss / 1024 / 1024)}MB`,
+        heap_used: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
+        heap_total: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
+        external: `${Math.round(memoryUsage.external / 1024 / 1024)}MB`
+      }
+    }
+
+    if (detailed) {
+      const os = await import('node:os')
+      details.system = {
+        hostname: os.hostname(),
+        cpus: os.cpus().length,
+        total_memory: `${Math.round(os.totalmem() / 1024 / 1024 / 1024)}GB`,
+        free_memory: `${Math.round(os.freemem() / 1024 / 1024 / 1024)}GB`,
+        load_average: os.loadavg()
+      }
+    }
+
+    return {
+      status: nodeVersionValid ? 'passed' : 'failed',
+      message: nodeVersionValid 
+        ? `System check passed (Node.js ${nodeVersion})` 
+        : `Node.js version ${nodeVersion} is below required >=22.0.0`,
+      details,
+      recommendations: nodeVersionValid ? [] : ['Upgrade to Node.js 22 or higher']
+    }
+  }
+  catch (error) {
+    return {
+      status: 'failed',
+      message: `System info check failed: ${(error as Error).message}`,
+      details: {},
+      recommendations: []
+    }
+  }
+}
+
+/**
+ * Validate dependencies
+ */
+async function validateDependencies(detailed: boolean): Promise<any> {
+  try {
+    const packageJson = JSON.parse(await fs.readFile(path.resolve(__dirname, '../../package.json'), 'utf8'))
+    const dependencies = packageJson.dependencies || {}
+    const devDependencies = packageJson.devDependencies || {}
+    
+    const allDeps = { ...dependencies, ...devDependencies }
+    const installedPackages: any = {}
+    const missing: string[] = []
+    const recommendations: string[] = []
+
+    // Check critical dependencies
+    const criticalDeps = ['@modelcontextprotocol/sdk', 'zod', 'better-sqlite3']
+    
+    for (const [pkg, version] of Object.entries(allDeps)) {
+      try {
+        const pkgPath = path.resolve(__dirname, '../../node_modules', pkg, 'package.json')
+        const installedPkg = JSON.parse(await fs.readFile(pkgPath, 'utf8'))
+        installedPackages[pkg] = {
+          required: version,
+          installed: installedPkg.version,
+          status: 'installed'
+        }
+      } catch (error) {
+        missing.push(pkg)
+        installedPackages[pkg] = {
+          required: version,
+          installed: null,
+          status: 'missing'
+        }
+      }
+    }
+
+    const allInstalled = missing.length === 0
+    const criticalMissing = missing.filter(pkg => criticalDeps.includes(pkg))
+    
+    if (missing.length > 0) {
+      recommendations.push(`Run 'npm install' to install missing dependencies: ${missing.join(', ')}`)
+    }
+
+    return {
+      status: criticalMissing.length === 0 ? (allInstalled ? 'passed' : 'warning') : 'failed',
+      message: allInstalled 
+        ? 'All dependencies are installed' 
+        : `${missing.length} missing dependencies${criticalMissing.length > 0 ? ` (${criticalMissing.length} critical)` : ''}`,
+      details: detailed ? installedPackages : {
+        total: Object.keys(allDeps).length,
+        installed: Object.keys(allDeps).length - missing.length,
+        missing: missing.length,
+        critical_missing: criticalMissing.length
+      },
+      recommendations
+    }
+  }
+  catch (error) {
+    return {
+      status: 'failed',
+      message: `Dependencies check failed: ${(error as Error).message}`,
+      details: {},
+      recommendations: []
+    }
+  }
+}
+
+/**
+ * Validate database
+ */
+async function validateDatabase(detailed: boolean): Promise<any> {
+  try {
+    const { database } = await import('../database/index.js')
+    
+    // Test basic connectivity
+    const testQuery = database.prepare('SELECT 1 as test').get()
+    if (!testQuery || (testQuery as any).test !== 1) {
+      throw new Error('Database connectivity test failed')
+    }
+
+    // Check tables exist
+    const tables = database.prepare(`
+      SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
+    `).all() as Array<{name: string}>
+
+    const expectedTables = ['nodes', 'tool_usage', 'n8n_instances', 'discovery_sessions', 'mcp_tools', 'version_changes']
+    const existingTables = tables.map(t => t.name)
+    const missingTables = expectedTables.filter(t => !existingTables.includes(t))
+    
+    // Check database file size and permissions
+    const dbPath = path.resolve('./data/nodes.db')
+    let dbStats: any = {}
+    try {
+      const stats = await fs.stat(dbPath)
+      dbStats = {
+        size: `${Math.round(stats.size / 1024)}KB`,
+        created: stats.birthtime.toISOString(),
+        modified: stats.mtime.toISOString(),
+        readable: true,
+        writable: true
+      }
+    } catch (error) {
+      dbStats.error = (error as Error).message
+    }
+
+    const recommendations: string[] = []
+    if (missingTables.length > 0) {
+      recommendations.push(`Run database migrations to create missing tables: ${missingTables.join(', ')}`)
+    }
+
+    return {
+      status: missingTables.length === 0 ? 'passed' : 'failed',
+      message: missingTables.length === 0
+        ? `Database OK (${existingTables.length} tables)`
+        : `Missing ${missingTables.length} required tables`,
+      details: detailed ? {
+        existing_tables: existingTables,
+        missing_tables: missingTables,
+        database_file: dbStats
+      } : {
+        tables_count: existingTables.length,
+        missing_count: missingTables.length
+      },
+      recommendations
+    }
+  }
+  catch (error) {
+    return {
+      status: 'failed',
+      message: `Database check failed: ${(error as Error).message}`,
+      details: {},
+      recommendations: ['Check database file permissions and SQLite installation']
+    }
+  }
+}
+
+/**
+ * Validate MCP configuration
+ */
+async function validateMcpConfig(detailed: boolean): Promise<any> {
+  try {
+    let mcpConfig: any = null
+    let configPath: string | null = null
+    let configValid = false
+    const recommendations: string[] = []
+
+    // Try to find .mcp.json in current directory or parent
+    const possiblePaths = [
+      path.resolve('.mcp.json'),
+      path.resolve('../.mcp.json'),
+      path.resolve('../../.mcp.json')
+    ]
+
+    for (const tryPath of possiblePaths) {
+      try {
+        mcpConfig = JSON.parse(await fs.readFile(tryPath, 'utf8'))
+        configPath = tryPath
+        break
+      } catch (error) {
+        // Continue trying other paths
+      }
+    }
+
+    if (!mcpConfig) {
+      recommendations.push('Create .mcp.json configuration file')
+      recommendations.push('Run: node scripts/install-mcp.js')
+      
+      return {
+        status: 'warning',
+        message: 'No .mcp.json configuration found',
+        details: { searched_paths: possiblePaths },
+        recommendations
+      }
+    }
+
+    // Validate MCP config structure
+    const hasServers = mcpConfig.mcpServers && typeof mcpConfig.mcpServers === 'object'
+    const hasN8nServer = hasServers && mcpConfig.mcpServers['n8n-mcp-modern']
+    const serverConfig = hasN8nServer ? mcpConfig.mcpServers['n8n-mcp-modern'] : null
+
+    configValid = hasServers && hasN8nServer && 
+                  serverConfig.type === 'stdio' && 
+                  serverConfig.command && 
+                  Array.isArray(serverConfig.args)
+
+    if (!configValid) {
+      recommendations.push('Validate .mcp.json structure')
+      recommendations.push('Ensure n8n-mcp-modern server is properly configured')
+    }
+
+    // Check environment variables
+    const hasEnvConfig = serverConfig?.env && Object.keys(serverConfig.env).length > 0
+    const hasN8nConfig = hasEnvConfig && serverConfig.env.N8N_API_URL && serverConfig.env.N8N_API_KEY
+
+    if (!hasN8nConfig) {
+      recommendations.push('Configure N8N_API_URL and N8N_API_KEY in .mcp.json')
+    }
+
+    return {
+      status: configValid ? 'passed' : 'failed',
+      message: configValid 
+        ? `MCP config valid${hasN8nConfig ? ' with n8n API settings' : ' (missing n8n API config)'}`
+        : 'Invalid or incomplete MCP configuration',
+      details: detailed ? {
+        config_path: configPath,
+        has_servers: hasServers,
+        has_n8n_server: hasN8nServer,
+        has_env_config: hasEnvConfig,
+        has_n8n_config: hasN8nConfig,
+        server_config: serverConfig
+      } : {
+        config_found: !!mcpConfig,
+        valid_structure: configValid,
+        n8n_configured: hasN8nConfig
+      },
+      recommendations
+    }
+  }
+  catch (error) {
+    return {
+      status: 'failed',
+      message: `MCP config check failed: ${(error as Error).message}`,
+      details: {},
+      recommendations: ['Check .mcp.json file syntax and permissions']
+    }
+  }
+}
+
+/**
+ * Validate n8n connectivity 
+ */
+async function validateN8nConnectivity(detailed: boolean): Promise<any> {
+  try {
+    if (!hasN8nApi()) {
+      return {
+        status: 'warning',
+        message: 'n8n API not configured - server running in offline mode',
+        details: { api_configured: false },
+        recommendations: ['Configure N8N_API_URL and N8N_API_KEY environment variables']
+      }
+    }
+
+    // Test n8n API connectivity
+    const connectivityTest = await simpleN8nApi.testConnection()
+    
+    return {
+      status: connectivityTest.success ? 'passed' : 'failed',
+      message: connectivityTest.success 
+        ? `n8n API connected (${connectivityTest.version || 'unknown version'})`
+        : `n8n API connection failed: ${connectivityTest.error}`,
+      details: detailed ? connectivityTest : {
+        connected: connectivityTest.success,
+        version: connectivityTest.version
+      },
+      recommendations: connectivityTest.success ? [] : [
+        'Check n8n server is running',
+        'Verify API URL and key are correct',
+        'Check network connectivity to n8n instance'
+      ]
+    }
+  }
+  catch (error) {
+    return {
+      status: 'failed',
+      message: `n8n connectivity check failed: ${(error as Error).message}`,
+      details: {},
+      recommendations: []
+    }
+  }
+}
+
+/**
+ * Validate file system permissions
+ */
+async function validatePermissions(detailed: boolean): Promise<any> {
+  try {
+    const checks: any = {}
+    const issues: string[] = []
+    const recommendations: string[] = []
+
+    // Check data directory permissions
+    const dataDir = path.resolve('./data')
+    try {
+      await fs.access(dataDir, fs.constants.R_OK | fs.constants.W_OK)
+      checks.data_directory = { readable: true, writable: true }
+    } catch (error) {
+      checks.data_directory = { readable: false, writable: false, error: (error as Error).message }
+      issues.push('Data directory not accessible')
+      recommendations.push('Ensure read/write permissions on ./data directory')
+    }
+
+    // Check database file permissions
+    const dbPath = path.resolve('./data/nodes.db')
+    try {
+      await fs.access(dbPath, fs.constants.R_OK | fs.constants.W_OK)
+      checks.database_file = { readable: true, writable: true }
+    } catch (error) {
+      checks.database_file = { readable: false, writable: false, error: (error as Error).message }
+      issues.push('Database file not accessible')
+      recommendations.push('Ensure read/write permissions on database file')
+    }
+
+    // Check temp directory permissions  
+    const tmpDir = os.tmpdir()
+    try {
+      const testFile = path.join(tmpDir, `n8n-mcp-test-${Date.now()}`)
+      await fs.writeFile(testFile, 'test')
+      await fs.unlink(testFile)
+      checks.temp_directory = { readable: true, writable: true }
+    } catch (error) {
+      checks.temp_directory = { readable: false, writable: false, error: (error as Error).message }
+      issues.push('Temp directory not accessible')
+      recommendations.push('Ensure write permissions on system temp directory')
+    }
+
+    return {
+      status: issues.length === 0 ? 'passed' : 'failed',
+      message: issues.length === 0 ? 'All permission checks passed' : `${issues.length} permission issues found`,
+      details: detailed ? checks : { issues_count: issues.length },
+      recommendations
+    }
+  }
+  catch (error) {
+    return {
+      status: 'failed', 
+      message: `Permissions check failed: ${(error as Error).message}`,
+      details: {},
+      recommendations: []
+    }
+  }
+}
+
+/**
+ * Validate disk space
+ */
+async function validateDiskSpace(detailed: boolean): Promise<any> {
+  try {
+    const { execCommand } = { execCommand }
+    const result = await execCommand('df', ['-h', '.'])
+    
+    // Parse df output (simplified - may need adjustment for different systems)
+    const lines = result.stdout.trim().split('\n')
+    const dataLine = lines[lines.length - 1]
+    const parts = dataLine.split(/\s+/)
+    
+    const usage = {
+      filesystem: parts[0],
+      size: parts[1],
+      used: parts[2], 
+      available: parts[3],
+      use_percent: parts[4],
+      mount: parts[5]
+    }
+    
+    const usePercent = parseInt(usage.use_percent?.replace('%', '') || '0')
+    const availableBytes = usage.available || '0'
+    
+    const recommendations: string[] = []
+    let status = 'passed'
+    
+    if (usePercent > 90) {
+      status = 'failed'
+      recommendations.push('Disk usage is critically high - free up space immediately')
+    } else if (usePercent > 80) {
+      status = 'warning' 
+      recommendations.push('Disk usage is high - consider freeing up space')
+    }
+    
+    // Check if we have less than 100MB available
+    const availableMB = availableBytes.includes('G') ? parseFloat(availableBytes) * 1024 : 
+                       availableBytes.includes('M') ? parseFloat(availableBytes) : 0
+    
+    if (availableMB < 100) {
+      status = 'failed'
+      recommendations.push('Less than 100MB available - critical space issue')
+    }
+
+    return {
+      status,
+      message: `Disk usage: ${usage.use_percent} (${usage.available} available)`,
+      details: detailed ? usage : { 
+        use_percent: usage.use_percent,
+        available: usage.available
+      },
+      recommendations
+    }
+  }
+  catch (error) {
+    // Fallback for systems without df command
+    return {
+      status: 'warning',
+      message: `Could not check disk space: ${(error as Error).message}`,
+      details: {},
+      recommendations: ['Manually verify sufficient disk space is available']
+    }
+  }
+}
+
+/**
+ * Validate memory usage
+ */
+async function validateMemoryUsage(detailed: boolean): Promise<any> {
+  try {
+    const memUsage = process.memoryUsage()
+    const totalMemory = os.totalmem()
+    const freeMemory = os.freemem()
+    
+    const processMemoryMB = Math.round(memUsage.rss / 1024 / 1024)
+    const systemMemoryGB = Math.round(totalMemory / 1024 / 1024 / 1024)
+    const freeMemoryGB = Math.round(freeMemory / 1024 / 1024 / 1024)
+    const memoryUsagePercent = Math.round((processMemoryMB / (systemMemoryGB * 1024)) * 100)
+    
+    const recommendations: string[] = []
+    let status = 'passed'
+    
+    if (processMemoryMB > 1024) { // > 1GB
+      status = 'warning'
+      recommendations.push('Process memory usage is high - consider restarting if performance issues occur')
+    }
+    
+    if (freeMemoryGB < 1) { // < 1GB free
+      status = 'warning'
+      recommendations.push('System memory is low - consider closing other applications')
+    }
+    
+    const details = {
+      process: {
+        rss: `${processMemoryMB}MB`,
+        heap_used: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+        heap_total: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+        external: `${Math.round(memUsage.external / 1024 / 1024)}MB`
+      },
+      system: {
+        total: `${systemMemoryGB}GB`,
+        free: `${freeMemoryGB}GB`,
+        process_usage_percent: `${memoryUsagePercent}%`
+      }
+    }
+
+    return {
+      status,
+      message: `Memory: ${processMemoryMB}MB process, ${freeMemoryGB}GB system free`,
+      details: detailed ? details : {
+        process_memory_mb: processMemoryMB,
+        system_free_gb: freeMemoryGB
+      },
+      recommendations
+    }
+  }
+  catch (error) {
+    return {
+      status: 'failed',
+      message: `Memory check failed: ${(error as Error).message}`,
+      details: {},
+      recommendations: []
+    }
+  }
+}
+
+/**
+ * Handle server update MCP tool requests
+ */
+async function handleServerUpdate(args: Record<string, unknown>): Promise<any> {
+  const { action, force = false, preserveData = true, backupBeforeUpdate = true } = args
+
+  try {
+    switch (action) {
+      case 'check_updates': {
+        logger.info('Checking for available updates...')
+        const currentVersion = await getCurrentVersion()
+        const latestInfo = await getLatestVersion()
+
+        if (!currentVersion) {
+          return {
+            error: 'Could not determine current version',
+            currentVersion: null,
+            latestVersion: null
+          }
+        }
+
+        if (!latestInfo) {
+          return {
+            error: 'Could not check latest version - authentication or network issue',
+            currentVersion,
+            latestVersion: null,
+            suggestion: 'Run validate_auth action to check GitHub Packages access'
+          }
+        }
+
+        return {
+          currentVersion,
+          latestVersion: latestInfo.version,
+          updateAvailable: latestInfo.available,
+          message: latestInfo.available 
+            ? `Update available: ${currentVersion} → ${latestInfo.version}`
+            : 'Already on latest version',
+          nextSteps: latestInfo.available 
+            ? ['Run validate_auth to check authentication', 'Run perform_update to upgrade']
+            : []
+        }
+      }
+
+      case 'validate_auth': {
+        logger.info('Validating GitHub Packages authentication...')
+        const authResult = await validateGitHubAuth()
+        
+        return {
+          authenticationValid: authResult.valid,
+          message: authResult.message,
+          nextSteps: authResult.valid 
+            ? ['Authentication is working - you can proceed with updates']
+            : [
+              'Fix authentication by running: node scripts/validate-github-auth.cjs --verbose',
+              'Configure GitHub token in ~/.npmrc',
+              'Ensure token has read:packages permission'
+            ]
+        }
+      }
+
+      case 'perform_update': {
+        logger.info('Starting server update process...')
+        
+        // Validate authentication first unless forced
+        if (!force) {
+          const authResult = await validateGitHubAuth()
+          if (!authResult.valid) {
+            return {
+              error: 'GitHub Packages authentication failed',
+              message: authResult.message,
+              suggestion: 'Run validate_auth action first, or use force:true to bypass (not recommended)'
+            }
+          }
+        }
+
+        // Create backup if requested
+        let backupResult: any = null
+        if (backupBeforeUpdate) {
+          logger.info('Creating backup before update...')
+          backupResult = await createBackup()
+          if (!backupResult.success && !force) {
+            return {
+              error: 'Backup failed and force is not enabled',
+              message: backupResult.message,
+              suggestion: 'Use force:true to bypass backup requirement'
+            }
+          }
+        }
+
+        // Perform the update
+        const updateResult = await performUpdate(preserveData)
+        
+        return {
+          success: updateResult.success,
+          message: updateResult.message,
+          details: updateResult.details,
+          backup: backupResult,
+          nextSteps: updateResult.success 
+            ? [
+              'Server updated successfully',
+              'Restart your MCP client (Claude Code) to use the new version',
+              'Run check_updates to confirm new version'
+            ]
+            : [
+              'Update failed - check error details',
+              'Verify GitHub Packages authentication',
+              'Check network connectivity'
+            ]
+        }
+      }
+
+      case 'rollback_update': {
+        return {
+          error: 'Rollback functionality not yet implemented',
+          message: 'Manual rollback required - reinstall previous version or restore from backup',
+          suggestion: 'Use npm install -g @eekfonky/n8n-mcp-modern@<previous-version>'
+        }
+      }
+
+      default:
+        return {
+          error: 'Invalid action',
+          validActions: ['check_updates', 'validate_auth', 'perform_update', 'rollback_update']
+        }
+    }
+  } catch (error) {
+    logger.error('Server update error:', error)
+    return {
+      error: 'Update operation failed',
+      message: (error as Error).message,
+      stack: (error as Error).stack
+    }
+  }
+}
 
 /**
  * Initialize the pure dynamic tool system
@@ -84,6 +1127,79 @@ export async function initializeDynamicTools(): Promise<void> {
       })
       toolHandlers.set(toolName, toolConfig.handler)
     }
+
+    // Add self-update tool for seamless upgrades
+    discoveredTools.push({
+      name: 'update_n8n_mcp_server',
+      description: 'Update n8n-MCP Modern server to latest version with data preservation and validation',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          action: {
+            type: 'string',
+            enum: ['check_updates', 'validate_auth', 'perform_update', 'rollback_update'],
+            description: 'Update action to perform'
+          },
+          force: {
+            type: 'boolean',
+            default: false,
+            description: 'Force update even if validation fails (use with caution)'
+          },
+          preserveData: {
+            type: 'boolean',
+            default: true,
+            description: 'Preserve user data and configurations during update'
+          },
+          backupBeforeUpdate: {
+            type: 'boolean',
+            default: true,
+            description: 'Create backup before performing update'
+          }
+        },
+        required: ['action']
+      }
+    })
+
+    // Add installation validation and health check tool
+    discoveredTools.push({
+      name: 'validate_installation',
+      description: 'Comprehensive validation of n8n-MCP Modern installation including dependencies, configuration, and health checks',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          checks: {
+            type: 'array',
+            items: {
+              type: 'string',
+              enum: [
+                'system_info',
+                'dependencies', 
+                'database',
+                'mcp_config',
+                'github_auth',
+                'n8n_connectivity',
+                'permissions',
+                'disk_space',
+                'memory_usage',
+                'all'
+              ]
+            },
+            default: ['all'],
+            description: 'Specific validation checks to perform'
+          },
+          includeRecommendations: {
+            type: 'boolean',
+            default: true,
+            description: 'Include improvement recommendations in results'
+          },
+          detailed: {
+            type: 'boolean', 
+            default: false,
+            description: 'Include detailed diagnostic information'
+          }
+        }
+      }
+    })
 
     // Add dynamic agent tools
     if (dynamicAgentTools) {
@@ -192,6 +1308,16 @@ export async function initializeDynamicTools(): Promise<void> {
           },
         },
       },
+    })
+
+    // Add handler for self-update tool
+    toolHandlers.set('update_n8n_mcp_server', async (args: Record<string, unknown>) => {
+      return await handleServerUpdate(args)
+    })
+
+    // Add handler for installation validation tool
+    toolHandlers.set('validate_installation', async (args: Record<string, unknown>) => {
+      return await handleInstallationValidation(args)
     })
 
     // Add handlers for scheduler tools
