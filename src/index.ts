@@ -16,13 +16,14 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import { coldStartOptimizer, startupAnalyzer } from './server/cold-start-optimizer.js'
-import { features } from './server/config.js'
+import { config, features } from './server/config.js'
 import { setupErrorMonitoring } from './server/error-monitoring.js'
 import { logger } from './server/logger.js'
 import { cleanup, executeToolHandler, getAllTools, initializeDynamicTools } from './tools/index.js'
 import { initializePerformanceOptimizations } from './tools/performance-optimized.js'
 import { getQuickMemoryStats, memoryProfiler, setupMemoryMonitoring } from './utils/memory-profiler.js'
 import { VERSION } from './version.js'
+import { initializeN8NApi } from './n8n/simple-api.js'
 
 const { hasN8nApi } = features
 
@@ -65,6 +66,15 @@ async function main(): Promise<void> {
   }
 
   logger.info('🚀 Starting n8n-MCP Modern - Dynamic Discovery...')
+
+  // Initialize N8N API
+  if (config.n8nApiUrl && config.n8nApiKey) {
+    initializeN8NApi({
+      apiUrl: config.n8nApiUrl,
+      apiKey: config.n8nApiKey,
+    })
+    logger.info('✅ N8N API initialized')
+  }
 
   // Phase 1: Cold start optimization
   startupAnalyzer.startPhase('cold-start-optimization')

@@ -1839,13 +1839,14 @@ function _createDynamicHandler(operation: string): (args: Record<string, unknown
       switch (operation) {
         // Core workflow operations
         case 'list_workflows':
-          return (await simpleN8nApi?.getWorkflows() || []) as Record<string, unknown>[]
+          return await simpleN8nApi?.getWorkflows() || []
         case 'get_workflow':
           return await simpleN8nApi?.getWorkflow(args.id as string) || null
         case 'create_workflow':
           return await simpleN8nApi?.createWorkflow({
             name: args.name as string || 'Dynamic Workflow',
-            nodes: (args.data as Record<string, unknown>[]) || [],
+            nodes: (args.data as any) || [],
+            connections: {},
             active: false,
           }) || { status: 'workflow_creation_pending' }
         case 'execute_workflow':
@@ -1857,23 +1858,26 @@ function _createDynamicHandler(operation: string): (args: Record<string, unknown
         case 'update_workflow':
           return await simpleN8nApi?.updateWorkflow(args.id as string, args.data as Record<string, unknown>) || null
         case 'delete_workflow':
-          return await simpleN8nApi?.deleteWorkflow(args.id as string) || false
+          await simpleN8nApi?.deleteWorkflow(args.id as string)
+          return true
         case 'activate_workflow':
           return await simpleN8nApi?.activateWorkflow(args.id as string) || false
         case 'deactivate_workflow':
           return await simpleN8nApi?.deactivateWorkflow(args.id as string) || false
         case 'duplicate_workflow':
-          return await simpleN8nApi?.duplicateWorkflow(args.id as string, args.name as string) || null
+          return await simpleN8nApi?.duplicateWorkflow(args.id as string) || null
 
         // Execution operations
         case 'get_execution':
           return await simpleN8nApi?.getExecution(args.id as string) || null
         case 'delete_execution':
-          return await simpleN8nApi?.deleteExecution(args.id as string) || false
+          await simpleN8nApi?.deleteExecution(args.id as string)
+          return true
         case 'retry_execution':
           return await simpleN8nApi?.retryExecution(args.id as string) || null
         case 'stop_execution':
-          return await simpleN8nApi?.stopExecution(args.id as string) || false
+          await simpleN8nApi?.stopExecution(args.id as string)
+          return true
 
         // Credential operations
         case 'list_credentials':
@@ -1889,7 +1893,8 @@ function _createDynamicHandler(operation: string): (args: Record<string, unknown
         case 'update_credential':
           return await simpleN8nApi?.updateCredential(args.id as string, args.data as Record<string, unknown>) || null
         case 'delete_credential':
-          return await simpleN8nApi?.deleteCredential(args.id as string) || false
+          await simpleN8nApi?.deleteCredential(args.id as string)
+          return true
         case 'test_credential':
           return await simpleN8nApi?.testCredential(args.id as string) || null
 
@@ -1903,9 +1908,15 @@ function _createDynamicHandler(operation: string): (args: Record<string, unknown
         case 'list_tags':
           return await simpleN8nApi?.getTags() || []
         case 'create_tag':
-          return await simpleN8nApi?.createTag(args.name as string) || null
+          return await simpleN8nApi?.createTag({ name: args.name as string }) || null
         case 'tag_workflow':
-          return await simpleN8nApi?.tagWorkflow(args.workflowId as string, args.tagIds as string[]) || false
+          const tagIds = args.tagIds as string[]
+          if (tagIds && tagIds.length > 0) {
+            for (const tagId of tagIds) {
+              await simpleN8nApi?.tagWorkflow(args.workflowId as string, tagId)
+            }
+          }
+          return true
 
         // Variable operations
         case 'list_variables':
@@ -1915,7 +1926,8 @@ function _createDynamicHandler(operation: string): (args: Record<string, unknown
         case 'update_variable':
           return await simpleN8nApi?.updateVariable(args.id as string, args.data as Record<string, unknown>) || null
         case 'delete_variable':
-          return await simpleN8nApi?.deleteVariable(args.id as string) || false
+          await simpleN8nApi?.deleteVariable(args.id as string)
+          return true
 
         // System operations
         case 'get_health':
@@ -1927,11 +1939,14 @@ function _createDynamicHandler(operation: string): (args: Record<string, unknown
 
         // Batch operations
         case 'batch_delete_workflows':
-          return await simpleN8nApi?.batchDeleteWorkflows(args.ids as string[]) || { success: [], failed: [] }
+          await simpleN8nApi?.batchDeleteWorkflows(args.ids as string[])
+          return { success: args.ids, failed: [] }
         case 'batch_activate_workflows':
-          return await simpleN8nApi?.batchActivateWorkflows(args.ids as string[]) || { success: [], failed: [] }
+          await simpleN8nApi?.batchActivateWorkflows(args.ids as string[])
+          return { success: args.ids, failed: [] }
         case 'batch_deactivate_workflows':
-          return await simpleN8nApi?.batchDeactivateWorkflows(args.ids as string[]) || { success: [], failed: [] }
+          await simpleN8nApi?.batchDeactivateWorkflows(args.ids as string[])
+          return { success: args.ids, failed: [] }
 
         default:
           return { operation, args, status: 'dynamic_execution' }

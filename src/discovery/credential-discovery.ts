@@ -287,7 +287,7 @@ export class CredentialDiscovery {
           .filter((type: unknown): type is string => Boolean(type) && typeof type === 'string')
 
         if (types.length > 0) {
-          return [...new Set(types)] // Deduplicate
+          return [...new Set(types)] as string[] // Deduplicate
         }
       }
     }
