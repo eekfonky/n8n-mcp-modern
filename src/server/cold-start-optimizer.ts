@@ -7,6 +7,7 @@
 
 import { Buffer } from 'node:buffer'
 import { performance } from 'node:perf_hooks'
+import process from 'node:process'
 import { createError } from './enhanced-error-handler.js'
 import { logger } from './logger.js'
 
@@ -49,7 +50,7 @@ export interface StartupMetrics {
  * Module cache entry
  */
 interface ModuleCacheEntry {
-  module: any
+  module: unknown
   loadTime: number
   lastUsed: Date
   useCount: number
@@ -70,7 +71,7 @@ export type PreloadStrategy = 'eager' | 'lazy' | 'adaptive' | 'critical-only'
  */
 export class ColdStartOptimizer {
   private moduleCache = new Map<string, ModuleCacheEntry>()
-  private loadingPromises = new Map<string, Promise<any>>()
+  private loadingPromises = new Map<string, Promise<unknown>>()
   private startTime = performance.now()
   private config: PreloadConfig
   private metrics: Partial<StartupMetrics> = {}
@@ -164,7 +165,9 @@ export class ColdStartOptimizer {
       this.metrics.moduleLoadTime = performance.now() - optimizationStart
 
       // Record final memory usage
-      this.metrics.memoryUsage!.afterStartup = process.memoryUsage().heapUsed
+      if (this.metrics.memoryUsage) {
+        this.metrics.memoryUsage.afterStartup = process.memoryUsage().heapUsed
+      }
 
       // Calculate cache hit rate
       this.metrics.cacheHitRate = this.calculateCacheHitRate()
@@ -179,7 +182,11 @@ export class ColdStartOptimizer {
         preloadTime: this.metrics.preloadTime || 0,
         moduleLoadTime: this.metrics.moduleLoadTime,
         initializationTime: this.metrics.initializationTime || 0,
-        memoryUsage: this.metrics.memoryUsage!,
+        memoryUsage: this.metrics.memoryUsage ?? {
+          beforeStartup: 0,
+          afterStartup: 0,
+          peakDuringStartup: 0,
+        },
         moduleTimings: this.getModuleTimings(),
         cacheHitRate: this.metrics.cacheHitRate,
         parallelizationEfficiency: this.metrics.parallelizationEfficiency || 0,
@@ -288,7 +295,7 @@ export class ColdStartOptimizer {
     // We don't create actual proxies here since they're complex in TypeScript
     // Instead, we prepare the loading function for when it's needed
     if (!this.loadingPromises.has(modulePath)) {
-      const lazyLoad = async () => {
+      const lazyLoad = async (): Promise<unknown> => {
         const start = performance.now()
         try {
           const module = await this.loadModuleWithCache(modulePath)
@@ -336,6 +343,7 @@ export class ColdStartOptimizer {
 
     for (const mod of commonModules) {
       try {
+        // eslint-disable-next-line no-await-in-loop
         await import(mod)
       }
       catch {
@@ -350,11 +358,11 @@ export class ColdStartOptimizer {
   private async warmupV8Cache(): Promise<void> {
     // Execute some common patterns to warm up V8's optimization cache
     const patterns = [
-      () => JSON.parse('{"test": true}'),
-      () => JSON.stringify({ test: true }),
-      () => new Date().toISOString(),
-      () => Math.random().toString(36),
-      () => Buffer.from('test').toString('base64'),
+      (): unknown => JSON.parse('{"test": true}'),
+      (): string => JSON.stringify({ test: true }),
+      (): string => new Date().toISOString(),
+      (): string => Math.random().toString(36),
+      (): string => Buffer.from('test').toString('base64'),
     ]
 
     for (const pattern of patterns) {
@@ -386,7 +394,7 @@ export class ColdStartOptimizer {
   /**
    * Load module with caching
    */
-  private async loadModuleWithCache(modulePath: string): Promise<any> {
+  private async loadModuleWithCache(modulePath: string): Promise<unknown> {
     // Check cache first
     const cached = this.moduleCache.get(modulePath)
     if (cached) {
@@ -428,7 +436,7 @@ export class ColdStartOptimizer {
   /**
    * Load a single module
    */
-  private async loadModule(modulePath: string): Promise<any> {
+  private async loadModule(modulePath: string): Promise<unknown> {
     try {
       // Handle different import styles
       if (modulePath.startsWith('.')) {
@@ -456,6 +464,7 @@ export class ColdStartOptimizer {
 
     for (const promise of promises) {
       try {
+        // eslint-disable-next-line no-await-in-loop
         const result = await promise
         results.push({ status: 'fulfilled', value: result })
       }
@@ -484,8 +493,8 @@ export class ColdStartOptimizer {
   private setupMemoryTracking(): void {
     const trackingInterval = setInterval(() => {
       const current = process.memoryUsage().heapUsed
-      if (current > (this.metrics.memoryUsage?.peakDuringStartup || 0)) {
-        this.metrics.memoryUsage!.peakDuringStartup = current
+      if (this.metrics.memoryUsage && current > this.metrics.memoryUsage.peakDuringStartup) {
+        this.metrics.memoryUsage.peakDuringStartup = current
       }
     }, 100) // Check every 100ms
 
@@ -582,7 +591,7 @@ export class ColdStartOptimizer {
   /**
    * Get cached module
    */
-  getCachedModule(modulePath: string): any | null {
+  getCachedModule(modulePath: string): unknown | null {
     const cached = this.moduleCache.get(modulePath)
     if (cached) {
       cached.useCount++
@@ -729,7 +738,7 @@ export const startupAnalyzer = new StartupPerformanceAnalyzer()
 /**
  * Optimize imports for faster loading
  */
-export function optimizeImports(modules: string[]): Promise<any[]> {
+export function optimizeImports(modules: string[]): Promise<unknown[]> {
   return Promise.all(modules.map(mod => coldStartOptimizer.getCachedModule(mod) || import(mod)))
 }
 

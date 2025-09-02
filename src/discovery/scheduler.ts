@@ -118,7 +118,7 @@ export class DiscoveryScheduler {
   private scheduledJobs = new Map<string, NodeJS.Timeout>()
   private isRunning = false
   private config: DiscoveryScheduleConfig
-  private webhookServer?: any // HTTP server instance for webhooks
+  private webhookServer?: import('node:http').Server | undefined // HTTP server instance for webhooks
   private isHighActivityMode = false // Track high activity mode for smart intervals
 
   constructor() {
@@ -446,7 +446,7 @@ export class DiscoveryScheduler {
   private schedulePeriodicDiscovery(): void {
     const intervalMs = this.config.intervalMinutes * 60 * 1000
 
-    const scheduleNext = () => {
+    const scheduleNext = (): void => {
       const timer = setTimeout(() => {
         if (this.isRunning && this.config.enabled) {
           this.triggerDiscovery('scheduled', `Periodic discovery (${this.config.intervalMinutes}m interval)`)
@@ -467,7 +467,7 @@ export class DiscoveryScheduler {
   private scheduleVersionDetection(): void {
     const intervalMs = this.config.versionCheckMinutes * 60 * 1000
 
-    const scheduleNext = () => {
+    const scheduleNext = (): void => {
       const timer = setTimeout(() => {
         if (this.isRunning && this.config.versionDetection) {
           this.checkVersionChanges()
@@ -524,7 +524,8 @@ export class DiscoveryScheduler {
             newVersion: currentVersion,
           })
 
-          // Register version change
+          // Register version change (sequential by design for version tracking integrity)
+          // eslint-disable-next-line no-await-in-loop
           await this.versionManager.detectVersionChange(instance.id, currentVersion)
 
           // Trigger rediscovery
@@ -662,7 +663,7 @@ export class DiscoveryScheduler {
   /**
    * Handle incoming webhook requests
    */
-  private async handleWebhookRequest(req: any, res: any): Promise<void> {
+  private async handleWebhookRequest(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse): Promise<void> {
     try {
       let body = ''
       req.on('data', (chunk: Buffer) => {
@@ -676,7 +677,7 @@ export class DiscoveryScheduler {
           // Verify webhook secret if configured
           if (this.config.webhookSecret) {
             const signature = req.headers['x-webhook-signature']
-            if (!this.verifyWebhookSignature(body, signature)) {
+            if (!this.verifyWebhookSignature(body, String(signature || ''))) {
               res.writeHead(401, { 'Content-Type': 'application/json' })
               res.end(JSON.stringify({ error: 'Invalid signature' }))
               return
@@ -737,7 +738,7 @@ export class DiscoveryScheduler {
     // Monitor n8n activity periodically
     const activityCheckInterval = Math.floor(this.config.activityWindowMinutes / 2) * 60 * 1000
 
-    const checkActivity = async () => {
+    const checkActivity = async (): Promise<void> => {
       if (!this.isRunning || !this.config.smartIntervals) {
         return
       }

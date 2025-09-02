@@ -294,7 +294,7 @@ export async function createEnhancedServer(): Promise<MCPServer> {
 
   // Intercept our logger to send MCP logging notifications
   const originalLog = logger.log.bind(logger)
-  logger.log = function (level: string, message: string, ...args: any[]) {
+  logger.log = function (level: string, message: string, ...args: unknown[]): void {
     originalLog(level, message, ...args)
 
     // Send MCP logging notification
@@ -321,7 +321,7 @@ export async function createEnhancedServer(): Promise<MCPServer> {
 /**
  * Main entry point
  */
-export async function main() {
+export async function main(): Promise<void> {
   try {
     const server = await createEnhancedServer()
     const transport = new StdioServerTransport()
@@ -342,7 +342,7 @@ if (!(globalThis as Record<symbol, boolean>)[enhancedServerShutdownRegistered]) 
 
   let shutdownInProgress = false
 
-  const gracefulShutdown = async (signal: string) => {
+  const gracefulShutdown = async (signal: string): Promise<void> => {
     if (shutdownInProgress) {
       logger.warn(`${signal} received but Enhanced MCP Server shutdown already in progress`)
       return

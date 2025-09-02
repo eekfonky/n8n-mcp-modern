@@ -30,23 +30,23 @@ const startTime = performance.now()
 /**
  * Main MCP server implementation
  */
-async function main() {
+async function main(): Promise<void> {
   startupAnalyzer.startPhase('startup-initialization')
 
   // Handle help flag
   if (process.argv.includes('--help') || process.argv.includes('-h')) {
-    console.log('n8n-MCP Modern - Dynamic n8n MCP Server')
-    console.log('')
-    console.log('Usage: n8n-mcp [options]')
-    console.log('')
-    console.log('Options:')
-    console.log('  -h, --help             Show this help message')
-    console.log('')
-    console.log('Environment Variables:')
-    console.log('  N8N_API_URL            Your n8n instance URL (e.g., https://n8n.example.com)')
-    console.log('  N8N_API_KEY            Your n8n API key')
-    console.log('  LOG_LEVEL              Log level (debug, info, warn, error)')
-    console.log('')
+    logger.info('n8n-MCP Modern - Dynamic n8n MCP Server')
+    logger.info('')
+    logger.info('Usage: n8n-mcp [options]')
+    logger.info('')
+    logger.info('Options:')
+    logger.info('  -h, --help             Show this help message')
+    logger.info('')
+    logger.info('Environment Variables:')
+    logger.info('  N8N_API_URL            Your n8n instance URL (e.g., https://n8n.example.com)')
+    logger.info('  N8N_API_KEY            Your n8n API key')
+    logger.info('  LOG_LEVEL              Log level (debug, info, warn, error)')
+    logger.info('')
     process.exit(0)
   }
 
@@ -209,7 +209,7 @@ if (!(globalThis as Record<symbol, boolean>)[mainShutdownHandlerRegistered]) {
 
   let shutdownInProgress = false
 
-  const gracefulShutdown = async (signal: string) => {
+  const gracefulShutdown = async (signal: string): Promise<void> => {
     if (shutdownInProgress) {
       logger.warn(`${signal} received but shutdown already in progress`)
       return

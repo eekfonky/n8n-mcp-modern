@@ -13,6 +13,7 @@
 
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import type { MCPTool, N8NNodeDatabase } from '../types/core.js'
+import process from 'node:process'
 import { z } from 'zod'
 import { database, VersionManager } from '../database/index.js'
 import { logger } from '../server/logger.js'
@@ -162,6 +163,7 @@ export class MCPToolGenerator {
       const categories = [...new Set(nodes.map(node => node.category))]
       for (const category of categories) {
         try {
+          // eslint-disable-next-line no-await-in-loop
           const categoryTool = await this.generateCategoryTool(category, nodes.filter(n => n.category === category))
           this.registerTool(categoryTool)
           stats.categoryTools++
@@ -185,6 +187,7 @@ export class MCPToolGenerator {
           }
 
           // Generate general tool for the node
+          // eslint-disable-next-line no-await-in-loop
           const generalTool = await this.generateGeneralTool(node)
           this.registerTool(generalTool)
           stats.generalTools++
@@ -197,6 +200,7 @@ export class MCPToolGenerator {
               break
 
             try {
+              // eslint-disable-next-line no-await-in-loop
               const operationTool = await this.generateOperationTool(node, operation)
               this.registerTool(operationTool)
               stats.operationTools++
@@ -370,9 +374,12 @@ export class MCPToolGenerator {
         || key.toLowerCase().includes('resource')
         || key.toLowerCase().includes('method')) {
         if (typeof value === 'object' && value && 'options' in value) {
-          const options = (value as any).options
+          const options = (value as { options?: unknown[] }).options
           if (Array.isArray(options)) {
-            operations.push(...options.map((opt: any) => opt.value || opt.name).filter(Boolean))
+            operations.push(...options.map((opt: unknown) => {
+              const typedOpt = opt as { value?: string, name?: string }
+              return typedOpt.value || typedOpt.name
+            }).filter((val): val is string => typeof val === 'string'))
           }
         }
       }
@@ -820,6 +827,7 @@ export class MCPToolGenerator {
       for (const tool of batch) {
         try {
           logger.debug(`Registering tool: ${tool.id} (node: ${tool.nodeName}, instance: ${tool.instanceId})`)
+          // eslint-disable-next-line no-await-in-loop
           await this.versionManager.registerMCPTool(tool)
         }
         catch (error) {

@@ -5,6 +5,46 @@
 
 import { z } from 'zod'
 
+// N8N Connection Types
+export interface N8NConnection {
+  node: string
+  type: string
+  index: number
+}
+
+export interface N8NWorkflowConnections {
+  [nodeId: string]: {
+    [connectionType: string]: N8NConnection[][]
+  }
+}
+
+export interface N8NWorkflowSettings {
+  callerPolicy?: string
+  callerIds?: string[]
+  errorWorkflow?: string
+  timezone?: string
+  saveDataErrorExecution?: 'all' | 'none'
+  saveDataSuccessExecution?: 'all' | 'none'
+  saveManualExecutions?: boolean
+  saveExecutionProgress?: boolean
+  executionTimeout?: number
+  maxTimeout?: number
+}
+
+export interface N8NWorkflowStaticData {
+  [key: string]: unknown
+}
+
+export interface N8NNodeOption {
+  name: string
+  value: string | number | boolean
+  description?: string
+}
+
+export interface N8NContextValue {
+  [key: string]: unknown
+}
+
 // Core MCP Types
 export interface ToolDefinition {
   name: string
@@ -19,9 +59,9 @@ export interface N8NWorkflow {
   name: string
   active: boolean
   nodes: N8NWorkflowNode[]
-  connections?: Record<string, any>
-  settings?: Record<string, any>
-  staticData?: Record<string, any>
+  connections?: N8NWorkflowConnections
+  settings?: N8NWorkflowSettings
+  staticData?: N8NWorkflowStaticData
   tags?: string[]
 }
 
@@ -30,7 +70,7 @@ export interface N8NWorkflowNode {
   name: string
   type: string
   position: [number, number]
-  parameters: Record<string, any>
+  parameters: Record<string, unknown>
 }
 
 // N8N Node Types
@@ -47,9 +87,9 @@ export interface N8NNodeProperty {
   displayName: string
   name: string
   type: string
-  default?: any
+  default?: unknown
   required?: boolean
-  options?: any[]
+  options?: N8NNodeOption[]
 }
 
 // API Argument Types
@@ -57,12 +97,12 @@ export interface CreateWorkflowArgs {
   name: string
   nodes?: N8NWorkflowNode[]
   active?: boolean
-  settings?: Record<string, any>
+  settings?: N8NWorkflowSettings
 }
 
 export interface ExecuteWorkflowArgs {
   workflowId: string
-  data?: Record<string, any>
+  data?: Record<string, unknown>
 }
 
 export interface GetExecutionsArgs {
@@ -83,7 +123,7 @@ export interface GetWorkflowsArgs {
 
 export interface RouteToAgentArgs {
   message: string
-  context?: Record<string, any>
+  context?: N8NContextValue
 }
 
 export interface SearchNodesArgs {
@@ -95,14 +135,14 @@ export interface SearchNodesArgs {
 // Zod Schemas for validation
 export const CreateWorkflowArgsSchema = z.object({
   name: z.string(),
-  nodes: z.array(z.any()).optional(),
+  nodes: z.array(z.unknown()).optional(),
   active: z.boolean().optional(),
-  settings: z.record(z.any()).optional(),
+  settings: z.record(z.unknown()).optional(),
 })
 
 export const ExecuteWorkflowArgsSchema = z.object({
   workflowId: z.string(),
-  data: z.record(z.any()).optional(),
+  data: z.record(z.unknown()).optional(),
 })
 
 export const GetExecutionsArgsSchema = z.object({
@@ -123,7 +163,7 @@ export const GetWorkflowsArgsSchema = z.object({
 
 export const RouteToAgentArgsSchema = z.object({
   message: z.string(),
-  context: z.record(z.any()).optional(),
+  context: z.record(z.unknown()).optional(),
 })
 
 export const SearchNodesArgsSchema = z.object({

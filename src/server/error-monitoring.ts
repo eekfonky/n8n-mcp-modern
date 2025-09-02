@@ -6,6 +6,7 @@
  */
 
 import type { ErrorCode } from './enhanced-error-handler.js'
+import process from 'node:process'
 import { EnhancedError, ErrorSeverity } from './enhanced-error-handler.js'
 import { logger } from './logger.js'
 
@@ -523,7 +524,7 @@ export const errorMonitoringService = new ErrorMonitoringService()
 export function setupErrorMonitoring(): void {
   // Override console.error to capture all errors
   const originalConsoleError = console.error
-  console.error = (...args: any[]) => {
+  console.error = (...args: unknown[]): void => {
     // Call original console.error
     originalConsoleError.apply(console, args)
 

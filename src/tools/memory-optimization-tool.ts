@@ -11,7 +11,7 @@ import { getQuickMemoryStats, memoryProfiler } from '../utils/memory-profiler.js
 /**
  * Get current memory statistics
  */
-export async function getMemoryStats(args: Record<string, any>) {
+export async function getMemoryStats(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const quick = getQuickMemoryStats()
     const detailed = memoryProfiler.getMemoryStats()
@@ -53,7 +53,7 @@ export async function getMemoryStats(args: Record<string, any>) {
 /**
  * Generate comprehensive memory optimization report
  */
-export async function generateMemoryReport(args: Record<string, any>) {
+export async function generateMemoryReport(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const report = memoryProfiler.generateOptimizationReport()
 
@@ -103,7 +103,7 @@ export async function generateMemoryReport(args: Record<string, any>) {
 /**
  * Force garbage collection and memory optimization
  */
-export async function forceMemoryOptimization(args: Record<string, any>) {
+export async function forceMemoryOptimization(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const beforeStats = getQuickMemoryStats()
 
@@ -111,7 +111,9 @@ export async function forceMemoryOptimization(args: Record<string, any>) {
     const gcResult = memoryProfiler.forceGC()
 
     // Wait a moment for GC to complete
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise<void>((resolve) => {
+      setTimeout(() => resolve(), 1000)
+    })
 
     const afterStats = getQuickMemoryStats()
 
@@ -148,7 +150,7 @@ export async function forceMemoryOptimization(args: Record<string, any>) {
 /**
  * Check for memory leaks with detailed analysis
  */
-export async function checkMemoryLeaks(args: Record<string, any>) {
+export async function checkMemoryLeaks(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const leakResult = memoryProfiler.detectMemoryLeaks()
 
@@ -186,7 +188,7 @@ export async function checkMemoryLeaks(args: Record<string, any>) {
 /**
  * Get memory profiler configuration and status
  */
-export async function getMemoryProfilerStatus(args: Record<string, any>) {
+export async function getMemoryProfilerStatus(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const stats = memoryProfiler.getMemoryStats()
     // Get memory configuration through public method

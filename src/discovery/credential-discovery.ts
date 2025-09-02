@@ -18,7 +18,13 @@ import { features } from '../server/config.js'
 import { logger } from '../server/logger.js'
 import { SimpleHttpClient } from '../utils/simple-http-client.js'
 
-const { hasN8nApi } = features
+// API response types
+interface CredentialApiResponse {
+  type?: string
+  name?: string
+}
+
+const { hasN8nApi: _hasN8nApi } = features
 
 const httpClient = new SimpleHttpClient()
 
@@ -192,6 +198,7 @@ export class CredentialDiscovery {
 
       for (const credType of credentialTypes) {
         try {
+          // eslint-disable-next-line no-await-in-loop
           const node = await this.testCredentialSchema(url, key, credType)
           if (node) {
             discoveredNodes.push(node)
@@ -205,6 +212,7 @@ export class CredentialDiscovery {
             }
 
             // Store node in database
+            // eslint-disable-next-line no-await-in-loop
             await this.storeNode(node)
           }
         }
@@ -275,7 +283,7 @@ export class CredentialDiscovery {
 
       if (response.data && Array.isArray(response.data)) {
         const types = response.data
-          .map((cred: any) => cred.type || cred.name)
+          .map((cred: CredentialApiResponse) => cred.type || cred.name)
           .filter((type: unknown): type is string => Boolean(type) && typeof type === 'string')
 
         if (types.length > 0) {
@@ -313,13 +321,14 @@ export class CredentialDiscovery {
 
       if (response.data) {
         // Extract node information from credential schema
-        return this.extractNodeFromCredential(credentialType, response.data)
+        return this.extractNodeFromCredential(credentialType, response.data as Record<string, unknown>)
       }
     }
-    catch (error: any) {
+    catch (error: unknown) {
       // 404 is expected for non-existent credentials
-      if (error.response?.status !== 404) {
-        logger.debug(`Error testing credential ${credentialType}:`, error.message)
+      const errorObj = error as { response?: { status?: number }, message?: string }
+      if (errorObj.response?.status !== 404) {
+        logger.debug(`Error testing credential ${credentialType}:`, errorObj.message || String(error))
       }
     }
 
@@ -331,7 +340,7 @@ export class CredentialDiscovery {
    */
   private extractNodeFromCredential(
     credentialType: string,
-    schema: any,
+    schema: Record<string, unknown>,
   ): DiscoveredNode {
     // Determine if this is a community node
     const isCommunity = this.isCommunityNode(credentialType, schema)
@@ -345,7 +354,7 @@ export class CredentialDiscovery {
     return {
       name: `n8n-nodes-base.${credentialType.replace(/Api|OAuth2?/g, '').toLowerCase()}`,
       displayName,
-      description: schema.description || `Integration with ${displayName}`,
+      description: String(schema.description || `Integration with ${displayName}`),
       category,
       nodeType: isCommunity ? 'community' : 'official',
       ...(isCommunity
@@ -355,15 +364,15 @@ export class CredentialDiscovery {
           }
         : {}),
       credentialType,
-      icon: schema.icon,
-      properties: schema.properties || {},
+      ...(schema.icon && typeof schema.icon === 'string' ? { icon: schema.icon } : {}),
+      properties: (schema.properties as Record<string, unknown>) || {},
     }
   }
 
   /**
    * Determine if a node is a community node
    */
-  private isCommunityNode(credentialType: string, schema: any): boolean {
+  private isCommunityNode(credentialType: string, schema: Record<string, unknown>): boolean {
     // Known community node patterns
     const communityPatterns = [
       /scrapeninja/i,
@@ -380,7 +389,7 @@ export class CredentialDiscovery {
     }
 
     // Check package name in schema if available
-    if (schema.package && !schema.package.startsWith('n8n-nodes-base')) {
+    if (schema.package && typeof schema.package === 'string' && !schema.package.startsWith('n8n-nodes-base')) {
       return true
     }
 
@@ -390,9 +399,9 @@ export class CredentialDiscovery {
   /**
    * Determine node category
    */
-  private determineCategory(credentialType: string, schema: any): string {
+  private determineCategory(credentialType: string, schema: Record<string, unknown>): string {
     // Check schema for category hint
-    if (schema.category) {
+    if (schema.category && typeof schema.category === 'string') {
       return schema.category
     }
 
@@ -422,8 +431,8 @@ export class CredentialDiscovery {
   /**
    * Extract package name for community nodes
    */
-  private extractPackageName(credentialType: string, schema: any): string {
-    if (schema.package) {
+  private extractPackageName(credentialType: string, schema: Record<string, unknown>): string {
+    if (schema.package && typeof schema.package === 'string') {
       return schema.package
     }
 
@@ -495,15 +504,15 @@ export class CredentialDiscovery {
         timeout: 5000,
       })
 
-      const data = response.data as any || {}
+      const data = (response.data as Record<string, unknown>) || {}
       const version = data.version || '1.0.0'
       const edition = data.edition || 'community'
 
       // Register or update instance
       this.instanceId = await this.versionManager.registerInstance({
         url,
-        version,
-        edition,
+        version: String(version),
+        edition: edition as 'community' | 'cloud' | 'enterprise',
         lastDiscovered: new Date(),
         discoveryMethod: 'credential_test',
         status: 'active',

@@ -16,7 +16,7 @@ const { hasN8nApi } = features
 export class PromptManager {
   private prompts: Map<string, {
     prompt: Prompt
-    handler: (args: Record<string, any>) => Promise<PromptMessage[]>
+    handler: (args: Record<string, unknown>) => Promise<PromptMessage[]>
   }> = new Map()
 
   constructor() {
@@ -26,7 +26,7 @@ export class PromptManager {
   /**
    * Register default prompt templates
    */
-  private registerDefaultPrompts() {
+  private registerDefaultPrompts(): void {
     // Workflow creation prompt
     this.registerPrompt({
       name: 'create-workflow',
@@ -390,7 +390,7 @@ Please help with:
   /**
    * Register a new prompt
    */
-  registerPrompt(prompt: Prompt, handler: (args: Record<string, any>) => Promise<PromptMessage[]>) {
+  registerPrompt(prompt: Prompt, handler: (args: Record<string, unknown>) => Promise<PromptMessage[]>): void {
     this.prompts.set(prompt.name, { prompt, handler })
     logger.debug(`Registered prompt: ${prompt.name}`)
   }
@@ -405,7 +405,7 @@ Please help with:
   /**
    * Get a specific prompt
    */
-  async getPrompt(name: string, args: Record<string, any>): Promise<{
+  async getPrompt(name: string, args: Record<string, unknown>): Promise<{
     description?: string
     messages: PromptMessage[]
   }> {

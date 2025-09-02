@@ -20,7 +20,7 @@ interface N8NCredential {
 }
 
 interface N8NSettings {
-  [key: string]: any
+  [key: string]: unknown
 }
 
 interface N8NUser {

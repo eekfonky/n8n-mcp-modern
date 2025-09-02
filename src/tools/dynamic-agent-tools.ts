@@ -10,6 +10,19 @@ import { AgentMemorySystem } from '../agents/memory-system.js'
 import { AgentSessionManager } from '../agents/session-manager.js'
 import { DynamicAgentDB } from '../database/dynamic-agent-db.js'
 
+// Define SessionAnalytics interface to match the one in session-manager.ts
+interface SessionAnalytics {
+  sessionId: string
+  agentName: string
+  totalOperations: number
+  successfulOperations: number
+  averageOperationDuration: number
+  memoryUsageBytes: number
+  sessionDurationMinutes: number
+  operationTypes: Record<string, number>
+  errorPatterns: Array<{ error: string, count: number }>
+}
+
 // Input schemas for MCP tools
 const StoreMemorySchema = z.object({
   agentName: z.string().min(1),
@@ -40,12 +53,12 @@ const CreateSessionSchema = z.object({
   agentName: z.string().min(1),
   sessionType: z.enum(['iterative_building', 'consultation', 'collaboration', 'delegation', 'learning']),
   expirationHours: z.number().min(1).max(168).optional(),
-  initialData: z.record(z.any()).optional(),
+  initialData: z.record(z.unknown()).optional(),
 })
 
 const UpdateSessionSchema = z.object({
   sessionId: z.string().min(1),
-  updates: z.record(z.any()),
+  updates: z.record(z.unknown()),
   operation: z.string().min(1),
 })
 
@@ -81,7 +94,7 @@ const DiscoverKnowledgeSchema = z.object({
   ]),
   title: z.string().min(5),
   description: z.string().min(20),
-  content: z.record(z.any()),
+  content: z.record(z.unknown()),
   nodeTypes: z.array(z.string()).optional(),
 })
 
@@ -125,7 +138,7 @@ export class DynamicAgentTools {
   /**
    * Handle dynamic agent tool requests
    */
-  async handleToolCall(toolName: string, args: any): Promise<any> {
+  async handleToolCall(toolName: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
     switch (toolName) {
       case 'store_agent_memory':
         return this.handleStoreMemory(args)
@@ -480,7 +493,7 @@ export class DynamicAgentTools {
 
   // Tool handlers
 
-  private async handleStoreMemory(args: any) {
+  private async handleStoreMemory(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const input = StoreMemorySchema.parse(args)
 
     const expiresAt = input.expiresIn
@@ -505,14 +518,14 @@ export class DynamicAgentTools {
     }
   }
 
-  private async handleSearchMemory(args: any) {
+  private async handleSearchMemory(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const input = SearchMemorySchema.parse(args)
 
     const results = await this.memorySystem.searchMemories(
       input.agentName,
       input.query,
       {
-        memoryTypes: input.memoryTypes as any,
+        memoryTypes: input.memoryTypes as ('workflow_pattern' | 'node_configuration' | 'user_preference' | 'error_solution' | 'delegation_outcome' | 'discovery_result' | 'validation_rule' | 'performance_insight')[],
         minRelevance: input.minRelevance,
         limit: input.limit,
       },
@@ -535,9 +548,9 @@ export class DynamicAgentTools {
     }
   }
 
-  private async handleMemoryAnalytics(args: any) {
+  private async handleMemoryAnalytics(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const { agentName } = args
-    const analytics = await this.memorySystem.getMemoryAnalytics(agentName)
+    const analytics = await this.memorySystem.getMemoryAnalytics(String(agentName))
 
     return {
       success: true,
@@ -547,7 +560,7 @@ export class DynamicAgentTools {
     }
   }
 
-  private async handleCreateSession(args: any) {
+  private async handleCreateSession(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const input = CreateSessionSchema.parse(args)
 
     const sessionId = await this.sessionManager.createSession({
@@ -566,7 +579,7 @@ export class DynamicAgentTools {
     }
   }
 
-  private async handleUpdateSession(args: any) {
+  private async handleUpdateSession(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const input = UpdateSessionSchema.parse(args)
 
     const success = await this.sessionManager.updateSession({
@@ -583,9 +596,9 @@ export class DynamicAgentTools {
     }
   }
 
-  private async handleSessionAnalytics(args: any) {
+  private async handleSessionAnalytics(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const { sessionId } = args
-    const analytics = await this.sessionManager.getSessionAnalytics(sessionId)
+    const analytics = await this.sessionManager.getSessionAnalytics(String(sessionId))
 
     if (!analytics) {
       return {
@@ -602,7 +615,7 @@ export class DynamicAgentTools {
     }
   }
 
-  private async handleDelegateTask(args: any) {
+  private async handleDelegateTask(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const input = DelegateTaskSchema.parse(args)
 
     // Record delegation in database
@@ -635,7 +648,7 @@ export class DynamicAgentTools {
     }
   }
 
-  private async handleDiscoverKnowledge(args: any) {
+  private async handleDiscoverKnowledge(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const input = DiscoverKnowledgeSchema.parse(args)
 
     const discoveryId = await this.db.storeDiscovery({
@@ -667,11 +680,11 @@ export class DynamicAgentTools {
     }
   }
 
-  private async handleAgentInsights(args: any) {
+  private async handleAgentInsights(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const { agentName, timeframe = 'day' } = args
 
     const insights = agentName
-      ? await this.db.getAgentInsights(agentName)
+      ? await this.db.getAgentInsights(String(agentName))
       : await this.db.getSystemAnalytics()
 
     return {
@@ -683,12 +696,12 @@ export class DynamicAgentTools {
     }
   }
 
-  private async handleCollaboration(args: any) {
+  private async handleCollaboration(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const { primaryAgent, collaboratingAgents, collaborationType, sharedContext } = args
 
     // Create collaborative session
     const sessionId = await this.sessionManager.createSession({
-      agentName: primaryAgent,
+      agentName: String(primaryAgent),
       sessionType: 'collaboration',
       expirationHours: 24,
       initialState: {
@@ -700,7 +713,8 @@ export class DynamicAgentTools {
 
     // Create child sessions for each collaborating agent
     const childSessions = []
-    for (const agent of collaboratingAgents) {
+    for (const agent of (collaboratingAgents as string[])) {
+      // eslint-disable-next-line no-await-in-loop
       const childSessionId = await this.sessionManager.createChildSession(
         sessionId,
         agent,
@@ -723,28 +737,32 @@ export class DynamicAgentTools {
 
   // Helper methods
 
-  private generateMemoryInsights(analytics: any): string[] {
+  private generateMemoryInsights(analytics: Record<string, unknown>): string[] {
     const insights = []
 
-    if (analytics.totalMemories > 1000) {
+    if (Number(analytics.totalMemories) > 1000) {
       insights.push('High memory usage detected - consider consolidation')
     }
 
-    if (analytics.averageRelevance < 0.7) {
+    if (Number(analytics.averageRelevance) < 0.7) {
       insights.push('Memory relevance declining - strengthen important memories')
     }
 
-    if (analytics.relationshipStats.strongRelationships < analytics.totalMemories * 0.1) {
+    const relationshipStats = analytics.relationshipStats as Record<string, unknown> | undefined
+    const strongRelationships = Number(relationshipStats?.strongRelationships) || 0
+    if (strongRelationships < Number(analytics.totalMemories) * 0.1) {
       insights.push('Low memory connectivity - improve relationship linking')
     }
 
     return insights
   }
 
-  private generateSessionInsights(analytics: any): string[] {
+  private generateSessionInsights(analytics: SessionAnalytics): string[] {
     const insights = []
 
-    const successRate = analytics.successfulOperations / analytics.totalOperations
+    const successfulOps = analytics.successfulOperations
+    const totalOps = analytics.totalOperations || 1
+    const successRate = successfulOps / totalOps
     if (successRate < 0.9) {
       insights.push(`Success rate ${(successRate * 100).toFixed(1)}% - investigate error patterns`)
     }
@@ -805,19 +823,22 @@ export class DynamicAgentTools {
       .slice(0, 5)
   }
 
-  private generateOptimizationRecommendations(insights: any): string[] {
+  private generateOptimizationRecommendations(insights: Record<string, unknown>): string[] {
     // Generate optimization recommendations based on insights
     const recommendations = []
 
-    if (insights.performance?.averageResponseTime > 2000) {
+    const performance = insights.performance as Record<string, unknown> | undefined
+    if (performance?.averageResponseTime && Number(performance.averageResponseTime) > 2000) {
       recommendations.push('Optimize response time through caching and query optimization')
     }
 
-    if (insights.memory?.consolidationOpportunities > 0) {
+    const memory = insights.memory as Record<string, unknown> | undefined
+    if (memory?.consolidationOpportunities && Number(memory.consolidationOpportunities) > 0) {
       recommendations.push('Run memory consolidation to reduce duplicates')
     }
 
-    if (insights.delegation?.failureRate > 0.1) {
+    const delegation = insights.delegation as Record<string, unknown> | undefined
+    if (delegation?.failureRate && Number(delegation.failureRate) > 0.1) {
       recommendations.push('Review delegation patterns and improve routing')
     }
 

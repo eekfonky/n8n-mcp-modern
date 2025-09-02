@@ -646,7 +646,7 @@ describe('iterative Workflow Builder - Phase 1 Test Suite', () => {
         type: '<script>alert("xss")</script>',
         name: '\'; DROP TABLE workflows; --',
         parameters: {
-          value: '${process.env.SECRET}',
+          value: '$' + '{process.env.SECRET}',
         },
       }
 

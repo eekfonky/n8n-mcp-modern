@@ -20,16 +20,16 @@ import { getSchemaManager } from './schema-manager.js'
 // Optional dependency - may not be available
 type DatabaseInstance = import('better-sqlite3').Database
 
-let Database: any = null
+let Database: (new (path: string, options?: Record<string, unknown>) => DatabaseInstance) | null = null
 
 // Helper to dynamically load SQLite
-async function loadDatabase(): Promise<any> {
+async function loadDatabase(): Promise<(new (path: string, options?: Record<string, unknown>) => DatabaseInstance) | null> {
   if (Database)
     return Database
 
   try {
     const db = await import('better-sqlite3')
-    Database = db.default
+    Database = db.default || db
     return Database
   }
   catch (error) {
@@ -896,7 +896,7 @@ export class DatabaseManager {
 
       // Security: Safe global state access for test environment only
       const globalKey = Symbol.for('__TEST_DB_STORAGE__')
-      let testStorage = (globalThis as any)[globalKey] as TestStorage
+      let testStorage = (globalThis as Record<symbol, unknown>)[globalKey] as TestStorage
 
       if (!testStorage) {
         testStorage = {
@@ -906,7 +906,7 @@ export class DatabaseManager {
 
         // Only set if we're actually in test environment
         if (process.env.NODE_ENV === 'test') {
-          (globalThis as any)[globalKey] = testStorage
+          (globalThis as Record<symbol, unknown>)[globalKey] = testStorage
         }
       }
 

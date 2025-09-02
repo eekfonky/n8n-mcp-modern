@@ -462,19 +462,19 @@ export function getErrorCode(error: unknown): ErrorCode {
  * Create specific error types with convenience functions
  */
 export const createError = {
-  configuration: (message: string, context?: Record<string, unknown>, cause?: unknown) =>
+  configuration: (message: string, context?: Record<string, unknown>, cause?: unknown): ConfigurationError =>
     new ConfigurationError(message, ErrorCode.CONFIG_INVALID, context, cause),
 
-  connection: (message: string, context?: Record<string, unknown>, cause?: unknown) =>
+  connection: (message: string, context?: Record<string, unknown>, cause?: unknown): ConnectionError =>
     new ConnectionError(message, ErrorCode.CONNECTION_TIMEOUT, context, cause),
 
-  discovery: (message: string, context?: Record<string, unknown>, cause?: unknown) =>
+  discovery: (message: string, context?: Record<string, unknown>, cause?: unknown): DiscoveryError =>
     new DiscoveryError(message, ErrorCode.DISCOVERY_SESSION_FAILED, context, cause),
 
-  database: (message: string, context?: Record<string, unknown>, cause?: unknown) =>
+  database: (message: string, context?: Record<string, unknown>, cause?: unknown): DatabaseError =>
     new DatabaseError(message, ErrorCode.DATABASE_QUERY_FAILED, context, cause),
 
-  performance: (message: string, context?: Record<string, unknown>, cause?: unknown) =>
+  performance: (message: string, context?: Record<string, unknown>, cause?: unknown): PerformanceError =>
     new PerformanceError(message, ErrorCode.PERFORMANCE_DEGRADED, context, cause),
 }
 

@@ -165,7 +165,8 @@ export class AgentMemorySystem {
       )
 
       if (relevanceScore >= this.config.semanticSearchThreshold) {
-        // Get relationship count for this memory
+        // Get relationship count for this memory (sequential by design for semantic search)
+        // eslint-disable-next-line no-await-in-loop
         const relationshipCount = memory.id ? await this.getMemoryRelationshipCount(memory.id) : 0
 
         // Calculate days since last access
@@ -180,8 +181,9 @@ export class AgentMemorySystem {
           lastAccessedDays,
         })
 
-        // Update usage tracking
+        // Update usage tracking (sequential by design for semantic consistency)
         if (memory.id) {
+          // eslint-disable-next-line no-await-in-loop
           await this.updateMemoryUsage(memory.id)
         }
       }
@@ -263,10 +265,12 @@ export class AgentMemorySystem {
       if (!memory.id || consolidated.has(memory.id))
         continue
 
-      // Find similar memories
+      // Find similar memories (sequential by design for consolidation integrity)
+      // eslint-disable-next-line no-await-in-loop
       const similar = await this.findSimilarMemories(memory, 0.9)
 
       if (similar.length > 0) {
+        // eslint-disable-next-line no-await-in-loop
         await this.mergeSimilarMemories(memory, similar)
         similar.forEach((sim) => {
           if (sim.id) {
@@ -416,6 +420,7 @@ export class AgentMemorySystem {
       if (similarity >= this.config.relationshipStrengthThreshold) {
         const relationshipType = this.determineRelationshipType(memory, candidate)
         if (candidate.id) {
+          // eslint-disable-next-line no-await-in-loop
           await this.linkMemories(
             memoryId,
             candidate.id,
@@ -477,9 +482,11 @@ export class AgentMemorySystem {
       if (rel.strength >= minStrength) {
         const targetId = rel.targetMemoryId
         if (!visited.has(targetId)) {
+          // eslint-disable-next-line no-await-in-loop
           const targetMemory = await this.db.getMemoryById(targetId)
           if (targetMemory) {
             results.push(targetMemory)
+            // eslint-disable-next-line no-await-in-loop
             await this.traverseMemoryGraph(targetId, depth - 1, minStrength, visited, results)
           }
         }
@@ -535,9 +542,10 @@ export class AgentMemorySystem {
       await this.db.updateMemoryContent(primary.id, combinedContent)
       await this.db.updateMemoryTags(primary.id, combinedTags)
 
-      // Mark similar memories as superseded
+      // Mark similar memories as superseded (sequential by design for data integrity)
       for (const sim of similar) {
         if (sim.id) {
+          // eslint-disable-next-line no-await-in-loop
           await this.db.supersedMemory(sim.id, primary.id)
         }
       }

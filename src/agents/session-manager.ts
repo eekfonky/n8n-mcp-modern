@@ -35,9 +35,9 @@ const CreateSessionInputSchema = z.object({
     'learning',
   ]),
   expirationHours: z.number().min(1).max(168).optional(),
-  initialState: z.record(z.any()).optional(),
-  initialContext: z.record(z.any()).optional(),
-  metadata: z.record(z.any()).optional(),
+  initialState: z.record(z.unknown()).optional(),
+  initialContext: z.record(z.unknown()).optional(),
+  metadata: z.record(z.unknown()).optional(),
   parentSessionId: z.string().optional(),
 })
 
@@ -46,11 +46,11 @@ type CreateSessionInput = z.infer<typeof CreateSessionInputSchema>
 // Session state update input
 const UpdateSessionStateSchema = z.object({
   sessionId: z.string().min(1),
-  stateUpdates: z.record(z.any()).optional(),
-  contextUpdates: z.record(z.any()).optional(),
-  metadataUpdates: z.record(z.any()).optional(),
+  stateUpdates: z.record(z.unknown()).optional(),
+  contextUpdates: z.record(z.unknown()).optional(),
+  metadataUpdates: z.record(z.unknown()).optional(),
   operationType: z.string().min(1),
-  operationData: z.record(z.any()).optional(),
+  operationData: z.record(z.unknown()).optional(),
 })
 
 type UpdateSessionState = z.infer<typeof UpdateSessionStateSchema>
@@ -157,15 +157,15 @@ export class AgentSessionManager {
       sessionId,
       agentName: validatedInput.agentName,
       sessionType: validatedInput.sessionType,
-      stateData: validatedInput.initialState ? JSON.stringify(validatedInput.initialState) : undefined,
-      contextData: validatedInput.initialContext ? JSON.stringify(validatedInput.initialContext) : undefined,
-      metadata: validatedInput.metadata ? JSON.stringify(validatedInput.metadata) : undefined,
+      ...(validatedInput.initialState && { stateData: JSON.stringify(validatedInput.initialState) }),
+      ...(validatedInput.initialContext && { contextData: JSON.stringify(validatedInput.initialContext) }),
+      ...(validatedInput.metadata && { metadata: JSON.stringify(validatedInput.metadata) }),
       expiresAt,
-      encryptedState: encryptedData?.encryptedState,
-      stateSignature: encryptedData?.hmacSignature,
+      ...(encryptedData?.encryptedState && { encryptedState: encryptedData.encryptedState }),
+      ...(encryptedData?.hmacSignature && { stateSignature: encryptedData.hmacSignature }),
       operationsCount: 0,
       memoryUsageBytes: 0,
-      parentSessionId: validatedInput.parentSessionId,
+      ...(validatedInput.parentSessionId && { parentSessionId: validatedInput.parentSessionId }),
       childSessionIds: [],
     }
 
@@ -295,7 +295,7 @@ export class AgentSessionManager {
     parentSessionId: string,
     childAgentName: string,
     sessionType: AgentSession['sessionType'],
-    inheritedState?: Record<string, any>,
+    inheritedState?: Record<string, unknown>,
   ): Promise<string> {
     const parentSession = await this.getSession(parentSessionId)
     if (!parentSession) {
@@ -331,7 +331,7 @@ export class AgentSessionManager {
   /**
    * Complete a session and clean up resources
    */
-  async completeSession(sessionId: string, completionData?: Record<string, any>): Promise<void> {
+  async completeSession(sessionId: string, completionData?: Record<string, unknown>): Promise<void> {
     const session = await this.getSession(sessionId)
     if (!session)
       return
@@ -352,6 +352,7 @@ export class AgentSessionManager {
     const childIds = metadata.childSessionIds ?? []
 
     for (const childId of childIds) {
+      // eslint-disable-next-line no-await-in-loop
       await this.completeSession(childId, { parentCompleted: true })
     }
   }
@@ -422,6 +423,7 @@ export class AgentSessionManager {
     let cleanedUp = 0
 
     for (const session of expired) {
+      // eslint-disable-next-line no-await-in-loop
       await this.expireSession(session.sessionId)
       cleanedUp++
     }
@@ -461,14 +463,15 @@ export class AgentSessionManager {
         .slice(0, activeSessions.length - this.config.maxSessionsPerAgent + 1)
 
       for (const session of oldestSessions) {
+        // eslint-disable-next-line no-await-in-loop
         await this.expireSession(session.sessionId)
       }
     }
   }
 
   private async encryptSessionData(
-    state: Record<string, any>,
-    context: Record<string, any>,
+    state: Record<string, unknown>,
+    context: Record<string, unknown>,
   ): Promise<EncryptedSessionData> {
     const iv = randomBytes(16)
     const cipher = createCipheriv(this.config.encryptionAlgorithm, this.encryptionKey, iv) as CipherGCM
@@ -506,8 +509,8 @@ export class AgentSessionManager {
   }
 
   private async decryptSessionData(session: AgentSession): Promise<{
-    state: Record<string, any>
-    context: Record<string, any>
+    state: Record<string, unknown>
+    context: Record<string, unknown>
   }> {
     if (!session.encryptedState || !session.stateSignature) {
       throw new Error('Session data not encrypted or signature missing')
@@ -551,9 +554,9 @@ export class AgentSessionManager {
   }
 
   private estimateSessionSize(
-    state: Record<string, any>,
-    context: Record<string, any>,
-    metadata: Record<string, any>,
+    state: Record<string, unknown>,
+    context: Record<string, unknown>,
+    metadata: Record<string, unknown>,
   ): number {
     const stateSize = Buffer.byteLength(JSON.stringify(state), 'utf8')
     const contextSize = Buffer.byteLength(JSON.stringify(context), 'utf8')
@@ -565,7 +568,7 @@ export class AgentSessionManager {
   private async logOperation(
     sessionId: string,
     operationType: string,
-    operationData: Record<string, any>,
+    operationData: Record<string, unknown>,
     success: boolean,
     errorMessage: string | null,
     durationMs: number,

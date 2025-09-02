@@ -10,6 +10,7 @@ import { spawn } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { CredentialDiscovery } from '../discovery/credential-discovery.js'
 import { DiscoveryScheduler } from '../discovery/scheduler.js'
@@ -23,6 +24,18 @@ import { MCPToolGenerator } from './mcp-tool-generator.js'
 import { memoryOptimizationTools } from './memory-optimization-tool.js'
 import { performanceMonitoringTools } from './performance-monitoring-tool.js'
 import { WorkflowBuilderUtils } from './workflow-builder-utils.js'
+
+// Tool result interfaces
+interface ToolResult {
+  success: boolean
+  message: string
+  details?: Record<string, unknown>
+}
+
+interface MCPConfig {
+  mcpServers?: Record<string, unknown>
+  [key: string]: unknown
+}
 
 const { hasN8nApi } = features
 
@@ -39,12 +52,12 @@ let dynamicAgentTools: DynamicAgentTools | null = null
 /**
  * Execute command safely with proper error handling
  */
-function execCommand(command: string, args: string[] = [], options: Record<string, any> = {}): Promise<{ stdout: string, stderr: string, code: number }> {
+function execCommand(command: string, args: string[] = [], options: Record<string, unknown> = {}): Promise<{ stdout: string, stderr: string, code: number }> {
   return new Promise((resolve, reject) => {
     const proc = spawn(command, args, {
-      stdio: options.stdio || 'pipe',
-      cwd: options.cwd || process.cwd(),
-      env: { ...process.env, ...options.env },
+      stdio: (options.stdio as 'pipe' | 'inherit' | 'ignore') || 'pipe',
+      cwd: (options.cwd as string) || process.cwd(),
+      env: { ...process.env, ...(options.env as Record<string, string>) },
       ...options,
     })
 
@@ -165,11 +178,14 @@ async function createBackup(): Promise<{ success: boolean, backupPath?: string, 
       const destPath = path.join(backupDir, file)
 
       try {
+        // eslint-disable-next-line no-await-in-loop
         const stats = await fs.stat(sourcePath)
         if (stats.isDirectory()) {
+          // eslint-disable-next-line no-await-in-loop
           await execCommand('cp', ['-r', sourcePath, destPath])
         }
         else {
+          // eslint-disable-next-line no-await-in-loop
           await fs.copyFile(sourcePath, destPath)
         }
       }
@@ -196,17 +212,17 @@ async function createBackup(): Promise<{ success: boolean, backupPath?: string, 
 /**
  * Perform the actual update
  */
-async function performUpdate(preserveData: boolean = true): Promise<{ success: boolean, message: string, details?: any }> {
+async function performUpdate(preserveData: boolean = true): Promise<ToolResult> {
   try {
     // Check for existing .mcp.json to preserve
-    let mcpConfig: any = null
+    let mcpConfig: MCPConfig | null = null
     if (preserveData) {
       try {
         const mcpJsonPath = path.resolve('.mcp.json')
         mcpConfig = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'))
         logger.info('Preserved .mcp.json configuration for update')
       }
-      catch (error) {
+      catch {
         logger.info('No .mcp.json found to preserve')
       }
     }
@@ -271,22 +287,22 @@ async function performUpdate(preserveData: boolean = true): Promise<{ success: b
 /**
  * Handle installation validation requests
  */
-async function handleInstallationValidation(args: Record<string, unknown>): Promise<any> {
+async function handleInstallationValidation(args: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { checks = ['all'], includeRecommendations = true, detailed = false } = args
 
   try {
-    const results: any = {
+    const results: Record<string, unknown> = {
       overall: true,
       timestamp: new Date().toISOString(),
-      checks: {},
+      checks: {} as Record<string, unknown>,
       summary: {
         total: 0,
         passed: 0,
         failed: 0,
         warnings: 0,
-      },
-      recommendations: [],
-      system: {},
+      } as Record<string, unknown>,
+      recommendations: [] as string[],
+      system: {} as Record<string, unknown>,
     }
 
     // Determine which checks to run
@@ -297,7 +313,7 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     if (runAll || checksToRun.includes('system_info')) {
       logger.debug('Running system info check...')
       const systemCheck = await validateSystemInfo(detailed as boolean)
-      results.checks.system_info = systemCheck
+      Object.assign(results.checks as object, { system_info: systemCheck })
       results.system = systemCheck.details
       updateSummary(results.summary, systemCheck)
     }
@@ -306,11 +322,11 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     if (runAll || checksToRun.includes('dependencies')) {
       logger.debug('Running dependencies check...')
       const depsCheck = await validateDependencies(detailed as boolean)
-      results.checks.dependencies = depsCheck
+      Object.assign(results.checks as object, { dependencies: depsCheck })
       updateSummary(results.summary, depsCheck)
 
-      if (includeRecommendations && depsCheck.recommendations) {
-        results.recommendations.push(...depsCheck.recommendations)
+      if (includeRecommendations && depsCheck.recommendations && Array.isArray(depsCheck.recommendations)) {
+        (results.recommendations as string[]).push(...(depsCheck.recommendations as string[]))
       }
     }
 
@@ -318,11 +334,11 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     if (runAll || checksToRun.includes('database')) {
       logger.debug('Running database check...')
       const dbCheck = await validateDatabase(detailed as boolean)
-      results.checks.database = dbCheck
+      Object.assign(results.checks as object, { database: dbCheck })
       updateSummary(results.summary, dbCheck)
 
-      if (includeRecommendations && dbCheck.recommendations) {
-        results.recommendations.push(...dbCheck.recommendations)
+      if (includeRecommendations && dbCheck.recommendations && Array.isArray(dbCheck.recommendations)) {
+        (results.recommendations as string[]).push(...(dbCheck.recommendations as string[]))
       }
     }
 
@@ -330,11 +346,11 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     if (runAll || checksToRun.includes('mcp_config')) {
       logger.debug('Running MCP config check...')
       const mcpCheck = await validateMcpConfig(detailed as boolean)
-      results.checks.mcp_config = mcpCheck
+      Object.assign(results.checks as object, { mcp_config: mcpCheck })
       updateSummary(results.summary, mcpCheck)
 
-      if (includeRecommendations && mcpCheck.recommendations) {
-        results.recommendations.push(...mcpCheck.recommendations)
+      if (includeRecommendations && mcpCheck.recommendations && Array.isArray(mcpCheck.recommendations)) {
+        (results.recommendations as string[]).push(...(mcpCheck.recommendations as string[]))
       }
     }
 
@@ -342,15 +358,15 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     if (runAll || checksToRun.includes('github_auth')) {
       logger.debug('Running GitHub auth check...')
       const authCheck = await validateGitHubAuth()
-      results.checks.github_auth = {
+      Object.assign(results.checks as object, { github_auth: {
         status: authCheck.valid ? 'passed' : 'failed',
         message: authCheck.message,
         details: authCheck,
-      }
-      updateSummary(results.summary, results.checks.github_auth)
+      } })
+      updateSummary(results.summary, (results.checks as Record<string, unknown>).github_auth)
 
       if (includeRecommendations && !authCheck.valid) {
-        results.recommendations.push('Configure GitHub Packages authentication in ~/.npmrc')
+        (results.recommendations as string[]).push('Configure GitHub Packages authentication in ~/.npmrc')
       }
     }
 
@@ -358,11 +374,11 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     if (runAll || checksToRun.includes('n8n_connectivity')) {
       logger.debug('Running n8n connectivity check...')
       const n8nCheck = await validateN8nConnectivity(detailed as boolean)
-      results.checks.n8n_connectivity = n8nCheck
+      Object.assign(results.checks as object, { n8n_connectivity: n8nCheck })
       updateSummary(results.summary, n8nCheck)
 
-      if (includeRecommendations && n8nCheck.recommendations) {
-        results.recommendations.push(...n8nCheck.recommendations)
+      if (includeRecommendations && n8nCheck.recommendations && Array.isArray(n8nCheck.recommendations)) {
+        (results.recommendations as string[]).push(...(n8nCheck.recommendations as string[]))
       }
     }
 
@@ -370,11 +386,11 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     if (runAll || checksToRun.includes('permissions')) {
       logger.debug('Running permissions check...')
       const permCheck = await validatePermissions(detailed as boolean)
-      results.checks.permissions = permCheck
+      Object.assign(results.checks as object, { permissions: permCheck })
       updateSummary(results.summary, permCheck)
 
-      if (includeRecommendations && permCheck.recommendations) {
-        results.recommendations.push(...permCheck.recommendations)
+      if (includeRecommendations && permCheck.recommendations && Array.isArray(permCheck.recommendations)) {
+        (results.recommendations as string[]).push(...(permCheck.recommendations as string[]))
       }
     }
 
@@ -382,11 +398,11 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     if (runAll || checksToRun.includes('disk_space')) {
       logger.debug('Running disk space check...')
       const diskCheck = await validateDiskSpace(detailed as boolean)
-      results.checks.disk_space = diskCheck
+      Object.assign(results.checks as object, { disk_space: diskCheck })
       updateSummary(results.summary, diskCheck)
 
-      if (includeRecommendations && diskCheck.recommendations) {
-        results.recommendations.push(...diskCheck.recommendations)
+      if (includeRecommendations && diskCheck.recommendations && Array.isArray(diskCheck.recommendations)) {
+        (results.recommendations as string[]).push(...(diskCheck.recommendations as string[]))
       }
     }
 
@@ -394,17 +410,18 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
     if (runAll || checksToRun.includes('memory_usage')) {
       logger.debug('Running memory usage check...')
       const memCheck = await validateMemoryUsage(detailed as boolean)
-      results.checks.memory_usage = memCheck
+      Object.assign(results.checks as object, { memory_usage: memCheck })
       updateSummary(results.summary, memCheck)
 
-      if (includeRecommendations && memCheck.recommendations) {
-        results.recommendations.push(...memCheck.recommendations)
+      if (includeRecommendations && memCheck.recommendations && Array.isArray(memCheck.recommendations)) {
+        (results.recommendations as string[]).push(...(memCheck.recommendations as string[]))
       }
     }
 
     // Set overall status
-    results.overall = results.summary.failed === 0
-    results.healthScore = Math.round((results.summary.passed / results.summary.total) * 100)
+    const summary = results.summary as Record<string, number>
+    results.overall = (summary.failed || 0) === 0
+    results.healthScore = Math.round(((summary.passed || 0) / (summary.total || 1)) * 100)
 
     return results
   }
@@ -422,23 +439,27 @@ async function handleInstallationValidation(args: Record<string, unknown>): Prom
 /**
  * Helper function to update validation summary
  */
-function updateSummary(summary: any, check: any): void {
-  summary.total++
-  if (check.status === 'passed') {
-    summary.passed++
+function updateSummary(summary: unknown, check: unknown): void {
+  const summaryObj = summary as Record<string, number>
+  const checkObj = check as Record<string, string>
+
+  summaryObj.total = (summaryObj.total || 0) + 1
+
+  if (checkObj.status === 'passed') {
+    summaryObj.passed = (summaryObj.passed || 0) + 1
   }
-  else if (check.status === 'failed') {
-    summary.failed++
+  else if (checkObj.status === 'failed') {
+    summaryObj.failed = (summaryObj.failed || 0) + 1
   }
-  else if (check.status === 'warning') {
-    summary.warnings++
+  else if (checkObj.status === 'warning') {
+    summaryObj.warnings = (summaryObj.warnings || 0) + 1
   }
 }
 
 /**
  * Validate system information
  */
-async function validateSystemInfo(detailed: boolean): Promise<any> {
+async function validateSystemInfo(detailed: boolean): Promise<Record<string, unknown>> {
   try {
     const nodeVersion = process.version
     const platform = process.platform
@@ -465,7 +486,7 @@ async function validateSystemInfo(detailed: boolean): Promise<any> {
 
     if (detailed) {
       const osModule = await import('node:os')
-      ;(details as any).system = {
+      ;(details as Record<string, unknown>).system = {
         hostname: osModule.hostname(),
         cpus: osModule.cpus().length,
         total_memory: `${Math.round(osModule.totalmem() / 1024 / 1024 / 1024)}GB`,
@@ -496,14 +517,14 @@ async function validateSystemInfo(detailed: boolean): Promise<any> {
 /**
  * Validate dependencies
  */
-async function validateDependencies(detailed: boolean): Promise<any> {
+async function validateDependencies(detailed: boolean): Promise<Record<string, unknown>> {
   try {
     const packageJson = JSON.parse(await fs.readFile(path.resolve(__dirname, '../../package.json'), 'utf8'))
     const dependencies = packageJson.dependencies || {}
     const devDependencies = packageJson.devDependencies || {}
 
     const allDeps = { ...dependencies, ...devDependencies }
-    const installedPackages: any = {}
+    const installedPackages: Record<string, unknown> = {}
     const missing: string[] = []
     const recommendations: string[] = []
 
@@ -513,6 +534,7 @@ async function validateDependencies(detailed: boolean): Promise<any> {
     for (const [pkg, version] of Object.entries(allDeps)) {
       try {
         const pkgPath = path.resolve(__dirname, '../../node_modules', pkg, 'package.json')
+        // eslint-disable-next-line no-await-in-loop
         const installedPkg = JSON.parse(await fs.readFile(pkgPath, 'utf8'))
         installedPackages[pkg] = {
           required: version,
@@ -520,7 +542,7 @@ async function validateDependencies(detailed: boolean): Promise<any> {
           status: 'installed',
         }
       }
-      catch (error) {
+      catch {
         missing.push(pkg)
         installedPackages[pkg] = {
           required: version,
@@ -566,7 +588,7 @@ async function validateDependencies(detailed: boolean): Promise<any> {
 /**
  * Validate database
  */
-async function validateDatabase(detailed: boolean): Promise<any> {
+async function validateDatabase(detailed: boolean): Promise<Record<string, unknown>> {
   try {
     const { database } = await import('../database/index.js')
 
@@ -574,7 +596,7 @@ async function validateDatabase(detailed: boolean): Promise<any> {
     const testQuery = database.executeCustomSQL('connectivityTest', (db) => {
       return db.prepare('SELECT 1 as test').get()
     })
-    if (!testQuery || (testQuery as any).test !== 1) {
+    if (!testQuery || (testQuery as { test?: number }).test !== 1) {
       throw new Error('Database connectivity test failed')
     }
 
@@ -591,7 +613,7 @@ async function validateDatabase(detailed: boolean): Promise<any> {
 
     // Check database file size and permissions
     const dbPath = path.resolve('./data/nodes.db')
-    let dbStats: any = {}
+    let dbStats: Record<string, unknown> = {}
     try {
       const stats = await fs.stat(dbPath)
       dbStats = {
@@ -642,9 +664,9 @@ async function validateDatabase(detailed: boolean): Promise<any> {
 /**
  * Validate MCP configuration
  */
-async function validateMcpConfig(detailed: boolean): Promise<any> {
+async function validateMcpConfig(detailed: boolean): Promise<Record<string, unknown>> {
   try {
-    let mcpConfig: any = null
+    let mcpConfig: unknown = null
     let configPath: string | null = null
     let configValid = false
     const recommendations: string[] = []
@@ -658,11 +680,12 @@ async function validateMcpConfig(detailed: boolean): Promise<any> {
 
     for (const tryPath of possiblePaths) {
       try {
+        // eslint-disable-next-line no-await-in-loop
         mcpConfig = JSON.parse(await fs.readFile(tryPath, 'utf8'))
         configPath = tryPath
         break
       }
-      catch (error) {
+      catch {
         // Continue trying other paths
       }
     }
@@ -680,14 +703,16 @@ async function validateMcpConfig(detailed: boolean): Promise<any> {
     }
 
     // Validate MCP config structure
-    const hasServers = mcpConfig.mcpServers && typeof mcpConfig.mcpServers === 'object'
-    const hasN8nServer = hasServers && mcpConfig.mcpServers['n8n-mcp-modern']
-    const serverConfig = hasN8nServer ? mcpConfig.mcpServers['n8n-mcp-modern'] : null
+    const configObj = mcpConfig as Record<string, unknown>
+    const hasServers = configObj.mcpServers && typeof configObj.mcpServers === 'object'
+    const mcpServers = configObj.mcpServers as Record<string, unknown>
+    const hasN8nServer = hasServers && mcpServers['n8n-mcp-modern']
+    const serverConfig = hasN8nServer ? mcpServers['n8n-mcp-modern'] as Record<string, unknown> : null
 
-    configValid = hasServers && hasN8nServer
-      && serverConfig.type === 'stdio'
-      && serverConfig.command
-      && Array.isArray(serverConfig.args)
+    configValid = Boolean(hasServers && hasN8nServer
+      && serverConfig?.type === 'stdio'
+      && serverConfig?.command
+      && Array.isArray(serverConfig?.args))
 
     if (!configValid) {
       recommendations.push('Validate .mcp.json structure')
@@ -695,8 +720,9 @@ async function validateMcpConfig(detailed: boolean): Promise<any> {
     }
 
     // Check environment variables
-    const hasEnvConfig = serverConfig?.env && Object.keys(serverConfig.env).length > 0
-    const hasN8nConfig = hasEnvConfig && serverConfig.env.N8N_API_URL && serverConfig.env.N8N_API_KEY
+    const env = serverConfig?.env as Record<string, unknown> | undefined
+    const hasEnvConfig = env && Object.keys(env).length > 0
+    const hasN8nConfig = hasEnvConfig && env.N8N_API_URL && env.N8N_API_KEY
 
     if (!hasN8nConfig) {
       recommendations.push('Configure N8N_API_URL and N8N_API_KEY in .mcp.json')
@@ -737,7 +763,7 @@ async function validateMcpConfig(detailed: boolean): Promise<any> {
 /**
  * Validate n8n connectivity
  */
-async function validateN8nConnectivity(detailed: boolean): Promise<any> {
+async function validateN8nConnectivity(_detailed: boolean): Promise<Record<string, unknown>> {
   if (!hasN8nApi) {
     throw new Error('n8n API not configured - missing N8N_API_URL or N8N_API_KEY')
   }
@@ -763,9 +789,9 @@ async function validateN8nConnectivity(detailed: boolean): Promise<any> {
 /**
  * Validate file system permissions
  */
-async function validatePermissions(detailed: boolean): Promise<any> {
+async function validatePermissions(detailed: boolean): Promise<Record<string, unknown>> {
   try {
-    const checks: any = {}
+    const checks: Record<string, Record<string, unknown>> = {}
     const issues: string[] = []
     const recommendations: string[] = []
 
@@ -827,7 +853,7 @@ async function validatePermissions(detailed: boolean): Promise<any> {
 /**
  * Validate disk space
  */
-async function validateDiskSpace(detailed: boolean): Promise<any> {
+async function validateDiskSpace(detailed: boolean): Promise<Record<string, unknown>> {
   try {
     // Use the execCommand function defined above
     const result = await execCommand('df', ['-h', '.'])
@@ -894,7 +920,7 @@ async function validateDiskSpace(detailed: boolean): Promise<any> {
 /**
  * Validate memory usage
  */
-async function validateMemoryUsage(detailed: boolean): Promise<any> {
+async function validateMemoryUsage(detailed: boolean): Promise<Record<string, unknown>> {
   try {
     const memUsage = process.memoryUsage()
     const totalMemory = os.totalmem()
@@ -957,7 +983,7 @@ async function validateMemoryUsage(detailed: boolean): Promise<any> {
 /**
  * Handle server update MCP tool requests
  */
-async function handleServerUpdate(args: Record<string, unknown>): Promise<any> {
+async function handleServerUpdate(args: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { action, force = false, preserveData = true, backupBeforeUpdate = true } = args
 
   try {
@@ -1030,7 +1056,7 @@ async function handleServerUpdate(args: Record<string, unknown>): Promise<any> {
         }
 
         // Create backup if requested
-        let backupResult: any = null
+        let backupResult: Record<string, unknown> | null = null
         if (backupBeforeUpdate) {
           logger.info('Creating backup before update...')
           backupResult = await createBackup()
@@ -1229,7 +1255,10 @@ export async function initializeDynamicTools(): Promise<void> {
       for (const tool of dynamicTools) {
         discoveredTools.push(tool)
         toolHandlers.set(tool.name, async (args: Record<string, unknown>) => {
-          return await dynamicAgentTools!.handleToolCall(tool.name, args)
+          if (!dynamicAgentTools) {
+            throw new Error('Dynamic agent tools not initialized')
+          }
+          return await dynamicAgentTools.handleToolCall(tool.name, args)
         })
       }
     }
@@ -1741,7 +1770,7 @@ async function loadGeneratedTools(maxTools?: number): Promise<void> {
 /**
  * Create a lazy-loading tool handler
  */
-function createLazyToolHandler(toolId: string) {
+function createLazyToolHandler(toolId: string): (args: Record<string, unknown>) => Promise<Record<string, unknown>> {
   return async (args: Record<string, unknown>) => {
     if (!toolGenerator) {
       throw new Error('Tool generator not available')
@@ -1781,7 +1810,7 @@ function createLazyToolHandler(toolId: string) {
 /**
  * Create dynamic handler for core operations
  */
-function createDynamicHandler(operation: string) {
+function _createDynamicHandler(operation: string): (args: Record<string, unknown>) => Promise<Record<string, unknown>> {
   return async (args: Record<string, unknown>) => {
     try {
       // Security: Validate and sanitize input arguments
@@ -1810,23 +1839,23 @@ function createDynamicHandler(operation: string) {
       switch (operation) {
         // Core workflow operations
         case 'list_workflows':
-          return await simpleN8nApi?.getWorkflows() || []
+          return (await simpleN8nApi?.getWorkflows() || []) as Record<string, unknown>[]
         case 'get_workflow':
           return await simpleN8nApi?.getWorkflow(args.id as string) || null
         case 'create_workflow':
           return await simpleN8nApi?.createWorkflow({
             name: args.name as string || 'Dynamic Workflow',
-            nodes: args.data as any || [],
+            nodes: (args.data as Record<string, unknown>[]) || [],
             active: false,
           }) || { status: 'workflow_creation_pending' }
         case 'execute_workflow':
-          return await simpleN8nApi?.executeWorkflow(args.id as string, args.data as any) || { status: 'execution_started' }
+          return await simpleN8nApi?.executeWorkflow(args.id as string, args.data as Record<string, unknown>) || { status: 'execution_started' }
         case 'get_executions':
           return await simpleN8nApi?.getExecutions(args.id as string) || []
 
         // Extended workflow operations
         case 'update_workflow':
-          return await simpleN8nApi?.updateWorkflow(args.id as string, args.data as any) || null
+          return await simpleN8nApi?.updateWorkflow(args.id as string, args.data as Record<string, unknown>) || null
         case 'delete_workflow':
           return await simpleN8nApi?.deleteWorkflow(args.id as string) || false
         case 'activate_workflow':
@@ -1852,9 +1881,13 @@ function createDynamicHandler(operation: string) {
         case 'get_credential':
           return await simpleN8nApi?.getCredential(args.id as string) || null
         case 'create_credential':
-          return await simpleN8nApi?.createCredential(args.data as any) || null
+          return await simpleN8nApi?.createCredential({
+            name: (args.name as string) || 'New Credential',
+            type: (args.type as string) || 'default',
+            data: (args.data as Record<string, unknown>) || {},
+          }) || null
         case 'update_credential':
-          return await simpleN8nApi?.updateCredential(args.id as string, args.data as any) || null
+          return await simpleN8nApi?.updateCredential(args.id as string, args.data as Record<string, unknown>) || null
         case 'delete_credential':
           return await simpleN8nApi?.deleteCredential(args.id as string) || false
         case 'test_credential':
@@ -1864,7 +1897,7 @@ function createDynamicHandler(operation: string) {
         case 'export_workflow':
           return await simpleN8nApi?.exportWorkflow(args.id as string) || null
         case 'import_workflow':
-          return await simpleN8nApi?.importWorkflow(args.data as any) || null
+          return await simpleN8nApi?.importWorkflow(args.data as Record<string, unknown>) || null
 
         // Tag operations
         case 'list_tags':
@@ -1880,7 +1913,7 @@ function createDynamicHandler(operation: string) {
         case 'create_variable':
           return await simpleN8nApi?.createVariable(args as { key: string, value: string }) || null
         case 'update_variable':
-          return await simpleN8nApi?.updateVariable(args.id as string, args.data as any) || null
+          return await simpleN8nApi?.updateVariable(args.id as string, args.data as Record<string, unknown>) || null
         case 'delete_variable':
           return await simpleN8nApi?.deleteVariable(args.id as string) || false
 
@@ -1913,7 +1946,7 @@ function createDynamicHandler(operation: string) {
 /**
  * Create handler for node template
  */
-function createNodeTemplateHandler(nodeTemplate: NodeTemplate) {
+function _createNodeTemplateHandler(nodeTemplate: NodeTemplate): (args: Record<string, unknown>) => Promise<Record<string, unknown>> {
   return async (args: Record<string, unknown>) => {
     return {
       node: nodeTemplate.name,
@@ -1932,7 +1965,7 @@ function createNodeTemplateHandler(nodeTemplate: NodeTemplate) {
 /**
  * Create handler for specific node operation
  */
-function createOperationHandler(nodeTemplate: NodeTemplate, operation: string) {
+function _createOperationHandler(nodeTemplate: NodeTemplate, operation: string): (args: Record<string, unknown>) => Promise<Record<string, unknown>> {
   return async (args: Record<string, unknown>) => {
     return {
       node: nodeTemplate.name,
@@ -1950,7 +1983,7 @@ function createOperationHandler(nodeTemplate: NodeTemplate, operation: string) {
 /**
  * Create handler for category overview
  */
-function createCategoryHandler(category: string) {
+function _createCategoryHandler(category: string): (args: Record<string, unknown>) => Promise<Record<string, unknown>> {
   return async (args: Record<string, unknown>) => {
     const categoryNodes = getAllNodeTemplates().filter(node => node.category === category)
     const detailed = args.detailed as boolean || false
@@ -1987,13 +2020,14 @@ export async function getAllTools(): Promise<Tool[]> {
 /**
  * Execute a dynamically discovered tool
  */
-export async function executeToolHandler(name: string, args: Record<string, unknown>) {
+export async function executeToolHandler(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
   const handler = toolHandlers.get(name)
   if (!handler) {
     throw new Error(`Tool not found: ${name}`)
   }
 
-  return await handler(args)
+  const result = await handler(args)
+  return result as Record<string, unknown>
 }
 
 /**

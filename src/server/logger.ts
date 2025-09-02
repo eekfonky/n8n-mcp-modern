@@ -60,21 +60,19 @@ class Logger {
     const formatted = this.formatEntry(entry)
 
     // Simple console output (always enabled for lightweight version)
-    {
-      switch (level) {
-        case 'debug':
-          console.debug(formatted)
-          break
-        case 'info':
-          console.info(formatted)
-          break
-        case 'warn':
-          console.warn(formatted)
-          break
-        case 'error':
-          console.error(formatted)
-          break
-      }
+    switch (level) {
+      case 'debug':
+        console.debug(formatted)
+        break
+      case 'info':
+        console.info(formatted)
+        break
+      case 'warn':
+        console.warn(formatted)
+        break
+      case 'error':
+        console.error(formatted)
+        break
     }
   }
 

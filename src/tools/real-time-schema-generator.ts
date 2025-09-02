@@ -197,6 +197,8 @@ export class RealTimeSchemaGenerator {
         }
       })
 
+      // Batch processing with Promise.all for optimal performance
+      // eslint-disable-next-line no-await-in-loop
       const batchResults = await Promise.all(batchPromises)
 
       for (const item of batchResults) {
@@ -207,6 +209,7 @@ export class RealTimeSchemaGenerator {
 
       // Small delay between batches to avoid overwhelming the system
       if (i + batchSize < contexts.length) {
+        // eslint-disable-next-line no-await-in-loop
         await new Promise<void>((resolve) => {
           setTimeout(resolve, 100)
         })
@@ -279,7 +282,7 @@ export class RealTimeSchemaGenerator {
   // Private Methods
 
   private async generateSchema(context: SchemaGenerationContext): Promise<GeneratedSchemaResult> {
-    const properties: Record<string, any> = {}
+    const properties: Record<string, unknown> = {}
     const required: string[] = []
     const validationRules: ValidationRule[] = []
     const zodSchema: Record<string, z.ZodTypeAny> = {}
@@ -545,7 +548,7 @@ export class RealTimeSchemaGenerator {
   }
 
   private addCommonWorkflowFields(
-    properties: Record<string, any>,
+    properties: Record<string, unknown>,
     zodSchema: Record<string, z.ZodTypeAny>,
     _required: string[],
   ): void {
@@ -578,7 +581,7 @@ export class RealTimeSchemaGenerator {
       return undefined
     }
 
-    const outputProperties: Record<string, any> = {}
+    const outputProperties: Record<string, unknown> = {}
 
     for (const output of context.outputs) {
       if (output.type && output.name) {
@@ -614,7 +617,7 @@ export class RealTimeSchemaGenerator {
   }
 
   private calculateComplexity(
-    properties: Record<string, any>,
+    properties: Record<string, unknown>,
     validationRules: ValidationRule[],
   ): 'simple' | 'moderate' | 'complex' {
     const fieldCount = Object.keys(properties).length
@@ -634,7 +637,7 @@ export class RealTimeSchemaGenerator {
 
   private inferCapabilities(
     context: SchemaGenerationContext,
-    properties: Record<string, any>,
+    properties: Record<string, unknown>,
   ): string[] {
     const capabilities = new Set<string>()
 

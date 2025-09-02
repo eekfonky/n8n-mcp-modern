@@ -174,8 +174,9 @@ export class SchemaManager {
       currentVersion: this.currentVersion,
     })
 
-    // Execute migrations in sequence
+    // Execute migrations in sequence (sequential by design for schema integrity)
     for (const migration of pendingMigrations) {
+      // eslint-disable-next-line no-await-in-loop
       const result = await this.executeMigration(migration, strategy)
       results.push(result)
 
@@ -185,6 +186,7 @@ export class SchemaManager {
         }
         else if (strategy === MigrationStrategy.ROLLBACK_ON_ERROR) {
           logger.error(`Migration failed, rolling back all changes`)
+          // eslint-disable-next-line no-await-in-loop
           await this.rollbackMigrations(results)
           throw new Error(`Migration rollback completed due to failure: ${result.error}`)
         }
@@ -194,6 +196,7 @@ export class SchemaManager {
       }
       else {
         this.currentVersion = migration.version
+        // eslint-disable-next-line no-await-in-loop
         await this.recordMigration(migration, result)
       }
     }
@@ -233,13 +236,15 @@ export class SchemaManager {
       currentVersion: this.currentVersion,
     })
 
-    // Execute rollbacks in reverse order
+    // Execute rollbacks in reverse order (sequential by design for rollback integrity)
     for (const migration of migrationsToRollback.reverse()) {
+      // eslint-disable-next-line no-await-in-loop
       const result = await this.executeRollback(migration)
       results.push(result)
 
       if (result.success) {
         this.currentVersion = targetVersion
+        // eslint-disable-next-line no-await-in-loop
         await this.removeMigrationRecord(migration)
       }
       else {
@@ -286,8 +291,9 @@ export class SchemaManager {
         recommendations.push(`Consider cleaning up unused tables: ${extraTables.join(', ')}`)
       }
 
-      // Validate table structures
+      // Validate table structures (sequential by design for schema validation)
       for (const table of currentTables) {
+        // eslint-disable-next-line no-await-in-loop
         const tableValidation = await this.validateTableStructure(table)
         if (!tableValidation.isValid) {
           schemaErrors.push(`Table ${table}: ${tableValidation.errors.join(', ')}`)
@@ -903,7 +909,9 @@ export class SchemaManager {
     for (const result of successfulMigrations) {
       const migration = this.migrations.get(result.version)
       if (migration) {
+        // eslint-disable-next-line no-await-in-loop
         await this.executeRollback(migration)
+        // eslint-disable-next-line no-await-in-loop
         await this.removeMigrationRecord(migration)
       }
     }

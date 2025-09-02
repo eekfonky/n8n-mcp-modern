@@ -121,13 +121,13 @@ class PerformanceMetrics {
    * Get all metrics summary
    */
   getAllMetrics(): {
-    timings: Record<string, any>
+    timings: Record<string, unknown>
     counters: Record<string, number>
-    histograms: Record<string, any>
+    histograms: Record<string, unknown>
     uptime: number
   } {
-    const timings: Record<string, any> = {}
-    const histograms: Record<string, any> = {}
+    const timings: Record<string, unknown> = {}
+    const histograms: Record<string, unknown> = {}
 
     // Process timing metrics
     for (const [name] of this.metrics) {
@@ -217,15 +217,70 @@ const systemHealthChecker = new SystemHealthChecker()
 // MCP TOOLS IMPLEMENTATION
 // ============================================================================
 
+// Type definitions for proper type safety - aliasing actual types to avoid conflicts
+interface HealthStatusData {
+  overall: 'healthy' | 'degraded' | 'critical'
+  timestamp: Date
+  uptime: number
+  errorRate: number
+  criticalErrors: number
+  components: {
+    database: 'healthy' | 'degraded' | 'failed'
+    api: 'healthy' | 'degraded' | 'failed'
+    discovery: 'healthy' | 'degraded' | 'failed'
+    memory: 'healthy' | 'degraded' | 'critical'
+  }
+  metrics: {
+    totalErrors: number
+    errorsByHour: number[]
+    memoryUsage: number
+    cpuUsage?: number
+  }
+}
+
+interface MemoryStatsData {
+  current: {
+    heapUsage: number
+  }
+  trend: 'increasing' | 'decreasing' | 'stable'
+  averageUsage: number
+  peakUsage: number
+  uptimeHours: number
+  snapshotCount: number
+  leakDetection: {
+    isLeak: boolean
+    confidence: number
+    growthRate: number
+    recommendations: string[]
+  }
+}
+
+interface ErrorStatsData {
+  total: number
+  bySeverity: Record<string, number>
+  byCode: Record<string, number>
+  byHour: number[]
+  trends: {
+    errorRate: 'increasing' | 'decreasing' | 'stable'
+  }
+}
+
+interface PerformanceMetricsData {
+  timings: Record<string, unknown>
+  counters: Record<string, number>
+  histograms: Record<string, unknown>
+  uptime: number
+}
+
 /**
  * Get comprehensive system performance metrics
  */
-export async function getPerformanceMetrics(args: Record<string, any>) {
+export async function getPerformanceMetrics(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
-    const metrics = performanceMetrics.getAllMetrics()
+    const metrics = performanceMetrics.getAllMetrics() as PerformanceMetricsData
     const memoryStats = getQuickMemoryStats()
     const systemHealth = await systemHealthChecker.checkSystemHealth()
-    const errorStats = errorMonitoringService.getErrorStatistics()
+    const errorStats = errorMonitoringService.getErrorStatistics() as ErrorStatsData
 
     return {
       success: true,
@@ -255,13 +310,16 @@ export async function getPerformanceMetrics(args: Record<string, any>) {
 
         // Performance timings
         performance: {
-          timings: Object.entries(metrics.timings).map(([name, stats]) => ({
-            metric: name,
-            count: stats?.count || 0,
-            avg: stats ? `${stats.avg.toFixed(2)}ms` : 'N/A',
-            p95: stats ? `${stats.p95.toFixed(2)}ms` : 'N/A',
-            p99: stats ? `${stats.p99.toFixed(2)}ms` : 'N/A',
-          })),
+          timings: Object.entries(metrics.timings).map(([name, stats]) => {
+            const timingStats = stats as Record<string, unknown> | null | undefined
+            return {
+              metric: name,
+              count: Number(timingStats?.count) || 0,
+              avg: timingStats ? `${Number(timingStats.avg).toFixed(2)}ms` : 'N/A',
+              p95: timingStats ? `${Number(timingStats.p95).toFixed(2)}ms` : 'N/A',
+              p99: timingStats ? `${Number(timingStats.p99).toFixed(2)}ms` : 'N/A',
+            }
+          }),
           counters: metrics.counters,
         },
 
@@ -269,7 +327,7 @@ export async function getPerformanceMetrics(args: Record<string, any>) {
         errors: {
           total: errorStats.total,
           byHour: errorStats.byHour.slice(-24), // Last 24 hours
-          trends: errorStats.trends,
+          trends: errorStats.trends.errorRate,
         },
 
         // Health score
@@ -290,10 +348,10 @@ export async function getPerformanceMetrics(args: Record<string, any>) {
 /**
  * Generate performance health report
  */
-export async function generateHealthReport(args: Record<string, any>) {
+export async function generateHealthReport(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
-    const healthStatus = await errorMonitoringService.getHealthStatus()
-    const memoryStats = memoryProfiler.getMemoryStats()
+    const healthStatus = await errorMonitoringService.getHealthStatus() as HealthStatusData
+    const memoryStats = memoryProfiler.getMemoryStats() as MemoryStatsData
     const coldStartStats = coldStartOptimizer.getOptimizationStats()
     const systemHealth = await systemHealthChecker.checkSystemHealth()
 
@@ -376,7 +434,7 @@ export async function generateHealthReport(args: Record<string, any>) {
 /**
  * Start performance monitoring
  */
-export async function startPerformanceMonitoring(args: Record<string, any>) {
+export async function startPerformanceMonitoring(args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const interval = args.interval || 30000 // Default 30 seconds
     const includeMemory = args.includeMemory !== false
@@ -422,13 +480,13 @@ export async function startPerformanceMonitoring(args: Record<string, any>) {
 /**
  * Get real-time performance dashboard
  */
-export async function getPerformanceDashboard(args: Record<string, any>) {
+export async function getPerformanceDashboard(args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const timeRange = args.timeRange || '1h' // 1h, 6h, 24h
-    const memoryStats = memoryProfiler.getMemoryStats()
-    const healthStatus = await errorMonitoringService.getHealthStatus()
+    const memoryStats = memoryProfiler.getMemoryStats() as MemoryStatsData
+    const healthStatus = await errorMonitoringService.getHealthStatus() as HealthStatusData
     const systemHealth = await systemHealthChecker.checkSystemHealth()
-    const metrics = performanceMetrics.getAllMetrics()
+    const metrics = performanceMetrics.getAllMetrics() as PerformanceMetricsData
 
     // Calculate time range in hours
     const hours = timeRange === '1h' ? 1 : timeRange === '6h' ? 6 : 24
@@ -445,7 +503,7 @@ export async function getPerformanceDashboard(args: Record<string, any>) {
           status: healthStatus.overall,
           uptime: `${Math.round(memoryStats.uptimeHours * 60)} minutes`,
           memoryUsage: `${memoryStats.current.heapUsage.toFixed(1)}%`,
-          cpuUsage: `${systemHealth.cpu.usage.toFixed(1)}%`,
+          cpuUsage: `${Number((systemHealth.cpu as Record<string, unknown> | undefined)?.usage || 0).toFixed(1)}%`,
           errorRate: healthStatus.errorRate,
         },
 
@@ -465,18 +523,21 @@ export async function getPerformanceDashboard(args: Record<string, any>) {
               ? ((relevantErrors.slice(-1)[0] || 0) > (relevantErrors.slice(-2, -1)[0] || 0) ? 'increasing' : 'decreasing')
               : 'stable',
           },
-          performance: Object.entries(metrics.timings).map(([name, stats]) => ({
-            metric: name,
-            avg: stats ? stats.avg : 0,
-            p95: stats ? stats.p95 : 0,
-            trend: 'stable', // Would need historical data for actual trend
-          })),
+          performance: Object.entries(metrics.timings).map(([name, stats]) => {
+            const timingStats = stats as Record<string, unknown> | null | undefined
+            return {
+              metric: name,
+              avg: Number(timingStats?.avg) || 0,
+              p95: Number(timingStats?.p95) || 0,
+              trend: 'stable', // Would need historical data for actual trend
+            }
+          }),
         },
 
         // Top metrics
         topMetrics: [
           { name: 'Memory Usage', value: `${memoryStats.current.heapUsage.toFixed(1)}%`, status: memoryStats.current.heapUsage > 80 ? 'warning' : 'good' },
-          { name: 'CPU Usage', value: `${systemHealth.cpu.usage.toFixed(1)}%`, status: systemHealth.cpu.usage > 75 ? 'warning' : 'good' },
+          { name: 'CPU Usage', value: `${Number((systemHealth.cpu as Record<string, unknown> | undefined)?.usage || 0).toFixed(1)}%`, status: Number((systemHealth.cpu as Record<string, unknown> | undefined)?.usage || 0) > 75 ? 'warning' : 'good' },
           { name: 'Error Rate', value: `${healthStatus.errorRate.toFixed(2)}/s`, status: healthStatus.errorRate > 1 ? 'warning' : 'good' },
         ],
 
@@ -505,7 +566,7 @@ export async function getPerformanceDashboard(args: Record<string, any>) {
 /**
  * Benchmark system performance
  */
-export async function benchmarkPerformance(args: Record<string, any>) {
+export async function benchmarkPerformance(args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const duration = args.duration || 60000 // Default 1 minute
     const includeMemory = args.includeMemory !== false
@@ -516,7 +577,7 @@ export async function benchmarkPerformance(args: Record<string, any>) {
     const benchmarkResults = {
       startTime: Date.now(),
       duration,
-      tests: [] as any[],
+      tests: [] as Record<string, unknown>[],
     }
 
     // Memory benchmark
@@ -551,9 +612,9 @@ export async function benchmarkPerformance(args: Record<string, any>) {
       let iterations = 0
 
       // CPU-intensive operation
-      const endTime = Date.now() + Math.min(5000, duration) // Max 5 seconds for CPU test
+      const endTime = Date.now() + Math.min(5000, Number(duration)) // Max 5 seconds for CPU test
       while (Date.now() < endTime) {
-        Math.random() * Math.random() * Math.random()
+        void (Math.random() * Math.random() * Math.random())
         iterations++
       }
 
@@ -573,7 +634,7 @@ export async function benchmarkPerformance(args: Record<string, any>) {
     const testObject = { test: true, data: Array.from({ length: 1000 }).fill(0).map(i => ({ id: i, value: Math.random() })) }
     let ioOperations = 0
 
-    const ioEndTime = Date.now() + Math.min(2000, duration) // Max 2 seconds for I/O test
+    const ioEndTime = Date.now() + Math.min(2000, Number(duration)) // Max 2 seconds for I/O test
     while (Date.now() < ioEndTime) {
       JSON.parse(JSON.stringify(testObject))
       ioOperations++
@@ -601,9 +662,9 @@ export async function benchmarkPerformance(args: Record<string, any>) {
 
         // Performance scores (relative)
         scores: {
-          memoryScore: includeMemory ? Math.min(100, Math.max(0, 100 - (Number.parseFloat(benchmarkResults.tests.find(t => t.test === 'memory_allocation')?.memoryUsed) || 0) * 10)) : null,
-          cpuScore: includeCpu ? Math.min(100, (Number.parseFloat(benchmarkResults.tests.find(t => t.test === 'cpu_computation')?.throughput) || 0) / 1000) : null,
-          ioScore: Math.min(100, (Number.parseFloat(benchmarkResults.tests.find(t => t.test === 'json_serialization')?.throughput) || 0) / 100),
+          memoryScore: includeMemory ? Math.min(100, Math.max(0, 100 - (Number.parseFloat(String(benchmarkResults.tests.find(t => t.test === 'memory_allocation')?.memoryUsed || '0')) * 10))) : null,
+          cpuScore: includeCpu ? Math.min(100, (Number.parseFloat(String(benchmarkResults.tests.find(t => t.test === 'cpu_computation')?.throughput || '0')) / 1000)) : null,
+          ioScore: Math.min(100, (Number.parseFloat(String(benchmarkResults.tests.find(t => t.test === 'json_serialization')?.throughput || '0')) / 100)),
         },
 
         recommendations: generateBenchmarkRecommendations(benchmarkResults.tests),
@@ -622,7 +683,7 @@ export async function benchmarkPerformance(args: Record<string, any>) {
 /**
  * Get performance monitoring configuration
  */
-export async function getMonitoringConfig(args: Record<string, any>) {
+export async function getMonitoringConfig(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     // Get configuration through public methods or defaults
     const memoryConfig = {
@@ -709,7 +770,7 @@ export async function getMonitoringConfig(args: Record<string, any>) {
 /**
  * Generate health recommendations
  */
-function generateHealthRecommendations(healthStatus: any): string[] {
+function generateHealthRecommendations(healthStatus: HealthStatusData): string[] {
   const recommendations: string[] = []
 
   if (healthStatus.errorRate > 0.1) {
@@ -720,7 +781,7 @@ function generateHealthRecommendations(healthStatus: any): string[] {
     recommendations.push('Low recovery rate - review error recovery mechanisms and retry logic')
   }
 
-  if (healthStatus.componentHealth.database === 'unhealthy') {
+  if (healthStatus.components.database === 'failed') {
     recommendations.push('Database health issues - check database connectivity and performance')
   }
 
@@ -730,14 +791,14 @@ function generateHealthRecommendations(healthStatus: any): string[] {
 /**
  * Generate memory recommendations
  */
-function generateMemoryRecommendations(memoryStats: any): string[] {
+function generateMemoryRecommendations(memoryStats: MemoryStatsData): string[] {
   const recommendations: string[] = []
 
   if (memoryStats.leakDetection.isLeak) {
     recommendations.push('Memory leak detected - review memory usage patterns and implement cleanup')
   }
 
-  if (memoryStats.heapUsed > 400 * 1024 * 1024) {
+  if (memoryStats.current.heapUsage > 80) {
     recommendations.push('High memory usage - consider memory optimization or heap size adjustment')
   }
 
@@ -747,10 +808,10 @@ function generateMemoryRecommendations(memoryStats: any): string[] {
 /**
  * Generate performance recommendations
  */
-function generatePerformanceRecommendations(coldStartStats: any): string[] {
+function generatePerformanceRecommendations(coldStartStats: Record<string, unknown>): string[] {
   const recommendations: string[] = []
 
-  if (coldStartStats.startupTime > 2000) {
+  if (Number(coldStartStats.startupTime || coldStartStats.totalLoadTime) > 2000) {
     recommendations.push('Slow startup detected - enable module preloading and caching optimizations')
   }
 
@@ -760,7 +821,7 @@ function generatePerformanceRecommendations(coldStartStats: any): string[] {
 /**
  * Generate alerts based on system status
  */
-function generateAlerts(healthStatus: any, memoryStats: any, systemHealth: any): Array<{ severity: string, message: string }> {
+function generateAlerts(healthStatus: HealthStatusData, memoryStats: MemoryStatsData, systemHealth: Record<string, unknown>): Array<{ severity: string, message: string }> {
   const alerts: Array<{ severity: string, message: string }> = []
 
   if (healthStatus.errorRate > 0.5) {
@@ -771,7 +832,8 @@ function generateAlerts(healthStatus: any, memoryStats: any, systemHealth: any):
     alerts.push({ severity: 'warning', message: 'Memory leak detected in application' })
   }
 
-  if (systemHealth.memory > 90) {
+  const memoryUsage = systemHealth.memory as Record<string, unknown> | undefined
+  if (Number(memoryUsage?.usage) > 90) {
     alerts.push({ severity: 'warning', message: 'System memory usage is critically high' })
   }
 
@@ -781,16 +843,16 @@ function generateAlerts(healthStatus: any, memoryStats: any, systemHealth: any):
 /**
  * Generate benchmark recommendations
  */
-function generateBenchmarkRecommendations(tests: any[]): string[] {
+function generateBenchmarkRecommendations(tests: Array<Record<string, unknown>>): string[] {
   const recommendations: string[] = []
 
   const memoryTest = tests.find(t => t.test === 'memory_allocation')
-  if (memoryTest && Number.parseFloat(memoryTest.throughput) < 1000) {
+  if (memoryTest && typeof memoryTest.throughput === 'string' && Number.parseFloat(memoryTest.throughput) < 1000) {
     recommendations.push('Memory allocation performance is below optimal - consider memory pooling')
   }
 
   const asyncTest = tests.find(t => t.test === 'async_operations')
-  if (asyncTest && Number.parseFloat(asyncTest.throughput) < 500) {
+  if (asyncTest && typeof asyncTest.throughput === 'string' && Number.parseFloat(asyncTest.throughput) < 500) {
     recommendations.push('Async operation performance could be improved - review Promise handling')
   }
 
@@ -804,19 +866,23 @@ function generateBenchmarkRecommendations(tests: any[]): string[] {
 /**
  * Calculate overall health score
  */
-function calculateHealthScore(systemHealth: any, errorStats: any): string {
+function calculateHealthScore(systemHealth: Record<string, unknown>, errorStats: ErrorStatsData | null): string {
   let score = 100
 
   // Deduct for high CPU usage
-  if (systemHealth.cpu.usage > 90)
+  const cpuStats = systemHealth.cpu as Record<string, unknown> | undefined
+  const cpuUsage = Number(cpuStats?.usage) || 0
+  if (cpuUsage > 90)
     score -= 20
-  else if (systemHealth.cpu.usage > 75)
+  else if (cpuUsage > 75)
     score -= 10
 
   // Deduct for high memory usage
-  if (systemHealth.memory.usage > 90)
+  const memoryStats = systemHealth.memory as Record<string, unknown> | undefined
+  const memoryUsage = Number(memoryStats?.usage) || 0
+  if (memoryUsage > 90)
     score -= 20
-  else if (systemHealth.memory.usage > 80)
+  else if (memoryUsage > 80)
     score -= 10
 
   // Deduct for errors
@@ -843,14 +909,18 @@ function calculateHealthScore(systemHealth: any, errorStats: any): string {
 /**
  * Generate performance recommendations
  */
-function generateRecommendations(systemHealth: any, errorStats: any, metrics: any): string[] {
+function generateRecommendations(systemHealth: Record<string, unknown>, errorStats: ErrorStatsData | null, metrics: PerformanceMetricsData): string[] {
   const recommendations = []
 
-  if (systemHealth.cpu.usage > 75) {
+  const cpuStats = systemHealth.cpu as Record<string, unknown> | undefined
+  const cpuUsage = Number(cpuStats?.usage) || 0
+  if (cpuUsage > 75) {
     recommendations.push('High CPU usage detected - consider optimizing computational tasks')
   }
 
-  if (systemHealth.memory.usage > 80) {
+  const memoryStats = systemHealth.memory as Record<string, unknown> | undefined
+  const memoryUsage = Number(memoryStats?.usage) || 0
+  if (memoryUsage > 80) {
     recommendations.push('High memory usage - enable garbage collection or increase heap size')
   }
 

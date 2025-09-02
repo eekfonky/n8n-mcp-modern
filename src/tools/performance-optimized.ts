@@ -65,7 +65,15 @@ function _unusedGetAgent(type: string): Agent | null {
 function createSimpleAgent(type: string): Agent {
   return {
     type,
-    execute: async (toolName: string, args: Record<string, unknown>) => {
+    execute: async (toolName: string, args: Record<string, unknown>): Promise<{
+      agent: string
+      tool: string
+      args?: Record<string, unknown>
+      status: 'success' | 'error'
+      timestamp: number
+      executionTime: number
+      error?: string
+    }> => {
       const executeStart = performance.now()
 
       try {
@@ -163,7 +171,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
     }
 
     return {
-      ...result,
+      ...(typeof result === 'object' && result !== null ? result as Record<string, unknown> : { result }),
       executionTime,
       performanceTarget: executionTime < 100 ? 'met' : 'exceeded',
     }

@@ -11,7 +11,7 @@ import { logger } from '../server/logger.js'
 /**
  * Get cold start optimization statistics
  */
-export async function getColdStartStats(_args: Record<string, any>) {
+export async function getColdStartStats(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const stats = coldStartOptimizer.getOptimizationStats()
     const timings = startupAnalyzer.getAllTimings()
@@ -55,7 +55,7 @@ export async function getColdStartStats(_args: Record<string, any>) {
 /**
  * Generate cold start performance report
  */
-export async function generateColdStartReport(_args: Record<string, any>) {
+export async function generateColdStartReport(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const performanceReport = startupAnalyzer.generateReport()
     const optimizationStats = coldStartOptimizer.getOptimizationStats()
@@ -128,7 +128,7 @@ export async function generateColdStartReport(_args: Record<string, any>) {
 /**
  * Analyze startup bottlenecks
  */
-export async function analyzeStartupBottlenecks(args: Record<string, any>) {
+export async function analyzeStartupBottlenecks(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const timings = startupAnalyzer.getAllTimings()
     const stats = coldStartOptimizer.getOptimizationStats()
@@ -185,7 +185,7 @@ export async function analyzeStartupBottlenecks(args: Record<string, any>) {
 /**
  * Clear optimization cache
  */
-export async function clearOptimizationCache(args: Record<string, any>) {
+export async function clearOptimizationCache(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const statsBefore = coldStartOptimizer.getOptimizationStats()
 
@@ -224,7 +224,7 @@ export async function clearOptimizationCache(args: Record<string, any>) {
 /**
  * Get optimization configuration
  */
-export async function getOptimizationConfig(args: Record<string, any>) {
+export async function getOptimizationConfig(_args: Record<string, unknown>): Promise<{ success: boolean, data?: Record<string, unknown>, error?: string }> {
   try {
     const stats = coldStartOptimizer.getOptimizationStats()
     const config = stats.configuration
@@ -285,27 +285,31 @@ function formatBytes(bytes: number): string {
 /**
  * Calculate performance score
  */
-function calculatePerformanceScore(performanceReport: any, optimizationStats: any): string {
+function calculatePerformanceScore(performanceReport: { totalTime: unknown, slowestPhase: { time: unknown } }, optimizationStats: { cacheHitRate: unknown }): string {
   let score = 100
 
+  const totalTime = Number(performanceReport.totalTime) || 0
+  const slowestPhaseTime = Number(performanceReport.slowestPhase.time) || 0
+  const cacheHitRate = Number(optimizationStats.cacheHitRate) || 0
+
   // Deduct points for slow startup
-  if (performanceReport.totalTime > 3000)
+  if (totalTime > 3000)
     score -= 30
-  else if (performanceReport.totalTime > 2000)
+  else if (totalTime > 2000)
     score -= 15
-  else if (performanceReport.totalTime > 1000)
+  else if (totalTime > 1000)
     score -= 5
 
   // Deduct points for low cache efficiency
-  if (optimizationStats.cacheHitRate < 0.5)
+  if (cacheHitRate < 0.5)
     score -= 20
-  else if (optimizationStats.cacheHitRate < 0.7)
+  else if (cacheHitRate < 0.7)
     score -= 10
 
   // Deduct points for slow phases
-  if (performanceReport.slowestPhase.time > 1000)
+  if (slowestPhaseTime > 1000)
     score -= 15
-  else if (performanceReport.slowestPhase.time > 500)
+  else if (slowestPhaseTime > 500)
     score -= 5
 
   score = Math.max(0, Math.min(100, score))
@@ -384,16 +388,16 @@ function getPhaseOptimizationSuggestions(phase: string, time: number): string[] 
 /**
  * Generate action items from bottlenecks
  */
-function generateActionItems(bottlenecks: any[]): Array<{ priority: string, action: string, impact: string }> {
+function generateActionItems(bottlenecks: Array<Record<string, unknown>>): Array<{ priority: string, action: string, impact: string }> {
   const actions = []
 
   for (const bottleneck of bottlenecks.slice(0, 3)) { // Top 3 bottlenecks
-    const suggestions = bottleneck.suggestions
-    if (suggestions.length > 0) {
+    const suggestions = bottleneck.suggestions as string[]
+    if (suggestions && suggestions.length > 0) {
       actions.push({
-        priority: bottleneck.severity,
-        action: `Optimize ${bottleneck.phase}: ${suggestions[0]}`,
-        impact: `Could save ~${Math.round(Number.parseFloat(bottleneck.duration) * 0.3)}ms`,
+        priority: String(bottleneck.severity),
+        action: `Optimize ${String(bottleneck.phase)}: ${suggestions[0]}`,
+        impact: `Could save ~${Math.round(Number.parseFloat(String(bottleneck.duration)) * 0.3)}ms`,
       })
     }
   }

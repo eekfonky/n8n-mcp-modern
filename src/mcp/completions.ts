@@ -26,7 +26,7 @@ export class CompletionManager {
   /**
    * Initialize completion caches
    */
-  private async initializeCache() {
+  private async initializeCache(): Promise<void> {
     try {
       // Cache node templates
       const templates = await getAllNodeTemplates()
@@ -374,7 +374,7 @@ export class CompletionManager {
   /**
    * Refresh caches
    */
-  async refresh() {
+  async refresh(): Promise<void> {
     await this.initializeCache()
   }
 }

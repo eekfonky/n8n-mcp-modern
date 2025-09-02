@@ -11,6 +11,114 @@ import process from 'node:process'
 import BetterSqlite3 from 'better-sqlite3'
 import { logger } from '../server/logger.js'
 
+// Database result types
+interface DatabaseMemoryRow {
+  id: number
+  agent_name: string
+  memory_type: string
+  content: string
+  content_hash: string
+  relevance_score: number
+  usage_count: number
+  last_accessed: string
+  created_at: string
+  updated_at: string
+  tags: string
+  embeddings?: string
+  expires_at?: string
+  parent_memory_id?: number
+  related_memory_ids?: string
+}
+
+interface DatabaseSessionRow {
+  id: number
+  session_id: string
+  agent_name: string
+  session_type: string
+  state_data?: string
+  context_data?: string
+  metadata?: string
+  started_at: string
+  last_active: string
+  expires_at: string
+  completed_at?: string
+  encrypted_state?: Buffer
+  state_signature?: string
+  operations_count?: number
+  memory_usage_bytes?: number
+  parent_session_id?: string
+  child_session_ids?: string
+}
+
+interface DatabaseDiscoveryRow {
+  id: number
+  discovery_type: string
+  discovery_key: string
+  title: string
+  description: string
+  content_data: string
+  node_types: string
+  tags: string
+  success_rate: number
+  usage_count: number
+  created_at: string
+  confidence_score?: number
+  created_by?: string
+  validated_by?: string
+  last_used?: string
+  version?: number
+  superseded_by?: number
+}
+
+interface DatabaseCountRow {
+  count: number
+}
+
+interface DatabaseAvgRow {
+  avg_success: number
+}
+
+interface DatabaseStringRow {
+  to_agent: string
+  title: string
+  partner: string
+}
+
+interface DatabaseDelegationRow {
+  id: number
+  delegation_type: string
+  task_pattern: string
+  recommended_agent: string
+  success_count: number
+  failure_count: number
+  confidence_score: number
+  avg_duration_minutes: number
+  created_at: string
+  updated_at: string
+}
+
+interface DatabaseMemoryRelationshipRow {
+  id: number
+  source_memory_id: number
+  target_memory_id: number
+  relationship_type: string
+  strength: number
+  created_at: string
+  created_by: string
+}
+
+interface DatabaseSessionOperationRow {
+  id: number
+  session_id: string
+  operation_type: string
+  operation_data: string
+  success: boolean
+  error_message?: string
+  duration_ms: number
+  memory_impact_bytes: number
+  timestamp: string
+}
+
 export interface AgentMemory {
   id?: number | undefined
   agentName: string
@@ -39,9 +147,9 @@ export interface AgentSession {
   agentName: string
   sessionType: 'iterative_building' | 'consultation' | 'collaboration'
     | 'delegation' | 'learning'
-  stateData?: any
-  contextData?: any
-  metadata?: any
+  stateData?: string | undefined
+  contextData?: string | undefined
+  metadata?: string | undefined
   startedAt?: Date | undefined
   lastActive?: Date | undefined
   expiresAt: Date
@@ -62,18 +170,18 @@ export interface SharedDiscovery {
   discoveryKey: string
   title: string
   description: string
-  contentData?: any
+  contentData?: Record<string, unknown>
   nodeTypes?: string[]
   tags?: string[]
   successRate?: number
   usageCount?: number
-  confidenceScore?: number
+  confidenceScore?: number | undefined
   createdBy: string
   validatedBy?: string[]
   createdAt?: Date
   lastUsed?: Date | undefined
-  version?: number
-  supersededBy?: number
+  version?: number | undefined
+  supersededBy?: number | undefined
 }
 
 export interface DelegationRecord {
@@ -91,7 +199,7 @@ export interface DelegationRecord {
   actualDurationMinutes?: number
   userSatisfaction?: number
   qualityScore?: number
-  contextData?: any
+  contextData?: Record<string, unknown>
   errorDetails?: string
   lessonsLearned?: string
   createdAt?: Date
@@ -473,8 +581,8 @@ export class DynamicAgentDB {
               last_accessed = CURRENT_TIMESTAMP,
               relevance_score = MIN(1.0, relevance_score + 0.1)
           WHERE id = ?
-        `).run((existing as any).id)
-        return (existing as any).id as number
+        `).run((existing as DatabaseMemoryRow).id)
+        return (existing as DatabaseMemoryRow).id
       }
 
       // Create signature for integrity
@@ -528,7 +636,7 @@ export class DynamicAgentDB {
         AND relevance_score >= ?
         AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
       `
-      const params: any[] = [agentName, minRelevance]
+      const params: (string | number)[] = [agentName, minRelevance]
 
       // Add memory type filter
       if (memoryType) {
@@ -552,7 +660,7 @@ export class DynamicAgentDB {
       sql += ' ORDER BY relevance_score DESC, last_accessed DESC LIMIT ?'
       params.push(limit)
 
-      const memories = this.db.prepare(sql).all(...params) as any[]
+      const memories = this.db.prepare(sql).all(...params) as DatabaseMemoryRow[]
 
       // Update last accessed for retrieved memories
       const updateStmt = this.db.prepare(`
@@ -567,7 +675,7 @@ export class DynamicAgentDB {
         return {
           id: row.id,
           agentName: row.agent_name,
-          memoryType: row.memory_type,
+          memoryType: row.memory_type as AgentMemory['memoryType'],
           content: row.content,
           contentHash: row.content_hash,
           embeddings: row.embeddings ? JSON.parse(row.embeddings) : undefined,
@@ -670,7 +778,7 @@ export class DynamicAgentDB {
       const row = this.db.prepare(`
         SELECT * FROM agent_sessions 
         WHERE session_id = ? AND expires_at > CURRENT_TIMESTAMP
-      `).get(sessionId) as any
+      `).get(sessionId) as DatabaseSessionRow | undefined
 
       if (!row) {
         return null
@@ -698,7 +806,7 @@ export class DynamicAgentDB {
         id: row.id,
         sessionId: row.session_id,
         agentName: row.agent_name,
-        sessionType: row.session_type,
+        sessionType: row.session_type as AgentSession['sessionType'],
         stateData,
         contextData: row.context_data ? JSON.parse(row.context_data) : null,
         metadata: row.metadata ? JSON.parse(row.metadata) : null,
@@ -721,7 +829,7 @@ export class DynamicAgentDB {
   async updateSession(sessionId: string, updates: Partial<AgentSession>): Promise<boolean> {
     try {
       const updateFields: string[] = []
-      const params: any[] = []
+      const params: (string | number | boolean)[] = []
 
       if (updates.stateData !== undefined) {
         updateFields.push('state_data = ?', 'state_signature = ?')
@@ -842,7 +950,7 @@ export class DynamicAgentDB {
         WHERE superseded_by IS NULL 
         AND confidence_score >= ?
       `
-      const params: any[] = [minConfidence]
+      const params: (string | number)[] = [minConfidence]
 
       if (discoveryType) {
         sql += ' AND discovery_type = ?'
@@ -868,7 +976,7 @@ export class DynamicAgentDB {
       sql += ' ORDER BY usage_count DESC, confidence_score DESC, created_at DESC LIMIT ?'
       params.push(limit)
 
-      const discoveries = this.db.prepare(sql).all(...params) as any[]
+      const discoveries = this.db.prepare(sql).all(...params) as DatabaseDiscoveryRow[]
 
       // Update usage count for retrieved discoveries
       const updateStmt = this.db.prepare(`
@@ -882,7 +990,7 @@ export class DynamicAgentDB {
 
         return {
           id: row.id,
-          discoveryType: row.discovery_type,
+          discoveryType: row.discovery_type as SharedDiscovery['discoveryType'],
           discoveryKey: row.discovery_key,
           title: row.title,
           description: row.description,
@@ -891,13 +999,13 @@ export class DynamicAgentDB {
           tags: row.tags ? JSON.parse(row.tags) : undefined,
           successRate: row.success_rate,
           usageCount: row.usage_count,
-          confidenceScore: row.confidence_score,
-          createdBy: row.created_by,
+          confidenceScore: row.confidence_score || undefined,
+          createdBy: row.created_by || '',
           validatedBy: row.validated_by ? JSON.parse(row.validated_by) : undefined,
           createdAt: new Date(row.created_at),
           lastUsed: row.last_used ? new Date(row.last_used) : undefined,
-          version: row.version,
-          supersededBy: row.superseded_by,
+          version: row.version || undefined,
+          supersededBy: row.superseded_by || undefined,
         }
       })
     }
@@ -960,7 +1068,7 @@ export class DynamicAgentDB {
         delegation.delegationType,
         delegation.toAgent,
         `%${delegation.taskDescription.split(' ')[0]}%`, // Use first word as pattern
-      ) as any
+      ) as DatabaseDelegationRow | undefined
 
       if (existing) {
         // Update statistics
@@ -1017,7 +1125,7 @@ export class DynamicAgentDB {
         delegationType,
         `%${taskDescription}%`,
         `%${taskDescription}%`,
-      ) as any
+      ) as DatabaseDelegationRow | undefined
 
       return suggestions?.recommended_agent || null
     }
@@ -1042,23 +1150,23 @@ export class DynamicAgentDB {
       const totalMemories = (this.db.prepare(`
         SELECT COUNT(*) as count FROM agent_memories 
         WHERE expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP
-      `).get() as any)?.count || 0
+      `).get() as DatabaseCountRow | undefined)?.count || 0
 
       const activeSessions = (this.db.prepare(`
         SELECT COUNT(*) as count FROM agent_sessions 
         WHERE expires_at > CURRENT_TIMESTAMP
-      `).get() as any)?.count || 0
+      `).get() as DatabaseCountRow | undefined)?.count || 0
 
       const totalDiscoveries = (this.db.prepare(`
         SELECT COUNT(*) as count FROM shared_discoveries 
         WHERE superseded_by IS NULL
-      `).get() as any)?.count || 0
+      `).get() as DatabaseCountRow | undefined)?.count || 0
 
       const avgDelegationSuccess = (this.db.prepare(`
         SELECT AVG(CASE WHEN success THEN 1.0 ELSE 0.0 END) as avg_success
         FROM delegation_history 
         WHERE created_at > datetime('now', '-7 days')
-      `).get() as any)?.avg_success || 0
+      `).get() as DatabaseAvgRow | undefined)?.avg_success || 0
 
       const topPerformingAgents = this.db.prepare(`
         SELECT to_agent, AVG(CASE WHEN success THEN 1.0 ELSE 0.0 END) as success_rate
@@ -1068,7 +1176,7 @@ export class DynamicAgentDB {
         HAVING COUNT(*) >= 3
         ORDER BY success_rate DESC
         LIMIT 5
-      `).all().map((row: any) => row.to_agent)
+      `).all().map((row: unknown) => (row as DatabaseStringRow).to_agent)
 
       return {
         totalMemories,
@@ -1117,7 +1225,7 @@ export class DynamicAgentDB {
   async getMemoryById(memoryId: number): Promise<AgentMemory | null> {
     const row = this.db.prepare(`
       SELECT * FROM agent_memories WHERE id = ?
-    `).get(memoryId) as any
+    `).get(memoryId) as DatabaseMemoryRow | undefined
 
     if (!row)
       return null
@@ -1125,7 +1233,7 @@ export class DynamicAgentDB {
     return {
       id: row.id,
       agentName: row.agent_name,
-      memoryType: row.memory_type,
+      memoryType: row.memory_type as AgentMemory['memoryType'],
       content: row.content,
       contentHash: row.content_hash,
       embeddings: row.embeddings ? JSON.parse(row.embeddings) : undefined,
@@ -1186,13 +1294,13 @@ export class DynamicAgentDB {
     const rows = this.db.prepare(`
       SELECT * FROM memory_relationships 
       WHERE source_memory_id = ? OR target_memory_id = ?
-    `).all(memoryId, memoryId) as any[]
+    `).all(memoryId, memoryId) as DatabaseMemoryRelationshipRow[]
 
     return rows.map(row => ({
       id: row.id,
       sourceMemoryId: row.source_memory_id,
       targetMemoryId: row.target_memory_id,
-      relationshipType: row.relationship_type,
+      relationshipType: row.relationship_type as MemoryRelationship['relationshipType'],
       strength: row.strength,
       createdAt: row.created_at ? new Date(row.created_at) : undefined,
       createdBy: row.created_by,
@@ -1204,13 +1312,13 @@ export class DynamicAgentDB {
       SELECT mr.* FROM memory_relationships mr
       JOIN agent_memories am ON (mr.source_memory_id = am.id OR mr.target_memory_id = am.id)
       WHERE am.agent_name = ?
-    `).all(agentName) as any[]
+    `).all(agentName) as DatabaseMemoryRelationshipRow[]
 
     return rows.map(row => ({
       id: row.id,
       sourceMemoryId: row.source_memory_id,
       targetMemoryId: row.target_memory_id,
-      relationshipType: row.relationship_type,
+      relationshipType: row.relationship_type as MemoryRelationship['relationshipType'],
       strength: row.strength,
       createdAt: row.created_at ? new Date(row.created_at) : undefined,
       createdBy: row.created_by,
@@ -1221,7 +1329,7 @@ export class DynamicAgentDB {
     return this.getSession(sessionId)
   }
 
-  async updateSessionState(sessionId: string, updates: any): Promise<boolean> {
+  async updateSessionState(sessionId: string, updates: Record<string, unknown>): Promise<boolean> {
     return this.updateSession(sessionId, updates)
   }
 
@@ -1230,7 +1338,7 @@ export class DynamicAgentDB {
       SELECT * FROM session_operations 
       WHERE session_id = ?
       ORDER BY timestamp DESC
-    `).all(sessionId) as any[]
+    `).all(sessionId) as DatabaseSessionOperationRow[]
 
     return rows.map(row => ({
       id: row.id,
@@ -1262,7 +1370,7 @@ export class DynamicAgentDB {
     )
   }
 
-  async completeSession(sessionId: string, completionData?: Record<string, any>): Promise<void> {
+  async completeSession(sessionId: string, completionData?: Record<string, unknown>): Promise<void> {
     this.db.prepare(`
       UPDATE agent_sessions 
       SET completed_at = CURRENT_TIMESTAMP,
@@ -1291,13 +1399,13 @@ export class DynamicAgentDB {
       SELECT * FROM agent_sessions 
       WHERE agent_name = ? AND expires_at > CURRENT_TIMESTAMP
       ORDER BY last_active DESC
-    `).all(agentName) as any[]
+    `).all(agentName) as DatabaseSessionRow[]
 
     return rows.map(row => ({
       id: row.id,
       sessionId: row.session_id,
       agentName: row.agent_name,
-      sessionType: row.session_type,
+      sessionType: row.session_type as AgentSession['sessionType'],
       stateData: row.state_data,
       contextData: row.context_data,
       metadata: row.metadata,
@@ -1318,13 +1426,13 @@ export class DynamicAgentDB {
     const rows = this.db.prepare(`
       SELECT * FROM agent_sessions 
       WHERE expires_at <= CURRENT_TIMESTAMP
-    `).all() as any[]
+    `).all() as DatabaseSessionRow[]
 
     return rows.map(row => ({
       id: row.id,
       sessionId: row.session_id,
       agentName: row.agent_name,
-      sessionType: row.session_type,
+      sessionType: row.session_type as AgentSession['sessionType'],
       stateData: row.state_data,
       contextData: row.context_data,
       metadata: row.metadata,
@@ -1355,7 +1463,7 @@ export class DynamicAgentDB {
       WHERE delegation_type = ?
       ORDER BY confidence_score DESC, success_count DESC
       LIMIT 5
-    `).all(taskType) as any[]
+    `).all(taskType) as DatabaseDelegationRow[]
 
     return rows.map(row => ({
       recommendedAgent: row.recommended_agent,
@@ -1374,27 +1482,27 @@ export class DynamicAgentDB {
       const memoryCount = (this.db.prepare(`
         SELECT COUNT(*) as count FROM agent_memories 
         WHERE agent_name = ? AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
-      `).get(agentName) as any)?.count || 0
+      `).get(agentName) as DatabaseCountRow | undefined)?.count || 0
 
       const activeSessionCount = (this.db.prepare(`
         SELECT COUNT(*) as count FROM agent_sessions 
         WHERE agent_name = ? AND expires_at > CURRENT_TIMESTAMP
-      `).get(agentName) as any)?.count || 0
+      `).get(agentName) as DatabaseCountRow | undefined)?.count || 0
 
       const successRateData = this.db.prepare(`
         SELECT AVG(CASE WHEN success THEN 1.0 ELSE 0.0 END) as avg_success
         FROM delegation_history 
         WHERE to_agent = ? AND created_at > datetime('now', '-7 days')
-      `).get(agentName) as any
+      `).get(agentName) as DatabaseAvgRow | undefined
 
-      const avgSuccessRate = (successRateData as any)?.avg_success || 0
+      const avgSuccessRate = successRateData?.avg_success || 0
 
       const topDiscoveries = this.db.prepare(`
         SELECT title FROM shared_discoveries 
         WHERE created_by = ? 
         ORDER BY usage_count DESC, confidence_score DESC
         LIMIT 5
-      `).all(agentName).map((row: any) => row.title)
+      `).all(agentName).map((row: unknown) => (row as DatabaseStringRow).title)
 
       const collaborationPartners = this.db.prepare(`
         SELECT DISTINCT 
@@ -1404,7 +1512,7 @@ export class DynamicAgentDB {
         AND created_at > datetime('now', '-30 days')
         ORDER BY COUNT(*) DESC
         LIMIT 5
-      `).all(agentName, agentName, agentName).map((row: any) => row.partner)
+      `).all(agentName, agentName, agentName).map((row: unknown) => (row as DatabaseStringRow).partner)
 
       return {
         memoryCount,

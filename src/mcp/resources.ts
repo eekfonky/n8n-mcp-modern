@@ -231,7 +231,10 @@ export class ResourceManager extends EventEmitter {
     if (!this.subscriptions.has(uri)) {
       this.subscriptions.set(uri, new Set())
     }
-    this.subscriptions.get(uri)!.add(sessionId)
+    const subscriptions = this.subscriptions.get(uri)
+    if (subscriptions) {
+      subscriptions.add(sessionId)
+    }
     logger.debug(`Session ${sessionId} subscribed to ${uri}`)
   }
 
@@ -252,7 +255,7 @@ export class ResourceManager extends EventEmitter {
   /**
    * Monitor resources for changes
    */
-  private startMonitoring() {
+  private startMonitoring(): void {
     if (!hasN8nApi)
       return
 
@@ -292,7 +295,7 @@ export class ResourceManager extends EventEmitter {
   /**
    * Notify subscribers of resource changes
    */
-  private notifySubscribers(uri: string, content: Record<string, unknown>) {
+  private notifySubscribers(uri: string, content: Record<string, unknown>): void {
     const subscribers = this.subscriptions.get(uri)
     if (subscribers) {
       for (const sessionId of subscribers) {
@@ -304,7 +307,7 @@ export class ResourceManager extends EventEmitter {
   /**
    * Cleanup
    */
-  cleanup() {
+  cleanup(): void {
     if (this.updateInterval) {
       clearInterval(this.updateInterval)
     }
