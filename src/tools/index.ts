@@ -2018,6 +2018,13 @@ export async function getAllTools(): Promise<Tool[]> {
 }
 
 /**
+ * Get mutable reference to discovered tools array (for testing)
+ */
+export function getDiscoveredToolsArray(): Tool[] {
+  return discoveredTools
+}
+
+/**
  * Execute a dynamically discovered tool
  */
 export async function executeToolHandler(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {

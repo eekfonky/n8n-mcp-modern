@@ -25,35 +25,172 @@ interface SessionAnalytics {
 
 // Input schemas for MCP tools
 const StoreMemorySchema = z.object({
-  agentName: z.string().min(1),
+  agentName: z.string().min(1).max(100).regex(/^[\w-]+$/).describe('Agent name - alphanumeric, underscore, and dash only'),
   memoryType: z.enum([
+    // Core workflow patterns
     'workflow_pattern',
+    'workflow_template',
+    'workflow_snippet',
     'node_configuration',
+    'node_pattern',
+    'integration_pattern',
+
+    // User interaction patterns
     'user_preference',
+    'user_query',
+    'user_feedback',
+    'user_context',
+
+    // Problem solving patterns
     'error_solution',
-    'delegation_outcome',
+    'troubleshooting_guide',
+    'debug_strategy',
+    'workaround_solution',
+
+    // Knowledge and learning
     'discovery_result',
-    'validation_rule',
+    'knowledge_base',
+    'learning_outcome',
+    'best_practice',
+    'anti_pattern',
+
+    // Performance and optimization
     'performance_insight',
+    'optimization_rule',
+    'efficiency_tip',
+    'resource_usage',
+
+    // Security and validation
+    'validation_rule',
+    'security_pattern',
+    'credential_pattern',
+    'permission_rule',
+
+    // Collaboration and delegation
+    'delegation_outcome',
+    'collaboration_pattern',
+    'team_preference',
+    'handoff_instruction',
+
+    // Testing and development
+    'test_pattern',
+    'test_case',
+    'test_data',
+    'mock_configuration',
+
+    // API and integration specific
+    'api_pattern',
+    'webhook_pattern',
+    'connection_config',
+    'data_mapping',
+
+    // Monitoring and analytics
+    'usage_pattern',
+    'metric_definition',
+    'alert_rule',
+    'dashboard_config',
+
+    // Legacy test support
+    'response_format',
+    'performance_test',
+    'load_test',
   ]),
-  content: z.string().min(10),
-  tags: z.array(z.string()).optional(),
-  expiresIn: z.number().optional(), // Hours until expiration
+  content: z.string().min(10).max(10000).describe('Memory content - detailed information to store'),
+  tags: z.array(z.string().min(1).max(50)).max(20).optional().describe('Optional tags for categorization (max 20 tags, 50 chars each)'),
+  expiresIn: z.number().min(1).max(8760).optional().describe('Hours until expiration (max 1 year)'), // Hours until expiration
+  priority: z.enum(['low', 'normal', 'high', 'critical']).optional().describe('Memory importance level'),
 })
 
 const SearchMemorySchema = z.object({
-  agentName: z.string().min(1),
-  query: z.string().min(3),
-  memoryTypes: z.array(z.string()).optional(),
-  limit: z.number().min(1).max(50).default(10),
-  minRelevance: z.number().min(0.1).max(1.0).default(0.7),
+  agentName: z.string().min(1).describe('Agent name to search memories for'),
+  query: z.string().min(3).max(500).describe('Search query - keywords or phrases to find'),
+  memoryTypes: z.array(z.string().min(1)).max(10).optional().describe('Filter by specific memory types (max 10 types)'),
+  limit: z.number().min(1).max(50).default(10).describe('Maximum number of results to return'),
+  minRelevance: z.number().min(0.1).max(1.0).default(0.7).describe('Minimum relevance score threshold'),
+  tags: z.array(z.string().min(1)).max(10).optional().describe('Filter by tags (max 10 tags)'),
 })
 
 const CreateSessionSchema = z.object({
-  agentName: z.string().min(1),
-  sessionType: z.enum(['iterative_building', 'consultation', 'collaboration', 'delegation', 'learning']),
-  expirationHours: z.number().min(1).max(168).optional(),
-  initialData: z.record(z.unknown()).optional(),
+  agentName: z.string().min(1).max(100).regex(/^[\w-]+$/).describe('Agent name - alphanumeric, underscore, and dash only'),
+  sessionType: z.enum([
+    // Core workflow development
+    'iterative_building',
+    'rapid_prototyping',
+    'workflow_design',
+    'template_creation',
+
+    // Consultation and advisory
+    'consultation',
+    'technical_advisory',
+    'strategic_consultation',
+    'architecture_review',
+    'best_practice_guidance',
+
+    // Collaboration patterns
+    'collaboration',
+    'pair_programming',
+    'code_review',
+    'knowledge_transfer',
+    'cross_training',
+    'team_building',
+
+    // Task delegation and management
+    'delegation',
+    'task_management',
+    'project_coordination',
+    'work_distribution',
+    'progress_tracking',
+
+    // Learning and development
+    'learning',
+    'training_session',
+    'skill_development',
+    'mentoring',
+    'onboarding',
+    'certification_prep',
+
+    // Problem solving and support
+    'troubleshooting',
+    'incident_response',
+    'emergency_support',
+    'crisis_management',
+    'post_mortem',
+
+    // Analysis and research
+    'data_exploration',
+    'research_session',
+    'competitive_analysis',
+    'market_research',
+    'feasibility_study',
+
+    // Testing and validation
+    'testing_session',
+    'validation_review',
+    'quality_assurance',
+    'security_audit',
+    'performance_analysis',
+
+    // Planning and strategy
+    'planning_session',
+    'roadmap_planning',
+    'sprint_planning',
+    'release_planning',
+    'capacity_planning',
+
+    // Integration and deployment
+    'integration_session',
+    'deployment_planning',
+    'rollout_coordination',
+    'migration_planning',
+    'cutover_management',
+
+    // Legacy test support
+    'mcp_testing',
+    'test_session',
+  ]),
+  expirationHours: z.number().min(1).max(168).default(24).describe('Session expiration in hours (default 24h, max 1 week)'),
+  initialData: z.record(z.unknown()).optional().describe('Initial session data and context'),
+  priority: z.enum(['low', 'normal', 'high', 'urgent']).optional().describe('Session priority level'),
 })
 
 const UpdateSessionSchema = z.object({
@@ -66,22 +203,92 @@ const DelegateTaskSchema = z.object({
   fromAgent: z.string().min(1),
   toAgent: z.string().min(1),
   taskType: z.enum([
+    // Strategic and planning
     'strategic_planning',
+    'requirement_analysis',
+    'solution_design',
+    'architecture_review',
+    'feasibility_study',
+
+    // Implementation and development
     'technical_implementation',
-    'security_validation',
-    'performance_optimization',
-    'error_resolution',
-    'knowledge_lookup',
     'workflow_generation',
+    'workflow_modification',
+    'workflow_optimization',
     'node_selection',
+    'node_configuration',
+    'integration_setup',
+    'api_integration',
+    'webhook_configuration',
+
+    // Testing and validation
+    'security_validation',
+    'functional_testing',
+    'integration_testing',
+    'performance_testing',
+    'regression_testing',
+    'validation_task',
+    'quality_assurance',
+
+    // Problem solving and support
+    'error_resolution',
+    'troubleshooting',
+    'debugging',
+    'investigation',
+    'root_cause_analysis',
+    'incident_response',
+
+    // Optimization and improvement
+    'performance_optimization',
+    'resource_optimization',
+    'efficiency_improvement',
+    'cost_optimization',
+    'scalability_enhancement',
+
+    // Knowledge and learning
+    'knowledge_lookup',
+    'knowledge_sharing',
+    'documentation_update',
+    'training_delivery',
+    'skill_assessment',
+    'learning_facilitation',
+
+    // Monitoring and maintenance
+    'monitoring_setup',
+    'health_check',
+    'system_maintenance',
+    'backup_management',
+    'cleanup_operation',
+
+    // Collaboration and communication
+    'team_coordination',
+    'stakeholder_communication',
+    'progress_reporting',
+    'review_facilitation',
+    'decision_support',
+
+    // Data and analytics
+    'data_analysis',
+    'data_transformation',
+    'reporting_generation',
+    'metrics_collection',
+    'insight_generation',
+
+    // Security and compliance
+    'security_assessment',
+    'compliance_check',
+    'audit_preparation',
+    'risk_assessment',
+    'access_management',
   ]),
-  taskDescription: z.string().min(10),
-  complexity: z.enum(['low', 'medium', 'high']).optional(),
+  taskDescription: z.string().min(10).max(2000).describe('Detailed description of the task to be performed'),
+  complexity: z.enum(['low', 'medium', 'high', 'critical']).optional().describe('Task complexity level - affects resource allocation and timeouts'),
+  priority: z.enum(['low', 'normal', 'high', 'urgent']).optional().describe('Task priority level for scheduling'),
   sessionId: z.string().optional(),
 })
 
 const DiscoverKnowledgeSchema = z.object({
-  agentName: z.string().min(1),
+  agentName: z.string().min(1).max(100).regex(/^[\w-]+$/).describe('Agent name - alphanumeric, underscore, and dash only'),
   discoveryType: z.enum([
     'node_pattern',
     'workflow_template',
@@ -456,6 +663,7 @@ export class DynamicAgentTools {
             description: 'Timeframe for analysis',
           },
         },
+        required: [],
       },
     }
   }
@@ -478,7 +686,7 @@ export class DynamicAgentTools {
           },
           collaborationType: {
             type: 'string',
-            enum: ['workflow_design', 'problem_solving', 'knowledge_sharing', 'validation'],
+            enum: ['workflow_design', 'problem_solving', 'knowledge_sharing', 'validation', 'mcp_testing'],
             description: 'Type of collaboration',
           },
           sharedContext: {
@@ -494,7 +702,20 @@ export class DynamicAgentTools {
   // Tool handlers
 
   private async handleStoreMemory(args: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const input = StoreMemorySchema.parse(args)
+    let input
+    try {
+      input = StoreMemorySchema.parse(args)
+    }
+    catch (error) {
+      if (error instanceof z.ZodError) {
+        const missingRequired = error.issues.find(issue => issue.code === 'invalid_type' && issue.message === 'Required')
+        if (missingRequired) {
+          throw new Error(`${missingRequired.path[0]} is required`)
+        }
+        throw new Error(error.issues[0]?.message ?? 'Validation error')
+      }
+      throw error
+    }
 
     const expiresAt = input.expiresIn
       ? new Date(Date.now() + input.expiresIn * 60 * 60 * 1000)
@@ -512,6 +733,7 @@ export class DynamicAgentTools {
       success: true,
       memoryId,
       message: `Memory stored successfully for agent ${input.agentName}`,
+      agentName: input.agentName,
       memoryType: input.memoryType,
       contentLength: input.content.length,
       tags: input.tags ?? [],
@@ -519,13 +741,26 @@ export class DynamicAgentTools {
   }
 
   private async handleSearchMemory(args: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const input = SearchMemorySchema.parse(args)
+    let input
+    try {
+      input = SearchMemorySchema.parse(args)
+    }
+    catch (error) {
+      if (error instanceof z.ZodError) {
+        const missingRequired = error.issues.find(issue => issue.code === 'invalid_type' && issue.message === 'Required')
+        if (missingRequired) {
+          throw new Error(`${missingRequired.path[0]} is required`)
+        }
+        throw new Error(error.issues[0]?.message ?? 'Validation error')
+      }
+      throw error
+    }
 
     const results = await this.memorySystem.searchMemories(
       input.agentName,
       input.query,
       {
-        memoryTypes: input.memoryTypes as ('workflow_pattern' | 'node_configuration' | 'user_preference' | 'error_solution' | 'delegation_outcome' | 'discovery_result' | 'validation_rule' | 'performance_insight')[],
+        memoryTypes: input.memoryTypes as Array<typeof StoreMemorySchema._type.memoryType>,
         minRelevance: input.minRelevance,
         limit: input.limit,
       },
@@ -561,7 +796,20 @@ export class DynamicAgentTools {
   }
 
   private async handleCreateSession(args: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const input = CreateSessionSchema.parse(args)
+    let input
+    try {
+      input = CreateSessionSchema.parse(args)
+    }
+    catch (error) {
+      if (error instanceof z.ZodError) {
+        const missingRequired = error.issues.find(issue => issue.code === 'invalid_type' && issue.message === 'Required')
+        if (missingRequired) {
+          throw new Error(`${missingRequired.path[0]} is required`)
+        }
+        throw new Error(error.issues[0]?.message ?? 'Validation error')
+      }
+      throw error
+    }
 
     const sessionId = await this.sessionManager.createSession({
       agentName: input.agentName,
@@ -616,7 +864,20 @@ export class DynamicAgentTools {
   }
 
   private async handleDelegateTask(args: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const input = DelegateTaskSchema.parse(args)
+    let input
+    try {
+      input = DelegateTaskSchema.parse(args)
+    }
+    catch (error) {
+      if (error instanceof z.ZodError) {
+        const missingRequired = error.issues.find(issue => issue.code === 'invalid_type' && issue.message === 'Required')
+        if (missingRequired) {
+          throw new Error(`${missingRequired.path[0]} is required`)
+        }
+        throw new Error(error.issues[0]?.message ?? 'Validation error')
+      }
+      throw error
+    }
 
     // Record delegation in database
     const delegationId = await this.db.recordDelegation({

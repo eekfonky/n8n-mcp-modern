@@ -7,7 +7,7 @@ import { strict as assert } from 'node:assert'
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
-import { after, before, describe, it } from 'vitest'
+import { afterAll, beforeAll, describe, it } from 'vitest'
 import { AgentMemorySystem } from '../agents/memory-system.js'
 import { AgentSessionManager } from '../agents/session-manager.js'
 import { DynamicAgentDB } from '../database/dynamic-agent-db.js'
@@ -20,7 +20,7 @@ describe('phase 2: Dynamic Agent Infrastructure Integration Tests', () => {
   let dynamicTools: any
   let testDbPath: string
 
-  before(async () => {
+  beforeAll(async () => {
     // Create test database
     testDbPath = join(process.cwd(), 'test_dynamic_agent_db.sqlite')
 
@@ -41,7 +41,7 @@ describe('phase 2: Dynamic Agent Infrastructure Integration Tests', () => {
     dynamicTools = await createDynamicAgentTools()
   })
 
-  after(async () => {
+  afterAll(async () => {
     // Cleanup
     await sessionManager.shutdown()
     await db.close()

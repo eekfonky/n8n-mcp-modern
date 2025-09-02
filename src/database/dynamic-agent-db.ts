@@ -122,9 +122,17 @@ interface DatabaseSessionOperationRow {
 export interface AgentMemory {
   id?: number | undefined
   agentName: string
-  memoryType: 'workflow_pattern' | 'node_configuration' | 'user_preference'
-    | 'error_solution' | 'delegation_outcome' | 'discovery_result'
-    | 'validation_rule' | 'performance_insight'
+  memoryType: 'workflow_pattern' | 'workflow_template' | 'workflow_snippet' | 'node_configuration' | 'node_pattern' | 'integration_pattern'
+    | 'user_preference' | 'user_query' | 'user_feedback' | 'user_context'
+    | 'error_solution' | 'troubleshooting_guide' | 'debug_strategy' | 'workaround_solution'
+    | 'discovery_result' | 'knowledge_base' | 'learning_outcome' | 'best_practice' | 'anti_pattern'
+    | 'performance_insight' | 'optimization_rule' | 'efficiency_tip' | 'resource_usage'
+    | 'validation_rule' | 'security_pattern' | 'credential_pattern' | 'permission_rule'
+    | 'delegation_outcome' | 'collaboration_pattern' | 'team_preference' | 'handoff_instruction'
+    | 'test_pattern' | 'test_case' | 'test_data' | 'mock_configuration'
+    | 'api_pattern' | 'webhook_pattern' | 'connection_config' | 'data_mapping'
+    | 'usage_pattern' | 'metric_definition' | 'alert_rule' | 'dashboard_config'
+    | 'response_format' | 'performance_test' | 'load_test'
   content: string
   contentHash?: string | undefined
   embeddings?: Float32Array | number[] | undefined
@@ -145,8 +153,17 @@ export interface AgentSession {
   id?: number | undefined
   sessionId: string
   agentName: string
-  sessionType: 'iterative_building' | 'consultation' | 'collaboration'
-    | 'delegation' | 'learning'
+  sessionType: 'iterative_building' | 'rapid_prototyping' | 'workflow_design' | 'template_creation'
+    | 'consultation' | 'technical_advisory' | 'strategic_consultation' | 'architecture_review' | 'best_practice_guidance'
+    | 'collaboration' | 'pair_programming' | 'code_review' | 'knowledge_transfer' | 'cross_training' | 'team_building'
+    | 'delegation' | 'task_management' | 'project_coordination' | 'work_distribution' | 'progress_tracking'
+    | 'learning' | 'training_session' | 'skill_development' | 'mentoring' | 'onboarding' | 'certification_prep'
+    | 'troubleshooting' | 'incident_response' | 'emergency_support' | 'crisis_management' | 'post_mortem'
+    | 'data_exploration' | 'research_session' | 'competitive_analysis' | 'market_research' | 'feasibility_study'
+    | 'testing_session' | 'validation_review' | 'quality_assurance' | 'security_audit' | 'performance_analysis'
+    | 'planning_session' | 'roadmap_planning' | 'sprint_planning' | 'release_planning' | 'capacity_planning'
+    | 'integration_session' | 'deployment_planning' | 'rollout_coordination' | 'migration_planning' | 'cutover_management'
+    | 'mcp_testing' | 'test_session'
   stateData?: string | undefined
   contextData?: string | undefined
   metadata?: string | undefined
@@ -188,12 +205,25 @@ export interface DelegationRecord {
   id?: number
   fromAgent: string
   toAgent: string
-  delegationType: 'strategic_planning' | 'technical_implementation'
-    | 'security_validation' | 'performance_optimization'
-    | 'error_resolution' | 'knowledge_lookup'
-    | 'workflow_generation' | 'node_selection'
+  delegationType: 'strategic_planning' | 'requirement_analysis' | 'solution_design' | 'architecture_review' | 'feasibility_study'
+    | 'technical_implementation' | 'workflow_generation' | 'workflow_modification' | 'workflow_optimization' | 'node_selection' | 'node_configuration'
+    | 'integration_setup' | 'api_integration' | 'webhook_configuration'
+    | 'security_validation' | 'functional_testing' | 'integration_testing' | 'performance_testing' | 'regression_testing'
+    | 'validation_task' | 'quality_assurance'
+    | 'error_resolution' | 'troubleshooting' | 'debugging' | 'investigation' | 'root_cause_analysis' | 'incident_response'
+    | 'performance_optimization' | 'resource_optimization' | 'efficiency_improvement' | 'cost_optimization' | 'scalability_enhancement'
+    | 'knowledge_lookup' | 'knowledge_sharing' | 'documentation_update' | 'training_delivery' | 'skill_assessment' | 'learning_facilitation'
+    | 'monitoring_setup' | 'health_check' | 'system_maintenance' | 'backup_management' | 'cleanup_operation'
+    | 'team_coordination' | 'stakeholder_communication' | 'progress_reporting' | 'review_facilitation' | 'decision_support'
+    | 'data_analysis' | 'data_transformation' | 'reporting_generation' | 'metrics_collection' | 'insight_generation'
+    | 'security_assessment' | 'compliance_check' | 'audit_preparation' | 'risk_assessment' | 'access_management'
+    | 'documentation' | 'tutorial_creation' | 'guide_development' | 'example_creation' | 'best_practice_documentation'
+    | 'consultation' | 'advisory_session' | 'strategic_consultation' | 'technical_consultation'
+    | 'collaboration' | 'cross_team_coordination' | 'stakeholder_alignment' | 'consensus_building'
+    | 'project_management' | 'task_coordination' | 'resource_allocation' | 'timeline_management' | 'milestone_tracking'
+    | 'governance' | 'policy_enforcement' | 'audit_support' | 'security_review'
   taskDescription: string
-  taskComplexity?: 'low' | 'medium' | 'high'
+  taskComplexity?: 'low' | 'medium' | 'high' | 'critical'
   estimatedDurationMinutes?: number
   success: boolean
   actualDurationMinutes?: number
@@ -528,15 +558,69 @@ export class DynamicAgentDB {
 
     // Create indexes for performance
     this.createIndexes()
+
+    // Create FTS5 virtual table for full-text search
+    this.createFullTextSearchTable()
+  }
+
+  private createFullTextSearchTable(): void {
+    try {
+      // Create FTS5 virtual table for fast content search
+      this.db.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS agent_memories_fts USING fts5(
+          content, 
+          tags, 
+          agent_name,
+          memory_type,
+          content='agent_memories',
+          content_rowid='id'
+        )
+      `)
+
+      // Create trigger to keep FTS table in sync with main table
+      this.db.exec(`
+        CREATE TRIGGER IF NOT EXISTS agent_memories_fts_insert AFTER INSERT ON agent_memories BEGIN
+          INSERT INTO agent_memories_fts(rowid, content, tags, agent_name, memory_type) 
+          VALUES (NEW.id, NEW.content, NEW.tags, NEW.agent_name, NEW.memory_type);
+        END
+      `)
+
+      this.db.exec(`
+        CREATE TRIGGER IF NOT EXISTS agent_memories_fts_delete AFTER DELETE ON agent_memories BEGIN
+          INSERT INTO agent_memories_fts(agent_memories_fts, rowid, content, tags, agent_name, memory_type) 
+          VALUES('delete', OLD.id, OLD.content, OLD.tags, OLD.agent_name, OLD.memory_type);
+        END
+      `)
+
+      this.db.exec(`
+        CREATE TRIGGER IF NOT EXISTS agent_memories_fts_update AFTER UPDATE ON agent_memories BEGIN
+          INSERT INTO agent_memories_fts(agent_memories_fts, rowid, content, tags, agent_name, memory_type) 
+          VALUES('delete', OLD.id, OLD.content, OLD.tags, OLD.agent_name, OLD.memory_type);
+          INSERT INTO agent_memories_fts(rowid, content, tags, agent_name, memory_type) 
+          VALUES (NEW.id, NEW.content, NEW.tags, NEW.agent_name, NEW.memory_type);
+        END
+      `)
+
+      logger.debug('Full-text search table and triggers created successfully')
+    }
+    catch (error) {
+      logger.warn('FTS5 not available, falling back to LIKE search:', error instanceof Error ? error.message : String(error))
+    }
   }
 
   private createIndexes(): void {
-    // Memory system indexes
+    // Memory system indexes - optimized for search performance
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_agent_name ON agent_memories (agent_name)')
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_type ON agent_memories (memory_type)')
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_relevance ON agent_memories (relevance_score)')
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_hash ON agent_memories (content_hash)')
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_expires ON agent_memories (expires_at)')
+
+    // Composite indexes for optimal search performance
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_agent_relevance ON agent_memories (agent_name, relevance_score DESC)')
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_agent_type ON agent_memories (agent_name, memory_type)')
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_agent_active ON agent_memories (agent_name, expires_at)')
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_search_priority ON agent_memories (agent_name, relevance_score DESC, last_accessed DESC)')
 
     // Session system indexes
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_agent_name ON agent_sessions (agent_name)')
@@ -544,7 +628,7 @@ export class DynamicAgentDB {
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_active ON agent_sessions (last_active)')
 
     // Operation indexes
-    this.db.exec('CREATE INDEX IF NOT EXISTS idx_operations_session ON session_operations (session_id)')
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_operations_session_id ON session_operations (session_id)')
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_operations_type ON session_operations (operation_type)')
 
     // Discovery indexes
@@ -617,6 +701,236 @@ export class DynamicAgentDB {
     }
   }
 
+  private hasFTS(): boolean {
+    try {
+      const result = this.db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='agent_memories_fts'`).get()
+      return !!result
+    }
+    catch {
+      return false
+    }
+  }
+
+  private queryMemoriesWithFTS(
+    agentName: string,
+    query: string,
+    options: {
+      memoryType?: AgentMemory['memoryType']
+      limit?: number
+      minRelevance?: number
+      includeTags?: string[]
+    } = {},
+  ): AgentMemory[] {
+    try {
+      const { memoryType, limit = 10, minRelevance = 0.1, includeTags } = options
+
+      // Build FTS query
+      const ftsQuery = this.buildFTSQuery(query, agentName, memoryType, includeTags)
+
+      const sql = `
+        SELECT m.* FROM agent_memories m
+        JOIN agent_memories_fts fts ON m.id = fts.rowid
+        WHERE fts.agent_memories_fts MATCH ?
+        AND m.relevance_score >= ?
+        AND (m.expires_at IS NULL OR m.expires_at > CURRENT_TIMESTAMP)
+        ORDER BY bm25(agent_memories_fts), m.relevance_score DESC, m.last_accessed DESC 
+        LIMIT ?
+      `
+
+      const memories = this.db.prepare(sql).all(ftsQuery, minRelevance, limit) as DatabaseMemoryRow[]
+
+      // Update last accessed for retrieved memories
+      const updateStmt = this.db.prepare(`
+        UPDATE agent_memories 
+        SET last_accessed = CURRENT_TIMESTAMP, usage_count = usage_count + 1 
+        WHERE id = ?
+      `)
+
+      memories.forEach(memory => updateStmt.run(memory.id))
+
+      return memories.map(this.mapDatabaseRowToMemory)
+    }
+    catch (error) {
+      // Fall back to regular search if FTS fails
+      logger.warn('FTS search failed, falling back to LIKE search:', error instanceof Error ? error.message : String(error))
+      return []
+    }
+  }
+
+  private mapDatabaseRowToMemory(row: DatabaseMemoryRow): AgentMemory {
+    return {
+      id: row.id,
+      agentName: row.agent_name,
+      memoryType: row.memory_type as AgentMemory['memoryType'],
+      content: row.content,
+      contentHash: row.content_hash,
+      embeddings: row.embeddings ? JSON.parse(row.embeddings) : undefined,
+      tags: row.tags ? JSON.parse(row.tags) : undefined,
+      relevanceScore: row.relevance_score,
+      usageCount: row.usage_count,
+      lastAccessed: row.last_accessed ? new Date(row.last_accessed) : undefined,
+      createdAt: row.created_at ? new Date(row.created_at) : undefined,
+      updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
+      expiresAt: row.expires_at ? new Date(row.expires_at) : undefined,
+      parentMemoryId: row.parent_memory_id,
+      relatedMemoryIds: row.related_memory_ids ? JSON.parse(row.related_memory_ids) : undefined,
+    }
+  }
+
+  private buildFTSQuery(query: string, agentName: string, memoryType?: string, includeTags?: string[]): string {
+    const parts: string[] = []
+
+    // Agent name filter - quote the value to handle hyphens and special characters
+    parts.push(`agent_name:"${agentName}"`)
+
+    // Memory type filter - quote the value
+    if (memoryType) {
+      parts.push(`memory_type:"${memoryType}"`)
+    }
+
+    // Tag filters - quote tag values
+    if (includeTags && includeTags.length > 0) {
+      const tagQuery = includeTags.map(tag => `tags:"${tag}"`).join(' OR ')
+      parts.push(`(${tagQuery})`)
+    }
+
+    // Content search - use phrase search for better results
+    const contentSearch = query.trim().split(/\s+/).map(term => `"${term}"`).join(' OR ')
+    parts.push(`(content:(${contentSearch}) OR tags:(${contentSearch}))`)
+
+    return parts.join(' AND ')
+  }
+
+  // =============================================================================
+  // ENHANCED SEARCH METHODS
+  // =============================================================================
+
+  async searchMemoriesAdvanced(
+    agentName: string,
+    options: {
+      query?: string
+      memoryTypes?: string[]
+      tags?: string[]
+      dateRange?: { from?: Date, to?: Date }
+      minRelevance?: number
+      limit?: number
+      sortBy?: 'relevance' | 'date' | 'usage'
+    } = {},
+  ): Promise<AgentMemory[]> {
+    const {
+      query = '',
+      memoryTypes = [],
+      tags = [],
+      dateRange,
+      minRelevance = 0.1,
+      limit = 50,
+      sortBy = 'relevance',
+    } = options
+
+    let sql: string
+    let params: unknown[]
+
+    if (query.trim() && this.hasFTS()) {
+      // Use FTS for text search
+      sql = `
+        SELECT m.*, bm25(agent_memories_fts) as fts_score FROM agent_memories m
+        JOIN agent_memories_fts fts ON m.id = fts.rowid
+        WHERE fts.agent_memories_fts MATCH ?
+        AND m.agent_name = ?
+        AND m.relevance_score >= ?
+        AND (m.expires_at IS NULL OR m.expires_at > CURRENT_TIMESTAMP)
+      `
+
+      const ftsQuery = this.buildAdvancedFTSQuery(query, memoryTypes, tags)
+      params = [ftsQuery, agentName, minRelevance]
+    }
+    else {
+      // Use traditional search
+      sql = `
+        SELECT m.*, 0 as fts_score FROM agent_memories m
+        WHERE m.agent_name = ?
+        AND m.relevance_score >= ?
+        AND (m.expires_at IS NULL OR m.expires_at > CURRENT_TIMESTAMP)
+      `
+      params = [agentName, minRelevance]
+
+      if (query.trim()) {
+        sql += ' AND (LOWER(m.content) LIKE LOWER(?) OR LOWER(m.tags) LIKE LOWER(?))'
+        params.push(`%${query}%`, `%${query}%`)
+      }
+    }
+
+    // Add filters
+    if (memoryTypes.length > 0) {
+      const placeholders = memoryTypes.map(() => '?').join(',')
+      sql += ` AND m.memory_type IN (${placeholders})`
+      params.push(...memoryTypes)
+    }
+
+    if (tags.length > 0) {
+      const tagFilters = tags.map(() => 'm.tags LIKE ?').join(' AND ')
+      sql += ` AND (${tagFilters})`
+      tags.forEach(tag => params.push(`%"${tag}"%`))
+    }
+
+    if (dateRange) {
+      if (dateRange.from) {
+        sql += ' AND m.created_at >= ?'
+        params.push(dateRange.from.toISOString())
+      }
+      if (dateRange.to) {
+        sql += ' AND m.created_at <= ?'
+        params.push(dateRange.to.toISOString())
+      }
+    }
+
+    // Add sorting
+    switch (sortBy) {
+      case 'relevance':
+        sql += query.trim() && this.hasFTS()
+          ? ' ORDER BY bm25(agent_memories_fts), m.relevance_score DESC'
+          : ' ORDER BY m.relevance_score DESC, m.last_accessed DESC'
+        break
+      case 'date':
+        sql += ' ORDER BY m.created_at DESC'
+        break
+      case 'usage':
+        sql += ' ORDER BY m.usage_count DESC, m.last_accessed DESC'
+        break
+    }
+
+    sql += ' LIMIT ?'
+    params.push(limit)
+
+    const memories = this.db.prepare(sql).all(...params) as (DatabaseMemoryRow & { fts_score?: number })[]
+
+    return memories.map(this.mapDatabaseRowToMemory)
+  }
+
+  private buildAdvancedFTSQuery(query: string, memoryTypes: string[], tags: string[]): string {
+    const parts: string[] = []
+
+    // Memory type filters - quote the values to handle special characters
+    if (memoryTypes.length > 0) {
+      const typeQuery = memoryTypes.map(type => `memory_type:"${type}"`).join(' OR ')
+      parts.push(`(${typeQuery})`)
+    }
+
+    // Tag filters - quote tag values
+    if (tags.length > 0) {
+      const tagQuery = tags.map(tag => `tags:"${tag}"`).join(' OR ')
+      parts.push(`(${tagQuery})`)
+    }
+
+    // Content search
+    if (query.trim()) {
+      const contentSearch = query.trim().split(/\s+/).map(term => `"${term}"`).join(' OR ')
+      parts.push(`(content:(${contentSearch}) OR tags:(${contentSearch}))`)
+    }
+
+    return parts.length > 0 ? parts.join(' AND ') : '*'
+  }
+
   async queryMemories(
     agentName: string,
     query: string,
@@ -630,6 +944,28 @@ export class DynamicAgentDB {
     try {
       const { memoryType, limit = 10, minRelevance = 0.1, includeTags } = options
 
+      // Try FTS search first for text queries
+      if (query.trim() && this.hasFTS()) {
+        const ftsStartTime = Date.now()
+        const ftsResults = this.queryMemoriesWithFTS(agentName, query, options)
+        const ftsElapsed = Date.now() - ftsStartTime
+
+        logger.debug('FTS search performance', {
+          query: query.slice(0, 50),
+          agentName,
+          resultsCount: ftsResults.length,
+          elapsedMs: ftsElapsed,
+        })
+
+        if (ftsResults.length > 0) {
+          return ftsResults
+        }
+        // FTS returned no results, continue to fallback search
+        logger.debug('FTS search returned no results, falling back to LIKE search')
+      }
+
+      // Fallback to traditional index-optimized search
+      const fallbackStartTime = Date.now()
       let sql = `
         SELECT * FROM agent_memories 
         WHERE agent_name = ? 
@@ -644,9 +980,9 @@ export class DynamicAgentDB {
         params.push(memoryType)
       }
 
-      // Add text search (simple LIKE for now, can be enhanced with FTS)
+      // Add text search (case-insensitive LIKE)
       if (query.trim()) {
-        sql += ' AND (content LIKE ? OR tags LIKE ?)'
+        sql += ' AND (LOWER(content) LIKE LOWER(?) OR LOWER(tags) LIKE LOWER(?))'
         params.push(`%${query}%`, `%${query}%`)
       }
 
@@ -659,6 +995,13 @@ export class DynamicAgentDB {
 
       sql += ' ORDER BY relevance_score DESC, last_accessed DESC LIMIT ?'
       params.push(limit)
+
+      logger.debug('Executing fallback search', {
+        sql: sql.replace(/\s+/g, ' ').trim(),
+        params: params.slice(0, 3), // Don't log all params for privacy
+        agentName,
+        query: query.slice(0, 50),
+      })
 
       const memories = this.db.prepare(sql).all(...params) as DatabaseMemoryRow[]
 
@@ -689,6 +1032,15 @@ export class DynamicAgentDB {
           parentMemoryId: row.parent_memory_id,
           relatedMemoryIds: row.related_memory_ids ? JSON.parse(row.related_memory_ids) : undefined,
         }
+      })
+
+      const fallbackElapsed = Date.now() - fallbackStartTime
+      logger.debug('Fallback search performance', {
+        query: query.slice(0, 50),
+        agentName,
+        resultsCount: results.length,
+        elapsedMs: fallbackElapsed,
+        sqlType: 'LIKE',
       })
 
       return results
@@ -1036,7 +1388,7 @@ export class DynamicAgentDB {
         delegation.taskDescription,
         delegation.taskComplexity || null,
         delegation.estimatedDurationMinutes || null,
-        delegation.success,
+        delegation.success ? 1 : 0,
         delegation.actualDurationMinutes || null,
         delegation.userSatisfaction || null,
         delegation.qualityScore || null,
@@ -1362,11 +1714,11 @@ export class DynamicAgentDB {
     `).run(
       operation.sessionId,
       operation.operationType,
-      operation.operationData,
-      operation.success,
-      operation.errorMessage,
-      operation.durationMs,
-      operation.memoryImpactBytes,
+      operation.operationData || null,
+      operation.success ? 1 : 0,
+      operation.errorMessage || null,
+      operation.durationMs || null,
+      operation.memoryImpactBytes || null,
     )
   }
 

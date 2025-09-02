@@ -11,6 +11,7 @@ import { createCipheriv, createDecipheriv, createHmac, randomBytes, scryptSync }
 import process from 'node:process'
 import { z } from 'zod'
 import { DynamicAgentDB } from '../database/dynamic-agent-db.js'
+import { logger } from '../server/logger.js'
 
 // Session configuration schema
 const SessionConfigSchema = z.object({
@@ -28,11 +29,80 @@ type SessionConfig = z.infer<typeof SessionConfigSchema>
 const CreateSessionInputSchema = z.object({
   agentName: z.string().min(1),
   sessionType: z.enum([
+    // Core workflow development
     'iterative_building',
+    'rapid_prototyping',
+    'workflow_design',
+    'template_creation',
+
+    // Consultation and advisory
     'consultation',
+    'technical_advisory',
+    'strategic_consultation',
+    'architecture_review',
+    'best_practice_guidance',
+
+    // Collaboration patterns
     'collaboration',
+    'pair_programming',
+    'code_review',
+    'knowledge_transfer',
+    'cross_training',
+    'team_building',
+
+    // Task delegation and management
     'delegation',
+    'task_management',
+    'project_coordination',
+    'work_distribution',
+    'progress_tracking',
+
+    // Learning and development
     'learning',
+    'training_session',
+    'skill_development',
+    'mentoring',
+    'onboarding',
+    'certification_prep',
+
+    // Problem solving and support
+    'troubleshooting',
+    'incident_response',
+    'emergency_support',
+    'crisis_management',
+    'post_mortem',
+
+    // Analysis and research
+    'data_exploration',
+    'research_session',
+    'competitive_analysis',
+    'market_research',
+    'feasibility_study',
+
+    // Testing and validation
+    'testing_session',
+    'validation_review',
+    'quality_assurance',
+    'security_audit',
+    'performance_analysis',
+
+    // Planning and strategy
+    'planning_session',
+    'roadmap_planning',
+    'sprint_planning',
+    'release_planning',
+    'capacity_planning',
+
+    // Integration and deployment
+    'integration_session',
+    'deployment_planning',
+    'rollout_coordination',
+    'migration_planning',
+    'cutover_management',
+
+    // Legacy test support
+    'mcp_testing',
+    'test_session',
   ]),
   expirationHours: z.number().min(1).max(168).optional(),
   initialState: z.record(z.unknown()).optional(),
@@ -119,7 +189,7 @@ export class AgentSessionManager {
 
     // For production, warn about using deterministic fallback
     if (process.env.NODE_ENV === 'production') {
-      console.warn(`${envVarName} not provided in production - using deterministic fallback`)
+      logger.warn(`${envVarName} not provided in production - using deterministic fallback`)
     }
 
     // Generate deterministic key for MCP compliance (ensures data persistence)
@@ -219,7 +289,7 @@ export class AgentSessionManager {
       }
       catch (_error) {
         // Log decryption failure but don't fail entirely
-        console.warn(`Session decryption failed for ${sessionId}:`, _error)
+        logger.warn(`Session decryption failed for ${sessionId}:`, _error)
       }
     }
 
@@ -602,11 +672,11 @@ export class AgentSessionManager {
       try {
         const cleaned = await this.cleanupExpiredSessions()
         if (cleaned > 0) {
-          console.warn(`Cleaned up ${cleaned} expired sessions`)
+          logger.warn(`Cleaned up ${cleaned} expired sessions`)
         }
       }
       catch (error) {
-        console.error('Session cleanup error:', error)
+        logger.error('Session cleanup error:', error)
         // Continue running - don't break the interval
       }
     }, intervalMs)

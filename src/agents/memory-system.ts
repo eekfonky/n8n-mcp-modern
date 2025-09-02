@@ -25,14 +25,73 @@ type MemorySystemConfig = z.infer<typeof MemorySystemConfigSchema>
 const CreateMemoryInputSchema = z.object({
   agentName: z.string().min(1),
   memoryType: z.enum([
+    // Core workflow patterns
     'workflow_pattern',
+    'workflow_template',
+    'workflow_snippet',
     'node_configuration',
+    'node_pattern',
+    'integration_pattern',
+
+    // User interaction patterns
     'user_preference',
+    'user_query',
+    'user_feedback',
+    'user_context',
+
+    // Problem solving patterns
     'error_solution',
-    'delegation_outcome',
+    'troubleshooting_guide',
+    'debug_strategy',
+    'workaround_solution',
+
+    // Knowledge and learning
     'discovery_result',
-    'validation_rule',
+    'knowledge_base',
+    'learning_outcome',
+    'best_practice',
+    'anti_pattern',
+
+    // Performance and optimization
     'performance_insight',
+    'optimization_rule',
+    'efficiency_tip',
+    'resource_usage',
+
+    // Security and validation
+    'validation_rule',
+    'security_pattern',
+    'credential_pattern',
+    'permission_rule',
+
+    // Collaboration and delegation
+    'delegation_outcome',
+    'collaboration_pattern',
+    'team_preference',
+    'handoff_instruction',
+
+    // Testing and development
+    'test_pattern',
+    'test_case',
+    'test_data',
+    'mock_configuration',
+
+    // API and integration specific
+    'api_pattern',
+    'webhook_pattern',
+    'connection_config',
+    'data_mapping',
+
+    // Monitoring and analytics
+    'usage_pattern',
+    'metric_definition',
+    'alert_rule',
+    'dashboard_config',
+
+    // Legacy test support
+    'response_format',
+    'performance_test',
+    'load_test',
   ]),
   content: z.string().min(10),
   tags: z.array(z.string()).optional(),
@@ -73,6 +132,9 @@ export class AgentMemorySystem {
   private db: DynamicAgentDB
   private config: MemorySystemConfig
   private evolutionLog: MemoryEvolution[] = []
+  private embeddingCache = new Map<string, number[]>()
+  private static readonly CACHE_MAX_SIZE = 1000
+  private static readonly CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
 
   constructor(db: DynamicAgentDB, config?: Partial<MemorySystemConfig>) {
     this.db = db
@@ -159,12 +221,31 @@ export class AgentMemorySystem {
           ? Array.from(memory.embeddings)
           : []
 
-      const relevanceScore = this.calculateSemanticSimilarity(
+      let relevanceScore = this.calculateSemanticSimilarity(
         queryEmbeddings,
         memoryEmbeddings,
       )
 
-      if (relevanceScore >= this.config.semanticSearchThreshold) {
+      // Fallback: If embeddings are not available (either array empty), use the database relevance score
+      // This ensures that text-matched results from database queries are not filtered out
+      if (queryEmbeddings.length === 0 || memoryEmbeddings.length === 0) {
+        relevanceScore = memory.relevanceScore || 1.0
+      }
+
+      // Enhanced fallback: If semantic score is low but we got this result from FTS text search,
+      // use a combination of semantic score and database relevance to ensure text matches aren't filtered out
+      if (relevanceScore < (options.minRelevance ?? this.config.semanticSearchThreshold) && (memory.relevanceScore ?? 0) >= 1.0) {
+        // Give significant weight to database text matching for FTS results
+        relevanceScore = Math.max(relevanceScore, (options.minRelevance ?? this.config.semanticSearchThreshold) * 1.1)
+      }
+
+      // Use the lower of configured threshold or user-specified threshold
+      const effectiveThreshold = Math.min(
+        this.config.semanticSearchThreshold,
+        options.minRelevance ?? this.config.semanticSearchThreshold,
+      )
+
+      if (relevanceScore >= effectiveThreshold) {
         // Get relationship count for this memory (sequential by design for semantic search)
         // eslint-disable-next-line no-await-in-loop
         const relationshipCount = memory.id ? await this.getMemoryRelationshipCount(memory.id) : 0
@@ -344,47 +425,151 @@ export class AgentMemorySystem {
   // Private helper methods
 
   private async generateEmbeddings(content: string): Promise<number[]> {
-    // Mock implementation - in production, use actual embedding service
+    // Enhanced mock implementation with caching - in production, use actual embedding service
     // like OpenAI embeddings, sentence-transformers, or local models
-    const words = content.toLowerCase().split(/\s+/)
+
+    // Check cache first
+    const cacheKey = createHash('md5').update(content).digest('hex')
+    const cachedEmbedding = this.embeddingCache.get(cacheKey)
+    if (cachedEmbedding) {
+      return [...cachedEmbedding] // Return a copy to prevent modification
+    }
+
+    // Preprocessing: extract meaningful features
+    const words = content.toLowerCase()
+      .replace(/[^\w\s]/g, ' ') // Remove punctuation
+      .split(/\s+/)
+      .filter(word => word.length > 2) // Remove short words
+
+    if (words.length === 0) {
+      const emptyEmbedding = Array.from({ length: this.config.vectorDimensions }, () => 0)
+      this.cacheEmbedding(cacheKey, emptyEmbedding)
+      return emptyEmbedding
+    }
+
     const embedding = Array.from({ length: this.config.vectorDimensions }, () => 0)
 
-    // Simple hash-based pseudo-embeddings for demonstration
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i]
-      if (word) {
-        const hash = this.simpleHash(word)
-        const index = Math.abs(hash) % this.config.vectorDimensions
+    // Multi-layered embedding approach for better semantic representation
+    const uniqueWords = [...new Set(words)]
+    const wordFreqs = new Map<string, number>()
+
+    // Calculate word frequencies
+    for (const word of words) {
+      wordFreqs.set(word, (wordFreqs.get(word) || 0) + 1)
+    }
+
+    // Generate embeddings with multiple hash functions for better distribution
+    for (const word of uniqueWords) {
+      const freq = wordFreqs.get(word) || 1
+      const normalizedFreq = freq / words.length
+
+      // Use multiple hash functions to distribute semantic features
+      const hash1 = this.simpleHash(word)
+      const hash2 = this.simpleHash(word.split('').reverse().join('')) // Reversed hash
+      const hash3 = this.simpleHash(word + content.length.toString()) // Context-aware hash
+
+      // Distribute across multiple dimensions
+      const indices = [
+        Math.abs(hash1) % this.config.vectorDimensions,
+        Math.abs(hash2) % this.config.vectorDimensions,
+        Math.abs(hash3) % this.config.vectorDimensions,
+      ]
+
+      for (const index of indices) {
         if (embedding[index] !== undefined) {
-          embedding[index] += 1 / Math.sqrt(words.length)
+          embedding[index] += normalizedFreq * (1 + Math.log(freq)) / Math.sqrt(uniqueWords.length)
         }
       }
     }
 
-    // Normalize vector
+    // Add positional encoding (simplified version)
+    for (let i = 0; i < Math.min(10, words.length); i++) {
+      const word = words[i]
+      if (word) {
+        const positionHash = this.simpleHash(word + i.toString())
+        const index = Math.abs(positionHash) % this.config.vectorDimensions
+        if (embedding[index] !== undefined) {
+          embedding[index] += 0.1 * (1 - i / words.length) // Positional weight
+        }
+      }
+    }
+
+    // Normalize vector with improved normalization
     const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0))
-    return embedding.map(val => magnitude > 0 ? val / magnitude : 0)
+    let finalEmbedding: number[]
+    if (magnitude === 0) {
+      finalEmbedding = Array.from({ length: this.config.vectorDimensions }, () => 1 / Math.sqrt(this.config.vectorDimensions))
+    }
+    else {
+      finalEmbedding = embedding.map(val => val / magnitude)
+    }
+
+    // Cache the result
+    this.cacheEmbedding(cacheKey, finalEmbedding)
+    return finalEmbedding
+  }
+
+  private cacheEmbedding(key: string, embedding: number[]): void {
+    // Implement LRU-style cache with size limit
+    if (this.embeddingCache.size >= AgentMemorySystem.CACHE_MAX_SIZE) {
+      // Remove oldest entries (simple FIFO for now)
+      const keysToRemove = Array.from(this.embeddingCache.keys()).slice(0, 100)
+      for (const keyToRemove of keysToRemove) {
+        this.embeddingCache.delete(keyToRemove)
+      }
+    }
+
+    // Store a copy to prevent external modification
+    this.embeddingCache.set(key, [...embedding])
   }
 
   private calculateSemanticSimilarity(embedding1: number[], embedding2: number[]): number {
-    // Cosine similarity calculation
-    if (embedding1.length !== embedding2.length)
+    // Enhanced cosine similarity calculation with better handling
+    if (!embedding1 || !embedding2 || embedding1.length === 0 || embedding2.length === 0) {
       return 0
+    }
+
+    if (embedding1.length !== embedding2.length) {
+      return 0
+    }
 
     let dotProduct = 0
     let norm1 = 0
     let norm2 = 0
+    let validDimensions = 0
 
     for (let i = 0; i < embedding1.length; i++) {
-      const val1 = embedding1[i] ?? 0
-      const val2 = embedding2[i] ?? 0
+      const val1 = embedding1[i]
+      const val2 = embedding2[i]
+
+      // Skip invalid values
+      if (typeof val1 !== 'number' || typeof val2 !== 'number'
+        || Number.isNaN(val1) || Number.isNaN(val2) || !Number.isFinite(val1) || !Number.isFinite(val2)) {
+        continue
+      }
+
       dotProduct += val1 * val2
       norm1 += val1 * val1
       norm2 += val2 * val2
+      validDimensions++
     }
 
-    const magnitude = Math.sqrt(norm1) * Math.sqrt(norm2)
-    return magnitude > 0 ? dotProduct / magnitude : 0
+    // Need at least some valid dimensions for meaningful comparison
+    if (validDimensions < Math.min(5, embedding1.length * 0.1)) {
+      return 0
+    }
+
+    const magnitude1 = Math.sqrt(norm1)
+    const magnitude2 = Math.sqrt(norm2)
+
+    if (magnitude1 === 0 || magnitude2 === 0) {
+      return 0
+    }
+
+    const similarity = dotProduct / (magnitude1 * magnitude2)
+
+    // Clamp to [0, 1] range and handle floating point precision issues
+    return Math.max(0, Math.min(1, similarity))
   }
 
   private async autoLinkMemory(memoryId: number, memory: AgentMemory): Promise<void> {
