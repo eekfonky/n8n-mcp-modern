@@ -1,6 +1,6 @@
 {
   "name": "@eekfonky/n8n-mcp-modern",
-  "version": "7.1.0",
+  "version": "7.2.0",
   "description": "Modern n8n MCP server with agent handovers - intelligent complexity assessment, collaborative multi-agent workflows, and context preservation for complex n8n integrations",
   "type": "module",
   "main": "dist/index.js",
@@ -24,7 +24,7 @@
     "sync-version": "node scripts/sync-version.cjs",
     "install-agents": "node scripts/install-claude-mcp.js",
     "mcp:install": "node scripts/install-mcp.js",
-    "mcp:setup": "node scripts/interactive-setup.cjs", 
+    "mcp:setup": "node scripts/interactive-setup.cjs",
     "setup-github-packages": "node scripts/install-github-packages.cjs",
     "mcp:health": "node scripts/health-check.cjs",
     "mcp:backup": "node scripts/upgrade-rollback.cjs backup",
@@ -96,13 +96,14 @@
     "@types/node": "^22.17.2",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
+    "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9.17.0",
     "eslint-plugin-format": "^1.0.1",
     "lint-staged": "^16.1.5",
     "simple-git-hooks": "^2.13.1",
     "tsx": "^4.19.2",
     "typescript": "^5.9.2",
-    "vitest": "^2.1.8"
+    "vitest": "^3.2.4"
   },
   "files": [
     "dist/",

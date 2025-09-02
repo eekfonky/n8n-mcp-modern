@@ -22,6 +22,7 @@ import { logger } from './server/logger.js'
 import { cleanup, executeToolHandler, getAllTools, initializeDynamicTools } from './tools/index.js'
 import { initializePerformanceOptimizations } from './tools/performance-optimized.js'
 import { getQuickMemoryStats, memoryProfiler, setupMemoryMonitoring } from './utils/memory-profiler.js'
+import { VERSION } from './version.js'
 
 const { hasN8nApi } = features
 
@@ -94,7 +95,7 @@ async function main(): Promise<void> {
   const server = new Server(
     {
       name: 'n8n-mcp-modern',
-      version: '6.2.0',
+      version: VERSION,
       description: 'Dynamic n8n MCP server with community node discovery',
     },
     {

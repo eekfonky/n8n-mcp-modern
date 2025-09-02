@@ -338,7 +338,7 @@ export class SimplifiedNodeRecommender {
    */
   static async benchmarkAgainstIntelligence(context: SimpleNodeContext): Promise<{
     simplified: { recommendations: SimpleNodeRecommendation[], time: number }
-    // intelligence: { recommendations: any[], time: number }
+    // intelligence: { recommendations: SimpleNodeRecommendation[], time: number }
   }> {
     const startTime = performance.now()
     const simplified = this.getRecommendations(context)

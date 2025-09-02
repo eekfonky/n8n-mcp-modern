@@ -12,6 +12,7 @@ import process from 'node:process'
 import { simpleN8nApi } from '../n8n/simple-api.js'
 import { features } from '../server/config.js'
 import { logger } from '../server/logger.js'
+import { VERSION } from '../version.js'
 
 const { hasN8nApi } = features
 
@@ -136,7 +137,7 @@ export class ResourceManager extends EventEmitter {
         case 'system':
           if (resourceId === 'info') {
             content = {
-              version: '6.2.0',
+              version: VERSION,
               mode: 'dynamic',
               hasN8nConnection: hasN8nApi,
               capabilities: {

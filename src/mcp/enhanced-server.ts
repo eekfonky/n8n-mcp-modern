@@ -31,6 +31,7 @@ import { safeExecute } from '../server/enhanced-error-handler.js'
 import { logger } from '../server/logger.js'
 import { cleanup, executeToolHandler, getAllTools, initializeDynamicTools } from '../tools/index.js'
 import { memoryProfiler, setupMemoryMonitoring } from '../utils/memory-profiler.js'
+import { VERSION } from '../version.js'
 import { completionManager } from './completions.js'
 import { promptManager } from './prompts.js'
 import { resourceManager } from './resources.js'
@@ -52,7 +53,7 @@ export async function createEnhancedServer(): Promise<MCPServer> {
   const server = new Server(
     {
       name: 'n8n-mcp-enhanced',
-      version: '7.0.0',
+      version: VERSION,
       description: 'Full MCP protocol implementation for n8n automation',
     },
     {

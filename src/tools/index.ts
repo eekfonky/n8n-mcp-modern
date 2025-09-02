@@ -12,7 +12,7 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { CredentialDiscovery } from '../discovery/credential-discovery.js'
+import { ComprehensiveNodeDiscovery } from '../discovery/comprehensive-discovery.js'
 import { DiscoveryScheduler } from '../discovery/scheduler.js'
 import { simpleN8nApi } from '../n8n/simple-api.js'
 import { features } from '../server/config.js'
@@ -45,7 +45,7 @@ const __dirname = path.dirname(__filename)
 let discoveredTools: Tool[] = []
 const toolHandlers: Map<string, (args: Record<string, unknown>) => Promise<unknown>> = new Map()
 let toolGenerator: MCPToolGenerator | null = null
-let credentialDiscovery: CredentialDiscovery | null = null
+let comprehensiveDiscovery: ComprehensiveNodeDiscovery | null = null
 let discoveryScheduler: DiscoveryScheduler | null = null
 let dynamicAgentTools: DynamicAgentTools | null = null
 
@@ -1125,7 +1125,7 @@ export async function initializeDynamicTools(): Promise<void> {
   try {
     // Initialize the Phase 3 tool generator
     toolGenerator = new MCPToolGenerator()
-    credentialDiscovery = new CredentialDiscovery()
+    comprehensiveDiscovery = new ComprehensiveNodeDiscovery()
 
     // Initialize dynamic agent tools
     dynamicAgentTools = await createDynamicAgentTools()
@@ -1691,9 +1691,9 @@ export async function initializeDynamicTools(): Promise<void> {
       throw new Error('n8n API connection test failed - check server status and credentials')
     }
 
-    logger.info('Running Phase 2: Credential-based node discovery...')
-    const discoveryStats = await credentialDiscovery.discover()
-    logger.info(`Phase 2 complete: ${discoveryStats.nodesDiscovered} nodes discovered`)
+    logger.info('Running Phase 2: Comprehensive node discovery...')
+    const discoveryStats = await comprehensiveDiscovery.discover()
+    logger.info(`Phase 2 complete: ${discoveryStats.nodesDiscovered} nodes discovered (${discoveryStats.standardNodes} standard, ${discoveryStats.communityNodes} community)`)
 
     // Run Phase 3: Generate MCP tools from discovered nodes
     logger.info('Running Phase 3: MCP tool generation with lazy loading...')
@@ -2072,7 +2072,7 @@ export async function cleanup(): Promise<void> {
     discoveredTools = []
     toolHandlers.clear()
     toolGenerator = null
-    credentialDiscovery = null
+    comprehensiveDiscovery = null
 
     logger.info('Cleanup completed successfully')
   }

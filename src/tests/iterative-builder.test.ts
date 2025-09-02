@@ -31,13 +31,22 @@ vi.mock('node:crypto', () => ({
   scryptSync: vi.fn(() => Buffer.from('test-key-32-bytes-long-enough!!!')),
   randomBytes: vi.fn(() => Buffer.alloc(16, 'a')), // 16 bytes of 'a'
   createCipheriv: vi.fn(() => ({
-    update: vi.fn(() => '5b5d'), // hex for '[]'
+    update: vi.fn((data: string) => Buffer.from(data).toString('hex').slice(0, 8)),
     final: vi.fn(() => ''),
     getAuthTag: vi.fn(() => Buffer.from('auth-tag-16-bytes!')),
   })),
   createDecipheriv: vi.fn(() => ({
     setAuthTag: vi.fn(),
-    update: vi.fn(() => '[]'),
+    update: vi.fn((encryptedHex: string) => {
+      try {
+        // Convert hex back to original data for testing
+        const data = Buffer.from(encryptedHex, 'hex').toString('utf8')
+        return data
+      }
+      catch {
+        return '[]'
+      }
+    }),
     final: vi.fn(() => ''),
   })),
 }))
@@ -840,7 +849,7 @@ describe('integration Test: Complete Iterative Workflow Building', () => {
     expect(session.currentNodes).toHaveLength(2)
 
     // 5. Test workflow
-    mockSimpleN8nApi.executeWorkflowSandboxed = vi.fn().mockResolvedValue({
+    mockSimpleN8nApi.executeWorkflow = vi.fn().mockResolvedValue({
       status: 'success',
       data: { result: 'ok' },
     })
@@ -863,6 +872,7 @@ describe('integration Test: Complete Iterative Workflow Building', () => {
     expect(validation.valid).toBe(true)
 
     // 7. Test rollback
+    mockSimpleN8nApi.updateWorkflow = vi.fn().mockResolvedValue({ success: true })
     const rollbackSuccess = await WorkflowBuilderUtils.RollbackManager.rollbackToCheckpoint(
       session,
       1, // After webhook checkpoint
