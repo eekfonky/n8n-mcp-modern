@@ -7,8 +7,15 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import { AgentMemorySystem } from '../agents/memory-system.js'
+import { OPTIMIZED_AGENT_HIERARCHY } from '../agents/optimized-hierarchy.js'
 import { AgentSessionManager } from '../agents/session-manager.js'
 import { DynamicAgentDB } from '../database/dynamic-agent-db.js'
+
+// Get all valid agent names from the optimized hierarchy
+const VALID_AGENT_NAMES = OPTIMIZED_AGENT_HIERARCHY.map(agent => agent.name)
+
+// Enhanced agent validation schema
+const AgentNameSchema = z.enum(VALID_AGENT_NAMES as [string, ...string[]]).describe(`Valid agent name from the optimized 12-agent hierarchy: ${VALID_AGENT_NAMES.join(', ')}`)
 
 // Define SessionAnalytics interface to match the one in session-manager.ts
 interface SessionAnalytics {
@@ -25,7 +32,7 @@ interface SessionAnalytics {
 
 // Input schemas for MCP tools
 const StoreMemorySchema = z.object({
-  agentName: z.string().min(1).max(100).regex(/^[\w-]+$/).describe('Agent name - alphanumeric, underscore, and dash only'),
+  agentName: AgentNameSchema,
   memoryType: z.enum([
     // Core workflow patterns
     'workflow_pattern',
@@ -102,7 +109,7 @@ const StoreMemorySchema = z.object({
 })
 
 const SearchMemorySchema = z.object({
-  agentName: z.string().min(1).describe('Agent name to search memories for'),
+  agentName: AgentNameSchema,
   query: z.string().min(3).max(500).describe('Search query - keywords or phrases to find'),
   memoryTypes: z.array(z.string().min(1)).max(10).optional().describe('Filter by specific memory types (max 10 types)'),
   limit: z.number().min(1).max(50).default(10).describe('Maximum number of results to return'),
@@ -111,7 +118,7 @@ const SearchMemorySchema = z.object({
 })
 
 const CreateSessionSchema = z.object({
-  agentName: z.string().min(1).max(100).regex(/^[\w-]+$/).describe('Agent name - alphanumeric, underscore, and dash only'),
+  agentName: AgentNameSchema,
   sessionType: z.enum([
     // Core workflow development
     'iterative_building',
@@ -200,8 +207,8 @@ const UpdateSessionSchema = z.object({
 })
 
 const DelegateTaskSchema = z.object({
-  fromAgent: z.string().min(1),
-  toAgent: z.string().min(1),
+  fromAgent: AgentNameSchema,
+  toAgent: AgentNameSchema,
   taskType: z.enum([
     // Strategic and planning
     'strategic_planning',
@@ -288,7 +295,7 @@ const DelegateTaskSchema = z.object({
 })
 
 const DiscoverKnowledgeSchema = z.object({
-  agentName: z.string().min(1).max(100).regex(/^[\w-]+$/).describe('Agent name - alphanumeric, underscore, and dash only'),
+  agentName: AgentNameSchema,
   discoveryType: z.enum([
     'node_pattern',
     'workflow_template',

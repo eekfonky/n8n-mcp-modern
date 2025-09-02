@@ -18,6 +18,33 @@ export interface ExecutionResult {
   error?: string
 }
 
+/**
+ * Convert N8NWorkflowNode to API-compatible format
+ * Type-safe alternative to unsafe casting
+ */
+function convertNodesToApiFormat(nodes: N8NWorkflowNode[]): Array<Record<string, unknown>> {
+  return nodes.map(node => ({
+    id: node.id,
+    name: node.name,
+    type: node.type,
+    typeVersion: node.typeVersion,
+    position: node.position,
+    parameters: node.parameters,
+    ...(node.credentials && { credentials: node.credentials }),
+    ...(node.disabled !== undefined && { disabled: node.disabled }),
+    ...(node.notes !== undefined && { notes: node.notes }),
+    ...(node.notesInFlow !== undefined && { notesInFlow: node.notesInFlow }),
+    ...(node.color !== undefined && { color: node.color }),
+    ...(node.continueOnFail !== undefined && { continueOnFail: node.continueOnFail }),
+    ...(node.alwaysOutputData !== undefined && { alwaysOutputData: node.alwaysOutputData }),
+    ...(node.executeOnce !== undefined && { executeOnce: node.executeOnce }),
+    ...(node.retryOnFail !== undefined && { retryOnFail: node.retryOnFail }),
+    ...(node.maxTries !== undefined && { maxTries: node.maxTries }),
+    ...(node.waitBetweenTries !== undefined && { waitBetweenTries: node.waitBetweenTries }),
+    ...(node.onError !== undefined && { onError: node.onError })
+  }))
+}
+
 // Security-hardened interfaces
 export interface IterativeBuildSession {
   workflowId: string
@@ -375,7 +402,7 @@ export class SecureNodeManager {
 
       // Update workflow via API
       const updateResult = await api.updateWorkflow(session.workflowId, {
-        nodes: session.currentNodes as unknown as Array<Record<string, unknown>>,
+        nodes: convertNodesToApiFormat(session.currentNodes),
       })
 
       if (!updateResult) {
@@ -479,21 +506,31 @@ export class SecureNodeManager {
     if (typeof result !== 'object' || result === null)
       return null
 
-    const resultObj = result as Record<string, unknown>
+    // Type-safe result processing
+    if (!('status' in result) || typeof result.status !== 'string') {
+      return null
+    }
+
+    const status = result.status as 'success' | 'error' | 'running'
+    if (!['success', 'error', 'running'].includes(status)) {
+      return null
+    }
 
     // Remove sensitive data and limit output size
     const sanitized: ExecutionResult = {
-      status: (resultObj.status as 'success' | 'error' | 'running') || 'error',
-      timestamp: resultObj.timestamp instanceof Date ? resultObj.timestamp : new Date(),
+      status,
+      timestamp: result && typeof result === 'object' && 'timestamp' in result && result.timestamp instanceof Date
+        ? result.timestamp
+        : new Date(),
       // Remove any credentials, tokens, or sensitive fields
     }
 
     // Add optional properties conditionally
-    if (resultObj.data) {
-      sanitized.data = String(resultObj.data).substring(0, 1000) // Limit to 1KB
+    if (result && typeof result === 'object' && 'data' in result && result.data) {
+      sanitized.data = String(result.data).substring(0, 1000) // Limit to 1KB
     }
-    if (resultObj.error) {
-      sanitized.error = String(resultObj.error)
+    if (result && typeof result === 'object' && 'error' in result && result.error) {
+      sanitized.error = String(result.error)
     }
 
     return sanitized
@@ -540,7 +577,7 @@ export class SecureRollbackManager {
 
       // Update workflow via API
       const updateResult = await api.updateWorkflow(session.workflowId, {
-        nodes: restoredNodes as unknown as Array<Record<string, unknown>>,
+        nodes: convertNodesToApiFormat(restoredNodes),
       })
 
       if (!updateResult) {

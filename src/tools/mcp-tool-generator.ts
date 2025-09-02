@@ -15,6 +15,7 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import type { MCPTool, N8NNodeDatabase } from '../types/core.js'
 import process from 'node:process'
 import { z } from 'zod'
+import { getOptimalAgent } from '../agents/optimized-hierarchy.js'
 import { database, VersionManager } from '../database/index.js'
 import { logger } from '../server/logger.js'
 
@@ -92,18 +93,38 @@ export class MCPToolGenerator {
     'poll',
   ]
 
-  // Agent routing recommendations based on node categories
-  private readonly AGENT_ROUTING: Record<string, string> = {
-    'Data & Storage': 'n8n-node-expert', // Database operations need node expertise
-    'Communication': 'n8n-builder', // Messaging workflows need builder
-    'Development': 'n8n-scriptguard', // Code operations need security review
-    'AI & Machine Learning': 'n8n-node-expert', // AI workflows need specialized knowledge
-    'Authentication': 'n8n-connector', // Auth operations need connector expertise
-    'Security': 'n8n-scriptguard', // Security operations need validation
-    'Community': 'n8n-guide', // Community nodes may need documentation
-    'Automation': 'n8n-orchestrator', // Complex automation needs orchestration
-    'Finance': 'n8n-connector', // Payment systems need secure connections
-    'Analytics': 'n8n-node-expert', // Data analysis needs node optimization
+  // Optimized agent routing using 12-agent hierarchy
+  private getOptimalAgentForNode(nodeType: string, category: string, complexity: 'low' | 'medium' | 'high' | 'expert' = 'medium'): string {
+    // First try node-specific routing
+    const nodeBasedAgent = getOptimalAgent(nodeType, complexity)
+    if (nodeBasedAgent !== 'n8n-guide') {
+      return nodeBasedAgent
+    }
+
+    // Fallback to category-based routing with optimized mappings
+    const categoryRouting: Record<string, string> = {
+      'Data & Storage': 'n8n-data',
+      'Database': 'n8n-data',
+      'Cloud': 'n8n-cloud',
+      'Communication': 'n8n-communication',
+      'Messaging': 'n8n-communication',
+      'Development': 'n8n-builder',
+      'Code': 'n8n-builder',
+      'AI & Machine Learning': 'n8n-ai',
+      'Artificial Intelligence': 'n8n-ai',
+      'Authentication': 'n8n-connector',
+      'Security': 'n8n-scriptguard',
+      'Community': 'n8n-guide',
+      'Automation': 'n8n-automation',
+      'IoT': 'n8n-automation',
+      'Finance': 'n8n-finance',
+      'E-commerce': 'n8n-ecommerce',
+      'Analytics': 'n8n-data',
+      'Integration': 'n8n-workflow',
+      'Performance': 'n8n-performance',
+    }
+
+    return categoryRouting[category] || 'n8n-orchestrator'
   }
 
   constructor() {
@@ -282,7 +303,7 @@ export class MCPToolGenerator {
       sourceNode: node.name,
       toolType: 'general',
       category: node.category,
-      agentRecommendation: this.AGENT_ROUTING[node.category] || 'n8n-guide',
+      agentRecommendation: this.getOptimalAgentForNode(node.name, node.category, 'medium'),
       memoryFootprint: this.estimateMemoryFootprint(node),
       lastUsed: undefined as Date | undefined,
     }
@@ -353,7 +374,7 @@ export class MCPToolGenerator {
       sourceNode: null, // Category tools don't belong to a specific node
       toolType: 'category',
       category,
-      agentRecommendation: this.AGENT_ROUTING[category] || 'n8n-orchestrator',
+      agentRecommendation: this.getOptimalAgentForNode(`category-${category.toLowerCase()}`, category, 'high'),
       memoryFootprint: nodes.length * 100, // Estimate based on node count
       lastUsed: undefined as Date | undefined,
     }
@@ -583,13 +604,13 @@ export class MCPToolGenerator {
       return 'n8n-connector'
     }
 
-    // Complex data operations
+    // Complex data operations route to specialized agents
     if (['search', 'list', 'execute'].includes(operation.toLowerCase())) {
-      return 'n8n-node-expert'
+      return this.getOptimalAgentForNode(`complex-${operation?.toLowerCase()}`, category, 'expert')
     }
 
-    // Default to category recommendation
-    return this.AGENT_ROUTING[category] || 'n8n-guide'
+    // Default to optimized category recommendation
+    return this.getOptimalAgentForNode(`operation-${operation?.toLowerCase()}`, category, 'medium')
   }
 
   /**
