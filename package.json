@@ -1,6 +1,6 @@
 {
   "name": "@eekfonky/n8n-mcp-modern",
-  "version": "8.1.0",
+  "version": "8.2.0",
   "description": "Modern n8n MCP server with agent handovers - intelligent complexity assessment, collaborative multi-agent workflows, and context preservation for complex n8n integrations",
   "type": "module",
   "main": "dist/index.js",
@@ -28,6 +28,9 @@
     "setup-github-packages": "node scripts/install-github-packages.cjs",
     "mcp:health": "node scripts/health-check.cjs",
     "mcp:backup": "node scripts/upgrade-rollback.cjs backup",
+    "update-node-counts": "tsx src/scripts/update-node-count-references.ts",
+    "update-node-counts:dry": "tsx src/scripts/update-node-count-references.ts --dry-run",
+    "run-discovery": "node scripts/run-discovery.js",
     "mcp:restore": "node scripts/upgrade-rollback.cjs restore",
     "mcp:rollback": "node scripts/upgrade-rollback.cjs rollback",
     "mcp:install-project": "echo 'Run: claude mcp add n8n-mcp-modern --scope project --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern'",

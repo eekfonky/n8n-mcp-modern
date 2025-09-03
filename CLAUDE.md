@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**n8n-MCP Modern** is a high-performance MCP (Model Context Protocol) server that provides a suite of tools for n8n workflow automation. Built from the ground up with zero legacy dependencies, it features a 6-agent hierarchical system and modern TypeScript architecture.
+**n8n-MCP Modern** is a high-performance MCP (Model Context Protocol) server that provides a suite of tools for n8n workflow automation. Built from the ground up with zero legacy dependencies, it features a 15-agent hierarchical system optimized for 675+ n8n nodes and modern TypeScript architecture.
 
 **Key Architecture Principles:**
 
@@ -62,18 +62,26 @@ src/
 ### Agent Hierarchy
 
 **TIER 1 - Master Orchestrator:**
-
 - `n8n-orchestrator`: Strategic planning & coordination
 
-**TIER 2 - Core Specialists:**
-
+**TIER 2 - Core Architecture Specialists:**
+- `n8n-architect`: Workflow architecture patterns & scalability
 - `n8n-builder`: Code generation & DevOps workflows
-- `n8n-connector`: Authentication & connectivity  
-- `n8n-node-expert`: 525+ node expertise
+- `n8n-connector`: Authentication & connectivity
 - `n8n-scriptguard`: JavaScript validation & security
 
-**TIER 3 - Support Specialists:**
+**TIER 3 - Domain Specialists:**
+- `n8n-data`: Databases, ETL workflows & analytics
+- `n8n-cloud`: AWS, GCP, Azure & serverless
+- `n8n-ecommerce`: E-commerce platforms & retail automation
+- `n8n-finance`: Payments, accounting & compliance
+- `n8n-communication`: Messaging platforms & social media
+- `n8n-ai`: AI/ML workflows, LLMs & data science
+- `n8n-automation`: IoT devices, smart home & industrial automation
 
+**TIER 4 - Specialized Support:**
+- `n8n-workflow`: Templates, patterns & components
+- `n8n-performance`: Performance tuning & optimization
 - `n8n-guide`: Documentation, tutorials & guidance
 
 ### Configuration System
@@ -112,7 +120,7 @@ Environment variables are validated through Zod schemas in `src/server/config.ts
 **Zod-First Approach:**
 
 - All configurations validated via `ConfigSchema`
-- Input validation for all 92 MCP tools
+- Input validation for all 92 MCP tools optimized for 675+ n8n nodes
 - Custom `N8NMcpError` class for structured error handling
 - Validation profiles: minimal, runtime, ai-friendly, strict
 

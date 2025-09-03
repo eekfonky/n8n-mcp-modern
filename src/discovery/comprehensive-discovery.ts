@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto'
 import { database } from '../database/index.js'
 import { config } from '../server/config.js'
 import { logger } from '../server/logger.js'
+import { invalidateNodeCountCache } from '../utils/dynamic-node-count.js'
 import { ALL_N8N_NODES } from './all-n8n-nodes.js'
 
 interface NodeTypeInfo {
@@ -114,6 +115,10 @@ export class ComprehensiveNodeDiscovery {
         validatedNodes: stats.totalValidated,
         discoveryTime: `${stats.discoveryTime}ms`,
       })
+
+      // Invalidate node count cache so dynamic references are updated
+      invalidateNodeCountCache()
+      logger.debug('Node count cache invalidated after discovery completion')
 
       return stats
     }

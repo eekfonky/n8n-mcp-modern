@@ -398,7 +398,7 @@ INSERT OR IGNORE INTO agent_memories (agent_name, memory_type, content, content_
 -- Create initial delegation routing suggestions
 INSERT OR IGNORE INTO delegation_routing (task_pattern, delegation_type, recommended_agent, confidence_score, created_by) VALUES
 ('security|validate|credential', 'security_validation', 'n8n-scriptguard', 0.95, 'system'),
-('performance|optimize|speed', 'performance_optimization', 'n8n-node-expert', 0.90, 'system'),
+('performance|optimize|speed', 'performance_optimization', 'n8n-performance', 0.90, 'system'),
 ('workflow|generate|create', 'workflow_generation', 'n8n-builder', 0.95, 'system'),
 ('authenticate|oauth|login', 'technical_implementation', 'n8n-connector', 0.90, 'system'),
 ('documentation|help|guide', 'knowledge_lookup', 'n8n-guide', 0.85, 'system');

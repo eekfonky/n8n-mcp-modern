@@ -1,13 +1,13 @@
-# n8n-MCP Modern v8.1.0 🚀
+# n8n-MCP Modern v8.2.0 🚀
 
-**Advanced n8n MCP server with dynamic node discovery, enterprise security, and 15-agent hierarchical architecture.**
+**Advanced n8n MCP server with dynamic node discovery, enterprise security, and 15-agent hierarchical architecture optimized for 675+ n8n nodes.**
 
 [![npm version](https://img.shields.io/npm/v/@eekfonky/n8n-mcp-modern.svg)](https://www.npmjs.com/package/@eekfonky/n8n-mcp-modern)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## ✨ Features
 
-🔍 **Dynamic Node Discovery** - Discovers new n8n nodes not in static lists  
+🔍 **Dynamic Node Discovery** - Discovers new n8n nodes beyond the 675+ static node library  
 🛡️ **Enterprise Security** - Type-safe API handling with Zod validation  
 ⚡ **High Performance** - Optimized batch processing with rate limiting  
 🏗️ **15-Agent Architecture** - Hierarchical system with specialized agents  
@@ -117,13 +117,24 @@ Create `.mcp.json` in your project root:
 **Tier 1 - Master Orchestrator:**
 - `n8n-orchestrator` - Strategic planning & coordination
 
-**Tier 2 - Core Specialists:**
+**Tier 2 - Core Architecture Specialists:**
+- `n8n-architect` - Workflow architecture patterns & scalability
 - `n8n-builder` - Code generation & DevOps workflows
 - `n8n-connector` - Authentication & connectivity
-- `n8n-node-expert` - 525+ node expertise
 - `n8n-scriptguard` - JavaScript validation & security
 
-**Tier 3 - Support Specialists:**
+**Tier 3 - Domain Specialists:**
+- `n8n-data` - Databases, ETL workflows & analytics
+- `n8n-cloud` - AWS, GCP, Azure & serverless
+- `n8n-ecommerce` - E-commerce platforms & retail automation
+- `n8n-finance` - Payments, accounting & compliance
+- `n8n-communication` - Messaging platforms & social media
+- `n8n-ai` - AI/ML workflows, LLMs & data science
+- `n8n-automation` - IoT devices, smart home & industrial automation
+
+**Tier 4 - Specialized Support:**
+- `n8n-workflow` - Templates, patterns & components
+- `n8n-performance` - Performance tuning & optimization
 - `n8n-guide` - Documentation, tutorials & guidance
 
 ### Dynamic Node Discovery
@@ -191,27 +202,32 @@ npm run test:coverage
 
 ## 📚 Usage Examples
 
-### Basic Node Discovery
-```javascript
-// Discover new nodes dynamically
-const discovery = new ComprehensiveNodeDiscovery()
-const newNodes = await discovery.discoverNewNodes()
-console.log(`Found ${newNodes.length} new nodes`)
+### Node Discovery on Live n8n
+```bash
+# Set connection details
+export N8N_API_URL="https://your-n8n-instance.com"
+export N8N_API_KEY="your-api-key"
+
+# Run discovery (discovers 675+ nodes)
+npm run run-discovery
+
+# Update documentation with new counts
+npm run update-node-counts
 ```
 
-### Workflow Analysis
-```javascript
-// Analyze existing workflows for node usage
-const workflowNodes = await api.getAllWorkflowNodes()
-console.log('Nodes in use:', workflowNodes)
+### Via Claude Code
+```text
+"Task: Run a complete node discovery on my n8n instance"
 ```
+The `n8n-orchestrator` agent will handle discovery and report results.
 
-### Static List Management
-```javascript
-// Backup and update static node list
-const manager = new StaticNodeManager()
-await manager.createBackup('before-update')
-await manager.addDiscoveredNodes(newNodes)
+### Scheduled Discovery
+```bash
+# Enable automatic discovery
+export ENABLE_DISCOVERY_SCHEDULING=true
+export DISCOVERY_INTERVAL_MINUTES=60
+
+npm run start  # Discovery runs every hour
 ```
 
 ## 📝 API Reference

@@ -1,13 +1,13 @@
 /**
  * Complete 15-agent hierarchy definitions for n8n-MCP Modern
- * Optimized for 682+ node ecosystem with model tiers and collaboration patterns
+ * Optimized for 675+ node ecosystem with model tiers and collaboration patterns
  */
 
 import type { AgentSpecialization } from './types.js'
 import { CLAUDE_MODEL_TIERS } from './types.js'
 
 /**
- * Complete 15-agent hierarchy optimized for 682+ node ecosystem with model tiers
+ * Complete 15-agent hierarchy optimized for 675+ node ecosystem with model tiers
  */
 export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
   // TIER 1 - Strategic Orchestration
@@ -47,9 +47,8 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Enterprise automation requirements',
     ],
     modelConfig: {
-      primaryModel: CLAUDE_MODEL_TIERS.SONNET,
-      fallbackModel: CLAUDE_MODEL_TIERS.OPUS,
-      modelReason: 'Balanced capability for strategic coordination with Opus fallback for complex decisions',
+      primaryModel: CLAUDE_MODEL_TIERS.OPUS,
+      modelReason: 'Highest reasoning capability required for strategic orchestration across 14 specialized agents',
     },
   },
 

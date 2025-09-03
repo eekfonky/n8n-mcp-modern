@@ -181,10 +181,10 @@ describe('agent Behavioral Tests - 6-Agent Hierarchy', () => {
       })
     })
 
-    describe('n8n-node-expert (525+ Node Expertise)', () => {
+    describe('n8n-scriptguard (Security Validation)', () => {
       it('should store node compatibility insights', async () => {
         const memoryResult = await dynamicTools.handleToolCall('store_agent_memory', {
-          agentName: 'n8n-node-expert',
+          agentName: 'n8n-scriptguard',
           memoryType: 'node_configuration',
           content: 'HTTP Request node compatible with Loop Over Items for pagination handling',
           tags: ['http-request', 'loop-over-items', 'pagination', 'compatibility'],
@@ -197,14 +197,14 @@ describe('agent Behavioral Tests - 6-Agent Hierarchy', () => {
       it('should provide node recommendations', async () => {
         // Store node recommendation
         await dynamicTools.handleToolCall('store_agent_memory', {
-          agentName: 'n8n-node-expert',
+          agentName: 'n8n-scriptguard',
           memoryType: 'best_practice',
           content: 'For CSV processing: use Spreadsheet File node instead of Code node for better performance',
           tags: ['csv', 'spreadsheet-file', 'performance', 'recommendation'],
         })
 
         const searchResult = await dynamicTools.handleToolCall('search_agent_memory', {
-          agentName: 'n8n-node-expert',
+          agentName: 'n8n-scriptguard',
           query: 'CSV processing performance recommendation',
           limit: 3,
         })
@@ -392,7 +392,7 @@ describe('agent Behavioral Tests - 6-Agent Hierarchy', () => {
       const agentMemoryTypes = [
         { agent: 'n8n-builder', type: 'workflow_pattern', content: 'Builder workflow pattern' },
         { agent: 'n8n-connector', type: 'credential_pattern', content: 'Connector credential pattern' },
-        { agent: 'n8n-node-expert', type: 'node_configuration', content: 'Node expert configuration' },
+        { agent: 'n8n-scriptguard', type: 'security_validation', content: 'Security validation configuration' },
         { agent: 'n8n-scriptguard', type: 'validation_rule', content: 'ScriptGuard security check' },
         { agent: 'n8n-guide', type: 'knowledge_base', content: 'Guide documentation' },
       ]

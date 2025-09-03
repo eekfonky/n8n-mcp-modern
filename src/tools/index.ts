@@ -18,6 +18,7 @@ import { DiscoveryScheduler } from '../discovery/scheduler.js'
 import { simpleN8nApi } from '../n8n/simple-api.js'
 import { features } from '../server/config.js'
 import { logger } from '../server/logger.js'
+import { getDynamicNodeCountString, getFormattedNodeCount, nodeCountManager } from '../utils/dynamic-node-count.js'
 import { coldStartOptimizationTools } from './cold-start-optimization-tool.js'
 import { getAllNodeTemplates } from './comprehensive-node-registry.js'
 import { createDynamicAgentTools } from './dynamic-agent-tools.js'
@@ -1362,6 +1363,25 @@ export async function initializeDynamicTools(): Promise<void> {
       },
     })
 
+    // Node count management tools
+    discoveredTools.push({
+      name: 'get_dynamic_node_count',
+      description: 'Get current dynamic node count statistics based on discovery results',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    })
+
+    discoveredTools.push({
+      name: 'update_documentation_node_counts',
+      description: 'Update hardcoded node count references in documentation with current dynamic values',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    })
+
     // Add handler for self-update tool
     toolHandlers.set('update_n8n_mcp_server', async (args: Record<string, unknown>) => {
       return await handleServerUpdate(args)
@@ -1425,6 +1445,58 @@ export async function initializeDynamicTools(): Promise<void> {
         success: true,
         message: 'Discovery scheduler configuration updated',
         newConfig: discoveryScheduler.getStats().config,
+      }
+    })
+
+    // Node count management tools
+    toolHandlers.set('get_dynamic_node_count', async () => {
+      try {
+        const stats = await nodeCountManager.getNodeCountStats()
+        const nodeCountString = await getDynamicNodeCountString()
+        const formattedCount = await getFormattedNodeCount()
+
+        return {
+          success: true,
+          nodeCountString,
+          formattedCount,
+          stats: {
+            discoveredNodes: stats.discoveredNodes,
+            standardNodes: stats.standardNodes,
+            communityNodes: stats.communityNodes,
+            totalAvailable: stats.totalAvailableNodes,
+            lastUpdated: stats.lastUpdated.toISOString(),
+          },
+        }
+      }
+      catch (error) {
+        logger.error('Failed to get dynamic node count', { error })
+        return {
+          success: false,
+          error: 'Failed to get dynamic node count',
+          details: { error: String(error) },
+        }
+      }
+    })
+
+    toolHandlers.set('update_documentation_node_counts', async () => {
+      try {
+        // Import the update function dynamically to avoid circular dependencies
+        const { updateAllNodeCountReferences } = await import('../scripts/update-node-count-references.js')
+
+        await updateAllNodeCountReferences()
+
+        return {
+          success: true,
+          message: 'Documentation node count references updated successfully',
+        }
+      }
+      catch (error) {
+        logger.error('Failed to update documentation node counts', { error })
+        return {
+          success: false,
+          error: 'Failed to update documentation node counts',
+          details: { error: String(error) },
+        }
       }
     })
 

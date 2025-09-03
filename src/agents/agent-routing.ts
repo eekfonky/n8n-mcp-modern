@@ -52,11 +52,12 @@ export const AGENT_ROUTING_RULES: readonly AgentRoutingRule[] = [
 
 /**
  * High-performance routing cache with LRU eviction
+ * Optimized for 675+ node ecosystem with enhanced TTL and cache size
  */
 class RoutingCache {
   private cache = new Map<string, { agent: string, timestamp: number }>()
-  private readonly maxSize = 1000
-  private readonly ttl = 60 * 1000 // 1 minute TTL
+  private readonly maxSize = 1500 // Increased for 675+ nodes
+  private readonly ttl = 5 * 60 * 1000 // 5 minute TTL for better performance
 
   get(nodeType: string): string | null {
     const entry = this.cache.get(nodeType)

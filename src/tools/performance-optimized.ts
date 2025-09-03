@@ -46,8 +46,8 @@ function _unusedGetAgent(type: string): Agent | null {
       case 'connector':
         agentRegistry.set(type, createSimpleAgent('connector'))
         break
-      case 'node-expert':
-        agentRegistry.set(type, createSimpleAgent('node-expert'))
+      case 'scriptguard':
+        agentRegistry.set(type, createSimpleAgent('scriptguard'))
         break
       case 'guide':
         agentRegistry.set(type, createSimpleAgent('guide'))

@@ -231,7 +231,7 @@ function showInstallInfo() {
   console.log(`   • n8n-orchestrator (Master Coordinator)`)
   console.log(`   • n8n-builder (Code & DevOps)`)
   console.log(`   • n8n-connector (Authentication & APIs)`)
-  console.log(`   • n8n-node-expert (525+ Nodes)`)
+  console.log(`   • n8n-scriptguard (Security Validation)`)
   console.log(`   • n8n-optimizer (Performance & Monitoring)`)
   console.log(`   • n8n-scriptguard (JavaScript Security)`)
   console.log(`   • n8n-guide (Documentation & Support)`)
