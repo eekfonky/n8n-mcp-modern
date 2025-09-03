@@ -15,6 +15,7 @@ import {
 
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
+import { initializeN8NApi } from './n8n/simple-api.js'
 import { coldStartOptimizer, startupAnalyzer } from './server/cold-start-optimizer.js'
 import { config, features } from './server/config.js'
 import { setupErrorMonitoring } from './server/error-monitoring.js'
@@ -23,7 +24,6 @@ import { cleanup, executeToolHandler, getAllTools, initializeDynamicTools } from
 import { initializePerformanceOptimizations } from './tools/performance-optimized.js'
 import { getQuickMemoryStats, memoryProfiler, setupMemoryMonitoring } from './utils/memory-profiler.js'
 import { VERSION } from './version.js'
-import { initializeN8NApi } from './n8n/simple-api.js'
 
 const { hasN8nApi } = features
 

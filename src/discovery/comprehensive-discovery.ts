@@ -552,4 +552,483 @@ export class ComprehensiveNodeDiscovery {
       logger.error(`Failed to store node ${nodeType}:`, error)
     }
   }
+
+  /**
+   * Discover new nodes using multiple strategies
+   */
+  async discoverNewNodes(): Promise<DiscoveryStats & { newNodes: string[] }> {
+    const startTime = Date.now()
+    logger.info('🔍 Starting enhanced new node discovery...')
+
+    const newNodes = new Set<string>()
+    const stats: DiscoveryStats & { newNodes: string[] } = {
+      nodesDiscovered: 0,
+      standardNodes: 0,
+      communityNodes: 0,
+      customNodes: 0,
+      totalValidated: 0,
+      discoveryTime: 0,
+      newNodes: [],
+    }
+
+    try {
+      // Strategy 1: Analyze existing workflows (highest priority)
+      logger.info('Strategy 1: Analyzing existing workflows...')
+      const workflowNodes = await this.analyzeExistingWorkflows()
+      workflowNodes.forEach(node => newNodes.add(node))
+      logger.info(`Found ${workflowNodes.length} nodes from workflow analysis`)
+
+      // Strategy 2: Pattern-based discovery
+      logger.info('Strategy 2: Pattern-based node discovery...')
+      const patternNodes = await this.scanForNewNodePatterns()
+      patternNodes.forEach(node => newNodes.add(node))
+      logger.info(`Found ${patternNodes.length} nodes from pattern scanning`)
+
+      // Strategy 3: Community package scanning
+      logger.info('Strategy 3: Community package scanning...')
+      const communityNodes = await this.scanCommunityPackages()
+      communityNodes.forEach(node => newNodes.add(node))
+      logger.info(`Found ${communityNodes.length} nodes from community packages`)
+
+      // Filter out already known nodes
+      const currentKnownNodes = this.getCurrentKnownNodes()
+      const trulyNewNodes = Array.from(newNodes).filter(node => !currentKnownNodes.has(node))
+
+      logger.info(`Discovered ${trulyNewNodes.length} truly new nodes`)
+
+      // Validate and store new nodes
+      // Validate nodes in parallel for better performance
+      const validationPromises = trulyNewNodes.map(async (nodeType) => {
+        try {
+          if (await this.validateSingleNode(nodeType)) {
+            const nodeInfo = await this.extractNodeInfo(nodeType)
+            this.discoveredNodes.set(nodeType, nodeInfo)
+            this.storeNode(nodeType, nodeInfo)
+            logger.info(`✅ Validated and stored new node: ${nodeType}`)
+            return { nodeType, success: true }
+          }
+          else {
+            logger.debug(`❌ Failed to validate node: ${nodeType}`)
+            return { nodeType, success: false }
+          }
+        }
+        catch (error) {
+          logger.debug(`Error validating node ${nodeType}:`, error)
+          return { nodeType, success: false }
+        }
+      })
+
+      const validationResults = await Promise.all(validationPromises)
+      const validatedCount = validationResults.filter(result => result.success).length
+
+      stats.discoveryTime = Date.now() - startTime
+      stats.nodesDiscovered = newNodes.size
+      stats.totalValidated = validatedCount
+      stats.newNodes = trulyNewNodes
+
+      logger.info(`✅ Enhanced discovery complete:`, {
+        totalFoundNodes: newNodes.size,
+        newNodesFound: trulyNewNodes.length,
+        validatedNodes: validatedCount,
+        discoveryTime: `${stats.discoveryTime}ms`,
+      })
+
+      return stats
+    }
+    catch (error) {
+      logger.error('❌ Enhanced discovery failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Analyze existing workflows to discover node types in use
+   */
+  private async analyzeExistingWorkflows(): Promise<string[]> {
+    const discoveredNodes: string[] = []
+
+    try {
+      // Get all workflows
+      const response = await fetch(`${this.baseUrl}/workflows`, {
+        headers: this.headers,
+      })
+
+      if (!response.ok) {
+        logger.warn(`Failed to fetch workflows: ${response.status}`)
+        return discoveredNodes
+      }
+
+      const workflowsData = await response.json() as { data?: { id: string }[] }
+      const workflows = workflowsData.data || []
+
+      logger.info(`Analyzing ${workflows.length} workflows for node types...`)
+
+      // Process workflows in batches to avoid overwhelming the API
+      const batchSize = 10
+      for (let i = 0; i < workflows.length; i += batchSize) {
+        const batch = workflows.slice(i, i + batchSize)
+
+        const batchPromises = batch.map(async (workflow) => {
+          try {
+            const workflowResponse = await fetch(`${this.baseUrl}/workflows/${workflow.id}`, {
+              headers: this.headers,
+            })
+
+            if (workflowResponse.ok) {
+              const workflowData = await workflowResponse.json() as { data?: { nodes?: { type: string }[] } }
+              const nodes = workflowData.data?.nodes || []
+
+              return nodes.map(node => node.type).filter(type => type && typeof type === 'string')
+            }
+          }
+          catch (error) {
+            logger.debug(`Failed to analyze workflow ${workflow.id}:`, error)
+          }
+          return []
+        })
+
+        const batchResults = await Promise.all(batchPromises)
+        const batchNodes = batchResults.flat()
+        discoveredNodes.push(...batchNodes)
+
+        // Small delay between batches
+        if (i + batchSize < workflows.length) {
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, 100)
+          })
+        }
+      }
+
+      // Remove duplicates and return unique node types
+      const uniqueNodes = [...new Set(discoveredNodes)]
+      logger.info(`Extracted ${uniqueNodes.length} unique node types from workflows`)
+      return uniqueNodes
+    }
+    catch (error) {
+      logger.error('Failed to analyze workflows:', error)
+      return discoveredNodes
+    }
+  }
+
+  /**
+   * Scan for new nodes using common naming patterns
+   */
+  private async scanForNewNodePatterns(): Promise<string[]> {
+    const discoveredNodes: string[] = []
+
+    const commonPrefixes = [
+      'n8n-nodes-base',
+      '@n8n/n8n-nodes-langchain',
+      'n8n-nodes-langchain',
+    ]
+
+    const commonNodeNames = [
+      // AI/LLM nodes
+      'openai',
+      'anthropic',
+      'claude',
+      'gemini',
+      'ollama',
+      'cohere',
+      'huggingface',
+      'mistral',
+      'perplexity',
+      'groq',
+      'replicate',
+      'vertex',
+      'bedrock',
+
+      // Database nodes
+      'postgres',
+      'mysql',
+      'mongodb',
+      'redis',
+      'elasticsearch',
+      'neo4j',
+      'cassandra',
+      'dynamodb',
+      'firestore',
+      'supabase',
+      'planetscale',
+
+      // Communication nodes
+      'slack',
+      'discord',
+      'teams',
+      'telegram',
+      'whatsapp',
+      'signal',
+      'zoom',
+      'webex',
+      'meet',
+      'skype',
+
+      // Productivity nodes
+      'notion',
+      'airtable',
+      'monday',
+      'asana',
+      'trello',
+      'jira',
+      'confluence',
+      'linear',
+      'height',
+      'clickup',
+
+      // Cloud services
+      'aws',
+      'gcp',
+      'azure',
+      'vercel',
+      'netlify',
+      'cloudflare',
+      'digitalocean',
+      'heroku',
+      'railway',
+      'fly',
+
+      // Development tools
+      'github',
+      'gitlab',
+      'bitbucket',
+      'docker',
+      'kubernetes',
+      'jenkins',
+      'circleci',
+      'travis',
+      'buildkite',
+    ]
+
+    logger.info(`Testing ${commonPrefixes.length * commonNodeNames.length} potential node combinations...`)
+
+    // Generate all node type combinations
+    const nodeTypesToTest: string[] = []
+    for (const prefix of commonPrefixes) {
+      for (const name of commonNodeNames) {
+        nodeTypesToTest.push(`${prefix}.${name}`)
+      }
+    }
+
+    // Test in batches with rate limiting for better performance
+    const batchSize = 10
+    let testedCount = 0
+
+    for (let i = 0; i < nodeTypesToTest.length; i += batchSize) {
+      const batch = nodeTypesToTest.slice(i, i + batchSize)
+
+      // Process batch in parallel
+      const batchPromises = batch.map(async (nodeType) => {
+        try {
+          if (await this.testNodeExists(nodeType)) {
+            logger.info(`✅ Pattern discovery found: ${nodeType}`)
+            return nodeType
+          }
+        }
+        catch (error) {
+          logger.debug(`Pattern test failed for ${nodeType}:`, error)
+        }
+        return null
+      })
+
+      const batchResults = await Promise.all(batchPromises)
+      const foundNodes = batchResults.filter((node): node is string => node !== null)
+      discoveredNodes.push(...foundNodes)
+
+      testedCount += batch.length
+
+      // Rate limiting: delay between batches
+      if (i + batchSize < nodeTypesToTest.length) {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 50)
+        })
+      }
+    }
+
+    logger.info(`Pattern scanning tested ${testedCount} combinations, found ${discoveredNodes.length} nodes`)
+    return discoveredNodes
+  }
+
+  /**
+   * Scan npm registry for new community packages
+   */
+  private async scanCommunityPackages(): Promise<string[]> {
+    const discoveredNodes: string[] = []
+
+    try {
+      // Search npm registry for n8n community packages
+      const searchUrl = 'https://registry.npmjs.org/-/v1/search?text=n8n-nodes-&size=250'
+      const response = await fetch(searchUrl)
+
+      if (!response.ok) {
+        logger.warn('Failed to search npm registry for community packages')
+        return discoveredNodes
+      }
+
+      const searchData = await response.json() as {
+        objects?: Array<{ package: { name: string, version: string } }>
+      }
+
+      const packages = searchData.objects || []
+      const communityPackages = packages
+        .filter(pkg => pkg.package.name.startsWith('n8n-nodes-')
+          || (pkg.package.name.includes('@') && pkg.package.name.includes('n8n-nodes')))
+        .map(pkg => pkg.package.name)
+
+      logger.info(`Found ${communityPackages.length} community packages to test`)
+
+      // Test packages in batches for better performance
+      const packagesToTest = communityPackages.slice(0, 50) // Limit to prevent overwhelming
+      const batchSize = 5
+
+      for (let i = 0; i < packagesToTest.length; i += batchSize) {
+        const batch = packagesToTest.slice(i, i + batchSize)
+
+        const batchPromises = batch.map(async (packageName) => {
+          try {
+            return await this.testCommunityPackage(packageName)
+          }
+          catch (error) {
+            logger.debug(`Failed to test community package ${packageName}:`, error)
+            return []
+          }
+        })
+
+        const batchResults = await Promise.all(batchPromises)
+        const batchNodes = batchResults.flat()
+        discoveredNodes.push(...batchNodes)
+      }
+    }
+    catch (error) {
+      logger.error('Failed to scan community packages:', error)
+    }
+
+    return discoveredNodes
+  }
+
+  /**
+   * Test if a node type exists by creating a test workflow
+   */
+  private async testNodeExists(nodeType: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/workflows`, {
+        method: 'POST',
+        headers: this.headers,
+        body: JSON.stringify({
+          name: `Test Node Discovery ${Date.now()}`,
+          settings: {},
+          nodes: [{
+            id: 'test',
+            name: 'Test Node',
+            type: nodeType,
+            typeVersion: 1,
+            position: [100, 100],
+            parameters: {},
+          }],
+          connections: {},
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json() as { id?: string }
+        if (result.id) {
+          await this.deleteWorkflow(result.id)
+        }
+        return true
+      }
+
+      return false
+    }
+    catch (error) {
+      logger.debug(`Test node exists failed for ${nodeType}:`, error)
+      return false
+    }
+  }
+
+  /**
+   * Test community package for common node patterns
+   */
+  private async testCommunityPackage(packageName: string): Promise<string[]> {
+    const discoveredNodes: string[] = []
+
+    // Common node name patterns for community packages
+    const commonNames = ['main', 'api', 'trigger', 'webhook', packageName.split('-').pop() || '']
+
+    // Test all patterns in parallel for better performance
+    const testPromises = commonNames.map(async (name) => {
+      const nodeType = `${packageName}.${name}`
+      try {
+        if (await this.testNodeExists(nodeType)) {
+          return nodeType
+        }
+      }
+      catch (error) {
+        logger.debug(`Community package test failed for ${nodeType}:`, error)
+      }
+      return null
+    })
+
+    const results = await Promise.all(testPromises)
+    const foundNodes = results.filter((node): node is string => node !== null)
+    discoveredNodes.push(...foundNodes)
+
+    return discoveredNodes
+  }
+
+  /**
+   * Get set of currently known nodes
+   */
+  private getCurrentKnownNodes(): Set<string> {
+    const knownNodes = new Set<string>()
+
+    // Add static nodes with prefix
+    ComprehensiveNodeDiscovery.STANDARD_N8N_NODES.forEach((node) => {
+      knownNodes.add(`n8n-nodes-base.${node}`)
+    })
+
+    // Add already discovered nodes
+    this.discoveredNodes.forEach((_, nodeType) => {
+      knownNodes.add(nodeType)
+    })
+
+    return knownNodes
+  }
+
+  /**
+   * Extract node information for newly discovered nodes
+   */
+  private async extractNodeInfo(nodeType: string): Promise<NodeTypeInfo> {
+    // Create basic node info structure for discovered nodes
+    const nodeInfo: NodeTypeInfo = {
+      name: nodeType,
+      displayName: this.formatDisplayName(nodeType.split('.').pop() || nodeType),
+      description: `Discovered node: ${nodeType}`,
+      group: this.categorizeNode(nodeType),
+      version: [1],
+      inputs: ['main'],
+      outputs: ['main'],
+      properties: [],
+    }
+
+    return nodeInfo
+  }
+
+  /**
+   * Categorize node based on its type and naming patterns
+   */
+  private categorizeNode(nodeType: string): string[] {
+    if (nodeType.includes('langchain') || nodeType.includes('openai')
+      || nodeType.includes('anthropic') || nodeType.includes('gemini')) {
+      return ['ai', 'community']
+    }
+
+    if (nodeType.includes('trigger') || nodeType.includes('webhook')) {
+      return ['trigger', 'community']
+    }
+
+    if (nodeType.startsWith('n8n-nodes-base')) {
+      return ['standard']
+    }
+
+    return ['community']
+  }
 }

@@ -7,9 +7,9 @@
  * Claude model identifiers with strict typing
  */
 export const CLAUDE_MODEL_TIERS = {
-  OPUS: 'claude-3-opus-20240229',       // Complex reasoning, high capability
-  SONNET: 'claude-3-5-sonnet-20241022', // Balanced capability and speed  
-  HAIKU: 'claude-3-haiku-20240307',     // Fast throughput, information gathering
+  OPUS: 'claude-3-opus-20240229', // Complex reasoning, high capability
+  SONNET: 'claude-3-5-sonnet-20241022', // Balanced capability and speed
+  HAIKU: 'claude-3-haiku-20240307', // Fast throughput, information gathering
 } as const
 
 export type ClaudeModel = typeof CLAUDE_MODEL_TIERS[keyof typeof CLAUDE_MODEL_TIERS]

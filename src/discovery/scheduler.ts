@@ -584,7 +584,7 @@ export class DiscoveryScheduler {
       }
 
       const versionInfo = await simpleN8nApi.getVersion()
-      return versionInfo?.version || '1.0.0'
+      return (versionInfo as { version?: string })?.version || '1.0.0'
     }
     catch (error) {
       logger.error('Failed to get n8n version:', error)

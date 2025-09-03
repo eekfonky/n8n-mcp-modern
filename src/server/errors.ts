@@ -3,14 +3,14 @@ export class N8NMcpError extends Error {
     message: string,
     public code: string = 'UNKNOWN_ERROR',
     public statusCode: number = 500,
-    public details?: any
+    public details?: Record<string, unknown>,
   ) {
     super(message)
     this.name = 'N8NMcpError'
     Error.captureStackTrace(this, this.constructor)
   }
 
-  toJSON() {
+  toJSON(): Record<string, unknown> {
     return {
       name: this.name,
       message: this.message,

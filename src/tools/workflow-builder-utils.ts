@@ -41,7 +41,7 @@ function convertNodesToApiFormat(nodes: N8NWorkflowNode[]): Array<Record<string,
     ...(node.retryOnFail !== undefined && { retryOnFail: node.retryOnFail }),
     ...(node.maxTries !== undefined && { maxTries: node.maxTries }),
     ...(node.waitBetweenTries !== undefined && { waitBetweenTries: node.waitBetweenTries }),
-    ...(node.onError !== undefined && { onError: node.onError })
+    ...(node.onError !== undefined && { onError: node.onError }),
   }))
 }
 

@@ -34,8 +34,8 @@ class DynamicToolEnhancer {
       orchestration: 23,
       building: 18,
       connection: 15,
-      nodes: 36
-    }
+      nodes: 36,
+    },
   }
 
   static getToolCount(): number {

@@ -14,29 +14,33 @@ import { getOptimalAgent } from './agent-routing.js'
 const collaborationCache = new Map<string, string[]>()
 
 export function getCollaborationSuggestions(
-  agentName: string, 
-  taskComplexity: TaskComplexity
+  agentName: string,
+  taskComplexity: TaskComplexity,
 ): readonly string[] {
   const cacheKey = `${agentName}:${taskComplexity}`
   const cached = collaborationCache.get(cacheKey)
-  if (cached) return cached
+  if (cached)
+    return cached
 
   const agent = AGENT_DEFINITIONS.find(a => a.name === agentName)
-  if (!agent) return []
-  
+  if (!agent)
+    return []
+
   let suggestions: string[]
-  
+
   if (taskComplexity === 'expert' || taskComplexity === 'high') {
     // For complex tasks, suggest more collaborators
     suggestions = agent.collaboratesWith.slice(0, 3)
-  } else if (taskComplexity === 'medium') {
+  }
+  else if (taskComplexity === 'medium') {
     // For medium tasks, suggest 1-2 collaborators
     suggestions = agent.collaboratesWith.slice(0, 2)
-  } else {
+  }
+  else {
     // For simple tasks, suggest 1 collaborator
     suggestions = agent.collaboratesWith.slice(0, 1)
   }
-  
+
   // Cache the result
   collaborationCache.set(cacheKey, suggestions)
   return suggestions
@@ -46,47 +50,47 @@ export function getCollaborationSuggestions(
  * Advanced collaboration pattern selection with intelligent routing
  */
 export function getCollaborationPattern(
-  nodeType: string, 
-  complexity: TaskComplexity
+  nodeType: string,
+  complexity: TaskComplexity,
 ): CollaborationPattern {
   const primaryAgent = getOptimalAgent(nodeType, complexity)
-  
+
   if (complexity === 'low') {
     // Simple tasks - single agent handles everything
     return {
       gatheringAgent: primaryAgent,
       decisionAgent: primaryAgent,
-      pattern: 'gather-decide'
+      pattern: 'gather-decide',
     }
   }
-  
+
   if (complexity === 'medium') {
     // Medium complexity - guide gathers, specialist decides
     return {
       gatheringAgent: 'n8n-guide',
       decisionAgent: primaryAgent,
-      pattern: 'gather-decide'
+      pattern: 'gather-decide',
     }
   }
-  
+
   if (complexity === 'high' || complexity === 'expert') {
     // Complex tasks - full collaboration workflow
     const collaborators = getCollaborationSuggestions(primaryAgent, complexity)
     const executionAgent = selectOptimalExecutionAgent(primaryAgent, collaborators, nodeType)
-    
+
     return {
       gatheringAgent: 'n8n-guide',
       decisionAgent: primaryAgent,
       executionAgent,
-      pattern: 'gather-decide-execute'
+      pattern: 'gather-decide-execute',
     }
   }
-  
+
   // Default fallback
   return {
     gatheringAgent: 'n8n-guide',
     decisionAgent: primaryAgent,
-    pattern: 'gather-decide'
+    pattern: 'gather-decide',
   }
 }
 
@@ -96,21 +100,22 @@ export function getCollaborationPattern(
 function selectOptimalExecutionAgent(
   primaryAgent: string,
   collaborators: readonly string[],
-  nodeType: string
+  nodeType: string,
 ): string {
-  if (collaborators.length === 0) return primaryAgent
-  
+  if (collaborators.length === 0)
+    return primaryAgent
+
   // Smart execution agent selection based on node type characteristics
   const executionPriority: Record<string, string[]> = {
-    'security': ['n8n-scriptguard', 'n8n-connector'],
-    'performance': ['n8n-performance', 'n8n-architect'],
-    'data': ['n8n-data', 'n8n-cloud'],
-    'integration': ['n8n-workflow', 'n8n-architect'],
-    'code': ['n8n-builder', 'n8n-scriptguard'],
-    'ai': ['n8n-ai', 'n8n-data'],
-    'communication': ['n8n-communication', 'n8n-automation']
+    security: ['n8n-scriptguard', 'n8n-connector'],
+    performance: ['n8n-performance', 'n8n-architect'],
+    data: ['n8n-data', 'n8n-cloud'],
+    integration: ['n8n-workflow', 'n8n-architect'],
+    code: ['n8n-builder', 'n8n-scriptguard'],
+    ai: ['n8n-ai', 'n8n-data'],
+    communication: ['n8n-communication', 'n8n-automation'],
   }
-  
+
   // Find the most suitable execution agent
   for (const [category, preferredAgents] of Object.entries(executionPriority)) {
     if (nodeType.includes(category)) {
@@ -121,7 +126,7 @@ function selectOptimalExecutionAgent(
       }
     }
   }
-  
+
   // Fallback to first collaborator or primary agent
   return collaborators[0] || primaryAgent
 }
@@ -131,15 +136,15 @@ function selectOptimalExecutionAgent(
  */
 export function createValidationChain(
   nodeType: string,
-  validators: readonly string[] = ['n8n-scriptguard', 'n8n-connector']
+  validators: readonly string[] = ['n8n-scriptguard', 'n8n-connector'],
 ): CollaborationPattern {
   const primaryAgent = getOptimalAgent(nodeType, 'high')
-  
+
   return {
     gatheringAgent: 'n8n-guide',
     decisionAgent: primaryAgent,
     executionAgent: validators[0] ?? 'n8n-scriptguard',
-    pattern: 'validation-chain'
+    pattern: 'validation-chain',
   }
 }
 
@@ -148,22 +153,22 @@ export function createValidationChain(
  */
 export function createMultiSpecialistPattern(
   nodeTypes: readonly string[],
-  coordination: 'sequential' | 'parallel' = 'sequential'
+  _coordination: 'sequential' | 'parallel' = 'sequential',
 ): CollaborationPattern {
   const specialists = nodeTypes.map(nodeType => getOptimalAgent(nodeType, 'expert'))
   const uniqueSpecialists = [...new Set(specialists)]
-  
+
   if (uniqueSpecialists.length === 1) {
     // Single specialist can handle all node types
     return getCollaborationPattern(nodeTypes[0] ?? 'default', 'expert')
   }
-  
+
   // Multiple specialists required
   return {
     gatheringAgent: 'n8n-guide',
     decisionAgent: 'n8n-orchestrator', // Orchestrator coordinates multi-specialist work
     executionAgent: uniqueSpecialists[0] ?? 'n8n-guide', // Primary execution agent
-    pattern: 'multi-specialist'
+    pattern: 'multi-specialist',
   }
 }
 
@@ -172,25 +177,25 @@ export function createMultiSpecialistPattern(
  */
 export function createHighThroughputPattern(
   nodeType: string,
-  expectedLoad: number
+  expectedLoad: number,
 ): CollaborationPattern {
   const primaryAgent = getOptimalAgent(nodeType, 'medium')
-  
+
   if (expectedLoad > 1000) {
     // Very high load - use Haiku models for speed
     const fastAgents = ['n8n-communication', 'n8n-automation', 'n8n-guide']
-    const haikusAgent = fastAgents.find(agent => 
-      AGENT_DEFINITIONS.find(a => a.name === agent)?.collaboratesWith.includes(primaryAgent)
+    const haikusAgent = fastAgents.find(agent =>
+      AGENT_DEFINITIONS.find(a => a.name === agent)?.collaboratesWith.includes(primaryAgent),
     )
-    
+
     return {
       gatheringAgent: haikusAgent || 'n8n-guide',
       decisionAgent: primaryAgent,
       executionAgent: haikusAgent || primaryAgent,
-      pattern: 'gather-decide-execute'
+      pattern: 'gather-decide-execute',
     }
   }
-  
+
   return getCollaborationPattern(nodeType, 'medium')
 }
 
@@ -200,23 +205,23 @@ export function createHighThroughputPattern(
 export function createErrorRecoveryPattern(
   failedAgent: string,
   nodeType: string,
-  errorType: 'timeout' | 'validation' | 'execution' | 'resource'
+  errorType: 'timeout' | 'validation' | 'execution' | 'resource',
 ): CollaborationPattern {
   const recoveryAgents: Record<string, string> = {
-    'timeout': 'n8n-performance',
-    'validation': 'n8n-scriptguard', 
-    'execution': 'n8n-architect',
-    'resource': 'n8n-orchestrator'
+    timeout: 'n8n-performance',
+    validation: 'n8n-scriptguard',
+    execution: 'n8n-architect',
+    resource: 'n8n-orchestrator',
   }
-  
+
   const recoveryAgent = recoveryAgents[errorType]
   const alternativeAgent = getOptimalAgent(nodeType, 'high')
-  
+
   return {
     gatheringAgent: 'n8n-guide', // Gather error context
     decisionAgent: recoveryAgent ?? 'n8n-orchestrator', // Analyze and decide recovery
     executionAgent: alternativeAgent, // Execute with alternative agent
-    pattern: 'validation-chain'
+    pattern: 'validation-chain',
   }
 }
 
@@ -235,21 +240,21 @@ export function getCollaborationStats(): {
   patternTypes: Record<string, number>
   averageCollaborators: number
 } {
-  const patternTypes: Record<string, number> = {}
-  let totalCollaborators = 0
-  let patternCount = 0
-  
+  const _patternTypes: Record<string, number> = {}
+  const totalCollaborators = 0
+  const patternCount = 0
+
   // This would be tracked in a real implementation
   // For now, return mock data structure
-  
+
   return {
     cacheSize: collaborationCache.size,
     patternTypes: {
       'gather-decide': 0,
       'gather-decide-execute': 0,
       'multi-specialist': 0,
-      'validation-chain': 0
+      'validation-chain': 0,
     },
-    averageCollaborators: patternCount > 0 ? totalCollaborators / patternCount : 0
+    averageCollaborators: patternCount > 0 ? totalCollaborators / patternCount : 0,
   }
 }

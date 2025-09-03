@@ -4,6 +4,7 @@
  */
 
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
+import type { CredentialData, ExecutionData, WorkflowData } from '../n8n/simple-api.js'
 import type { NodeTemplate } from './comprehensive-node-registry.js'
 import type { DynamicAgentTools } from './dynamic-agent-tools.js'
 import { spawn } from 'node:child_process'
@@ -1810,7 +1811,7 @@ function createLazyToolHandler(toolId: string): (args: Record<string, unknown>) 
 /**
  * Create dynamic handler for core operations
  */
-function _createDynamicHandler(operation: string): (args: Record<string, unknown>) => Promise<Record<string, unknown>> {
+function _createDynamicHandler(operation: string): (args: Record<string, unknown>) => Promise<Record<string, unknown> | boolean | WorkflowData | WorkflowData[] | CredentialData | CredentialData[] | ExecutionData | ExecutionData[]> {
   return async (args: Record<string, unknown>) => {
     try {
       // Security: Validate and sanitize input arguments
@@ -1845,7 +1846,7 @@ function _createDynamicHandler(operation: string): (args: Record<string, unknown
         case 'create_workflow':
           return await simpleN8nApi?.createWorkflow({
             name: args.name as string || 'Dynamic Workflow',
-            nodes: (args.data as any) || [],
+            nodes: (args.data as Record<string, unknown>[]) || [],
             connections: {},
             active: false,
           }) || { status: 'workflow_creation_pending' }
@@ -1909,14 +1910,17 @@ function _createDynamicHandler(operation: string): (args: Record<string, unknown
           return await simpleN8nApi?.getTags() || []
         case 'create_tag':
           return await simpleN8nApi?.createTag({ name: args.name as string }) || null
-        case 'tag_workflow':
+        case 'tag_workflow': {
           const tagIds = args.tagIds as string[]
           if (tagIds && tagIds.length > 0) {
-            for (const tagId of tagIds) {
-              await simpleN8nApi?.tagWorkflow(args.workflowId as string, tagId)
-            }
+            // Tag workflow with all tags in parallel for better performance
+            const tagPromises = tagIds.map(tagId =>
+              simpleN8nApi?.tagWorkflow(args.workflowId as string, tagId),
+            )
+            await Promise.all(tagPromises)
           }
           return true
+        }
 
         // Variable operations
         case 'list_variables':

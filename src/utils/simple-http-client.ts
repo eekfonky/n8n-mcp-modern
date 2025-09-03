@@ -9,7 +9,7 @@ export interface HttpOptions {
 }
 
 export interface HttpResponse {
-  data: any
+  data: unknown
   status: number
   headers: Record<string, string>
 }
@@ -22,11 +22,11 @@ export class SimpleHttpClient {
     return this.request('GET', url, undefined, options)
   }
 
-  async post(url: string, body: any, options: HttpOptions = {}): Promise<HttpResponse> {
+  async post(url: string, body: unknown, options: HttpOptions = {}): Promise<HttpResponse> {
     return this.request('POST', url, body, options)
   }
 
-  async put(url: string, body: any, options: HttpOptions = {}): Promise<HttpResponse> {
+  async put(url: string, body: unknown, options: HttpOptions = {}): Promise<HttpResponse> {
     return this.request('PUT', url, body, options)
   }
 
@@ -34,14 +34,14 @@ export class SimpleHttpClient {
     return this.request('DELETE', url, undefined, options)
   }
 
-  async patch(url: string, body: any, options: HttpOptions = {}): Promise<HttpResponse> {
+  async patch(url: string, body: unknown, options: HttpOptions = {}): Promise<HttpResponse> {
     return this.request('PATCH', url, body, options)
   }
 
   private async request(
     method: string,
     url: string,
-    body?: any,
+    body?: unknown,
     options: HttpOptions = {},
     redirectCount = 0
   ): Promise<HttpResponse> {
@@ -85,7 +85,7 @@ export class SimpleHttpClient {
             return
           }
 
-          let parsedData: any = data
+          let parsedData: unknown = data
           try {
             if (data && res.headers['content-type']?.includes('application/json')) {
               parsedData = JSON.parse(data)

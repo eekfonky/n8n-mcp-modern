@@ -24,33 +24,33 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Complex automation strategies',
       'Enterprise workflow patterns',
       'Performance planning',
-      'Scalability architecture'
+      'Scalability architecture',
     ],
     toolAccess: [
       'delegate_agent_task',
       'analyze_workflow_complexity',
       'performance_monitoring',
       'session_management',
-      'memory_management'
+      'memory_management',
     ],
     collaboratesWith: [
       'n8n-architect',
       'n8n-builder',
       'n8n-workflow',
-      'n8n-performance'
+      'n8n-performance',
     ],
     maxConcurrentTasks: 10,
     specializedKnowledge: [
       'Workflow design patterns',
       'Agent coordination strategies',
       'Performance bottleneck identification',
-      'Enterprise automation requirements'
+      'Enterprise automation requirements',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.SONNET,
       fallbackModel: CLAUDE_MODEL_TIERS.OPUS,
-      modelReason: 'Balanced capability for strategic coordination with Opus fallback for complex decisions'
-    }
+      modelReason: 'Balanced capability for strategic coordination with Opus fallback for complex decisions',
+    },
   },
 
   // TIER 2 - Core Architecture Specialists
@@ -67,19 +67,19 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Scalability design principles',
       'Error handling architectures',
       'State management patterns',
-      'Real-time processing design'
+      'Real-time processing design',
     ],
     toolAccess: [
       'analyze_workflow_architecture',
       'performance_monitoring',
       'memory_optimization',
       'cold_start_optimization',
-      'workflow_validation'
+      'workflow_validation',
     ],
     collaboratesWith: [
       'n8n-orchestrator',
       'n8n-performance',
-      'n8n-workflow'
+      'n8n-workflow',
     ],
     maxConcurrentTasks: 8,
     specializedKnowledge: [
@@ -87,12 +87,12 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Event-driven architecture',
       'Batch vs stream processing',
       'Caching strategies',
-      'Load balancing techniques'
+      'Load balancing techniques',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Balanced capability for architectural decisions and pattern recognition'
-    }
+      modelReason: 'Balanced capability for architectural decisions and pattern recognition',
+    },
   },
 
   {
@@ -108,19 +108,19 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'CI/CD pipeline creation',
       'API integration patterns',
       'Custom node development',
-      'Workflow templating'
+      'Workflow templating',
     ],
     toolAccess: [
       'generate_workflow',
       'create_code_node',
       'validate_javascript',
       'build_templates',
-      'deployment_tools'
+      'deployment_tools',
     ],
     collaboratesWith: [
       'n8n-scriptguard',
       'n8n-architect',
-      'n8n-workflow'
+      'n8n-workflow',
     ],
     maxConcurrentTasks: 10,
     specializedKnowledge: [
@@ -128,12 +128,12 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'DevOps best practices',
       'Container orchestration',
       'API design principles',
-      'Version control workflows'
+      'Version control workflows',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Balanced capability for code generation and DevOps workflows'
-    }
+      modelReason: 'Balanced capability for code generation and DevOps workflows',
+    },
   },
 
   {
@@ -149,19 +149,19 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Secure credential management',
       'Connection pooling',
       'Rate limiting strategies',
-      'SSL/TLS configuration'
+      'SSL/TLS configuration',
     ],
     toolAccess: [
       'setup_authentication',
       'manage_credentials',
       'test_connections',
       'security_validation',
-      'rate_limit_management'
+      'rate_limit_management',
     ],
     collaboratesWith: [
       'n8n-scriptguard',
       'n8n-cloud',
-      'n8n-ecommerce'
+      'n8n-ecommerce',
     ],
     maxConcurrentTasks: 12,
     specializedKnowledge: [
@@ -169,12 +169,12 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'API gateway patterns',
       'Identity provider integration',
       'Certificate management',
-      'Network security'
+      'Network security',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Balanced capability for security protocols and authentication patterns'
-    }
+      modelReason: 'Balanced capability for security protocols and authentication patterns',
+    },
   },
 
   {
@@ -190,19 +190,19 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Input sanitization',
       'Security compliance validation',
       'Performance security impact',
-      'Vulnerability assessment'
+      'Vulnerability assessment',
     ],
     toolAccess: [
       'validate_javascript',
       'security_scan',
       'vulnerability_check',
       'code_analysis',
-      'compliance_validation'
+      'compliance_validation',
     ],
     collaboratesWith: [
       'n8n-builder',
       'n8n-connector',
-      'n8n-ai'
+      'n8n-ai',
     ],
     maxConcurrentTasks: 15,
     specializedKnowledge: [
@@ -210,12 +210,12 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'JavaScript security best practices',
       'Static code analysis techniques',
       'Runtime security monitoring',
-      'Compliance frameworks (SOC2, ISO27001)'
+      'Compliance frameworks (SOC2, ISO27001)',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Balanced capability for security analysis and code validation'
-    }
+      modelReason: 'Balanced capability for security analysis and code validation',
+    },
   },
 
   // TIER 3 - Domain Specialists
@@ -226,9 +226,21 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
     description: 'Databases, ETL workflows, data transformation, and analytics',
     domains: ['databases', 'etl', 'data-processing', 'analytics'],
     nodePatterns: [
-      '*postgres*', '*mysql*', '*mongo*', '*redis*', '*elastic*',
-      '*sql*', '*database*', '*table*', '*query*', '*aggregate*',
-      '*transform*', '*split*', '*merge*', '*sort*', '*filter*'
+      '*postgres*',
+      '*mysql*',
+      '*mongo*',
+      '*redis*',
+      '*elastic*',
+      '*sql*',
+      '*database*',
+      '*table*',
+      '*query*',
+      '*aggregate*',
+      '*transform*',
+      '*split*',
+      '*merge*',
+      '*sort*',
+      '*filter*',
     ],
     expertise: [
       'SQL optimization and tuning',
@@ -236,18 +248,18 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Data transformation patterns',
       'Database performance optimization',
       'Data modeling and normalization',
-      'Analytics workflow creation'
+      'Analytics workflow creation',
     ],
     toolAccess: [
       'database_query_optimizer',
       'etl_pipeline_generator',
       'data_transformation_tools',
-      'analytics_workflow_builder'
+      'analytics_workflow_builder',
     ],
     collaboratesWith: [
       'n8n-cloud',
       'n8n-ai',
-      'n8n-performance'
+      'n8n-performance',
     ],
     maxConcurrentTasks: 12,
     specializedKnowledge: [
@@ -255,13 +267,13 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Data pipeline architectures',
       'Stream processing patterns',
       'Data warehouse design',
-      'Business intelligence workflows'
+      'Business intelligence workflows',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.OPUS,
       fallbackModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Complex reasoning required for data modeling and ETL optimization'
-    }
+      modelReason: 'Complex reasoning required for data modeling and ETL optimization',
+    },
   },
 
   {
@@ -271,8 +283,17 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
     description: 'AWS, GCP, Azure, cloud-native patterns, and serverless',
     domains: ['cloud-services', 'serverless', 'containers', 'infrastructure'],
     nodePatterns: [
-      '*aws*', '*google*', '*azure*', '*s3*', '*lambda*', '*cloud*',
-      '*serverless*', '*function*', '*storage*', '*compute*', '*kubernetes*'
+      '*aws*',
+      '*google*',
+      '*azure*',
+      '*s3*',
+      '*lambda*',
+      '*cloud*',
+      '*serverless*',
+      '*function*',
+      '*storage*',
+      '*compute*',
+      '*kubernetes*',
     ],
     expertise: [
       'Multi-cloud integration strategies',
@@ -280,18 +301,18 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Container orchestration workflows',
       'Cloud cost optimization',
       'Infrastructure as code',
-      'Hybrid cloud connectivity'
+      'Hybrid cloud connectivity',
     ],
     toolAccess: [
       'cloud_service_integrator',
       'serverless_optimizer',
       'infrastructure_manager',
-      'cost_optimizer'
+      'cost_optimizer',
     ],
     collaboratesWith: [
       'n8n-data',
       'n8n-architect',
-      'n8n-connector'
+      'n8n-connector',
     ],
     maxConcurrentTasks: 10,
     specializedKnowledge: [
@@ -299,12 +320,12 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Serverless best practices',
       'Infrastructure automation',
       'Cloud security and compliance',
-      'Multi-region deployment strategies'
+      'Multi-region deployment strategies',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Balanced capability for cloud service integration and infrastructure management'
-    }
+      modelReason: 'Balanced capability for cloud service integration and infrastructure management',
+    },
   },
 
   {
@@ -314,8 +335,15 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
     description: 'E-commerce platforms, online retail, inventory, and order management',
     domains: ['ecommerce', 'retail', 'inventory', 'orders'],
     nodePatterns: [
-      '*shopify*', '*woocommerce*', '*magento*', '*prestashop*',
-      '*order*', '*product*', '*inventory*', '*catalog*', '*cart*'
+      '*shopify*',
+      '*woocommerce*',
+      '*magento*',
+      '*prestashop*',
+      '*order*',
+      '*product*',
+      '*inventory*',
+      '*catalog*',
+      '*cart*',
     ],
     expertise: [
       'E-commerce platform integration',
@@ -323,18 +351,18 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Order fulfillment automation',
       'Inventory management systems',
       'Customer journey optimization',
-      'Multi-channel retail workflows'
+      'Multi-channel retail workflows',
     ],
     toolAccess: [
       'ecommerce_integrator',
       'inventory_manager',
       'order_processor',
-      'catalog_optimizer'
+      'catalog_optimizer',
     ],
     collaboratesWith: [
       'n8n-finance',
       'n8n-data',
-      'n8n-communication'
+      'n8n-communication',
     ],
     maxConcurrentTasks: 8,
     specializedKnowledge: [
@@ -342,12 +370,12 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Inventory optimization strategies',
       'Order lifecycle management',
       'Product data standards',
-      'Multi-channel synchronization'
+      'Multi-channel synchronization',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Balanced capability for e-commerce platform integration and workflow optimization'
-    }
+      modelReason: 'Balanced capability for e-commerce platform integration and workflow optimization',
+    },
   },
 
   {
@@ -357,9 +385,19 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
     description: 'Payments, financial workflows, accounting, and compliance',
     domains: ['finance', 'payments', 'accounting', 'compliance'],
     nodePatterns: [
-      '*stripe*', '*paypal*', '*square*', '*payment*', '*invoice*',
-      '*tax*', '*accounting*', '*quickbooks*', '*xero*', '*financial*',
-      '*banking*', '*ledger*', '*transaction*'
+      '*stripe*',
+      '*paypal*',
+      '*square*',
+      '*payment*',
+      '*invoice*',
+      '*tax*',
+      '*accounting*',
+      '*quickbooks*',
+      '*xero*',
+      '*financial*',
+      '*banking*',
+      '*ledger*',
+      '*transaction*',
     ],
     expertise: [
       'Payment processing optimization',
@@ -367,18 +405,18 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Tax calculation and compliance',
       'Accounting system integration',
       'Financial reporting automation',
-      'Regulatory compliance workflows'
+      'Regulatory compliance workflows',
     ],
     toolAccess: [
       'payment_processor',
       'financial_analyzer',
       'compliance_checker',
-      'accounting_integrator'
+      'accounting_integrator',
     ],
     collaboratesWith: [
       'n8n-ecommerce',
       'n8n-connector',
-      'n8n-data'
+      'n8n-data',
     ],
     maxConcurrentTasks: 8,
     specializedKnowledge: [
@@ -386,12 +424,12 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Financial regulations (PSD2, GDPR)',
       'Payment gateway integration patterns',
       'Fraud prevention techniques',
-      'Financial data security'
+      'Financial data security',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Balanced capability for payment processing and financial compliance'
-    }
+      modelReason: 'Balanced capability for payment processing and financial compliance',
+    },
   },
 
   {
@@ -401,9 +439,20 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
     description: 'Messaging platforms, notifications, social media, and communication workflows',
     domains: ['messaging', 'notifications', 'social-media', 'communication'],
     nodePatterns: [
-      '*slack*', '*discord*', '*teams*', '*telegram*', '*whatsapp*',
-      '*email*', '*sms*', '*notification*', '*message*', '*chat*',
-      '*social*', '*twitter*', '*facebook*', '*linkedin*'
+      '*slack*',
+      '*discord*',
+      '*teams*',
+      '*telegram*',
+      '*whatsapp*',
+      '*email*',
+      '*sms*',
+      '*notification*',
+      '*message*',
+      '*chat*',
+      '*social*',
+      '*twitter*',
+      '*facebook*',
+      '*linkedin*',
     ],
     expertise: [
       'Multi-platform messaging strategies',
@@ -411,18 +460,18 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Social media automation',
       'Communication workflow optimization',
       'Broadcast and targeting strategies',
-      'Message templating and personalization'
+      'Message templating and personalization',
     ],
     toolAccess: [
       'messaging_orchestrator',
       'notification_manager',
       'social_media_automation',
-      'communication_analytics'
+      'communication_analytics',
     ],
     collaboratesWith: [
       'n8n-ai',
       'n8n-automation',
-      'n8n-data'
+      'n8n-data',
     ],
     maxConcurrentTasks: 12,
     specializedKnowledge: [
@@ -430,13 +479,13 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Message queue patterns',
       'Social media API limitations',
       'Communication compliance (GDPR, CAN-SPAM)',
-      'Real-time messaging architectures'
+      'Real-time messaging architectures',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.HAIKU,
       fallbackModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Fast throughput for high-volume messaging with Sonnet fallback for complex scenarios'
-    }
+      modelReason: 'Fast throughput for high-volume messaging with Sonnet fallback for complex scenarios',
+    },
   },
 
   {
@@ -446,9 +495,21 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
     description: 'AI/ML workflows, LLMs, data science, and intelligent automation',
     domains: ['artificial-intelligence', 'machine-learning', 'data-science', 'nlp'],
     nodePatterns: [
-      '*openai*', '*anthropic*', '*hugging*', '*tensorflow*', '*pytorch*',
-      '*ai*', '*ml*', '*gpt*', '*claude*', '*model*', '*predict*',
-      '*classify*', '*embedding*', '*vector*', '*semantic*'
+      '*openai*',
+      '*anthropic*',
+      '*hugging*',
+      '*tensorflow*',
+      '*pytorch*',
+      '*ai*',
+      '*ml*',
+      '*gpt*',
+      '*claude*',
+      '*model*',
+      '*predict*',
+      '*classify*',
+      '*embedding*',
+      '*vector*',
+      '*semantic*',
     ],
     expertise: [
       'LLM integration and optimization',
@@ -456,18 +517,18 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Natural language processing workflows',
       'Computer vision automation',
       'AI model deployment patterns',
-      'Intelligent data processing'
+      'Intelligent data processing',
     ],
     toolAccess: [
       'ai_workflow_generator',
       'llm_optimizer',
       'ml_pipeline_builder',
-      'model_performance_analyzer'
+      'model_performance_analyzer',
     ],
     collaboratesWith: [
       'n8n-data',
       'n8n-cloud',
-      'n8n-scriptguard'
+      'n8n-scriptguard',
     ],
     maxConcurrentTasks: 12,
     specializedKnowledge: [
@@ -475,13 +536,13 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'ML model lifecycle management',
       'AI ethics and bias mitigation',
       'Vector database optimization',
-      'AI workflow cost optimization'
+      'AI workflow cost optimization',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.OPUS,
       fallbackModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Complex reasoning and advanced capabilities required for AI/ML workflow optimization'
-    }
+      modelReason: 'Complex reasoning and advanced capabilities required for AI/ML workflow optimization',
+    },
   },
 
   {
@@ -491,9 +552,20 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
     description: 'IoT devices, smart home, industrial automation, and sensor workflows',
     domains: ['iot', 'smart-home', 'industrial', 'sensors'],
     nodePatterns: [
-      '*mqtt*', '*home*', '*assistant*', '*philips*', '*hue*', '*smart*',
-      '*iot*', '*sensor*', '*device*', '*arduino*', '*raspberry*',
-      '*automation*', '*control*', '*monitor*'
+      '*mqtt*',
+      '*home*',
+      '*assistant*',
+      '*philips*',
+      '*hue*',
+      '*smart*',
+      '*iot*',
+      '*sensor*',
+      '*device*',
+      '*arduino*',
+      '*raspberry*',
+      '*automation*',
+      '*control*',
+      '*monitor*',
     ],
     expertise: [
       'IoT device integration',
@@ -501,18 +573,18 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Industrial control systems',
       'Sensor data processing',
       'Device communication protocols',
-      'Real-time monitoring systems'
+      'Real-time monitoring systems',
     ],
     toolAccess: [
       'iot_device_manager',
       'sensor_data_processor',
       'automation_controller',
-      'device_monitor'
+      'device_monitor',
     ],
     collaboratesWith: [
       'n8n-data',
       'n8n-communication',
-      'n8n-performance'
+      'n8n-performance',
     ],
     maxConcurrentTasks: 10,
     specializedKnowledge: [
@@ -520,13 +592,13 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Edge computing patterns',
       'Industrial automation standards',
       'Smart home ecosystems',
-      'Real-time data processing'
+      'Real-time data processing',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.HAIKU,
       fallbackModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Fast throughput for high-frequency IoT data processing with Sonnet for complex automation logic'
-    }
+      modelReason: 'Fast throughput for high-frequency IoT data processing with Sonnet for complex automation logic',
+    },
   },
 
   // TIER 4 - Specialized Support
@@ -543,20 +615,20 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'File processing workflows',
       'Document automation',
       'Pattern library management',
-      'Component integration strategies'
+      'Component integration strategies',
     ],
     toolAccess: [
       'template_generator',
       'pattern_analyzer',
       'file_processor',
       'component_builder',
-      'workflow_composer'
+      'workflow_composer',
     ],
     collaboratesWith: [
       'n8n-orchestrator',
       'n8n-architect',
       'n8n-builder',
-      'n8n-data'
+      'n8n-data',
     ],
     maxConcurrentTasks: 10,
     specializedKnowledge: [
@@ -564,12 +636,12 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Template architecture',
       'File format processing',
       'Component reusability',
-      'Integration testing patterns'
+      'Integration testing patterns',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Balanced capability for template creation and workflow pattern optimization'
-    }
+      modelReason: 'Balanced capability for template creation and workflow pattern optimization',
+    },
   },
 
   {
@@ -585,19 +657,19 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Caching strategy implementation',
       'Bottleneck identification',
       'Scalability testing',
-      'Performance monitoring setup'
+      'Performance monitoring setup',
     ],
     toolAccess: [
       'performance_analyzer',
       'resource_optimizer',
       'cache_manager',
-      'monitoring_setup'
+      'monitoring_setup',
     ],
     collaboratesWith: [
       'n8n-architect',
       'n8n-orchestrator',
       'n8n-data',
-      'n8n-cloud'
+      'n8n-cloud',
     ],
     maxConcurrentTasks: 8,
     specializedKnowledge: [
@@ -605,12 +677,12 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Resource optimization strategies',
       'Caching patterns and strategies',
       'Load testing methodologies',
-      'Performance monitoring tools'
+      'Performance monitoring tools',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Balanced capability for performance analysis and optimization strategies'
-    }
+      modelReason: 'Balanced capability for performance analysis and optimization strategies',
+    },
   },
 
   {
@@ -626,18 +698,18 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'User support workflows',
       'Knowledge base management',
       'Training material creation',
-      'Community support patterns'
+      'Community support patterns',
     ],
     toolAccess: [
       'documentation_generator',
       'tutorial_creator',
       'knowledge_manager',
-      'support_analyzer'
+      'support_analyzer',
     ],
     collaboratesWith: [
       'n8n-orchestrator',
       'n8n-builder',
-      'n8n-workflow'
+      'n8n-workflow',
     ],
     maxConcurrentTasks: 10,
     specializedKnowledge: [
@@ -645,12 +717,12 @@ export const AGENT_DEFINITIONS: readonly AgentSpecialization[] = [
       'Knowledge management systems',
       'User experience design',
       'Community engagement strategies',
-      'Training and education methodologies'
+      'Training and education methodologies',
     ],
     modelConfig: {
       primaryModel: CLAUDE_MODEL_TIERS.HAIKU,
       fallbackModel: CLAUDE_MODEL_TIERS.SONNET,
-      modelReason: 'Fast information gathering and documentation with Sonnet for complex explanations'
-    }
-  }
+      modelReason: 'Fast information gathering and documentation with Sonnet for complex explanations',
+    },
+  },
 ] as const

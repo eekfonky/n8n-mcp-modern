@@ -1436,6 +1436,299 @@ export class DatabaseManager {
       ],
     }
   }
+
+  // Enhanced Discovery Tracking Methods
+
+  /**
+   * Record a new discovery session
+   */
+  startDiscoverySession(sessionId: string, instanceId: string, discoveryType: string): void {
+    this.safeExecute('startDiscoverySession', (db) => {
+      const stmt = db.prepare(`
+        INSERT OR REPLACE INTO discovery_sessions (
+          id, instance_id, started_at, discovery_type, status
+        ) VALUES (?, ?, datetime('now'), ?, 'running')
+      `)
+      stmt.run(sessionId, instanceId, discoveryType)
+    })
+  }
+
+  /**
+   * Update discovery session status and results
+   */
+  updateDiscoverySession(
+    sessionId: string,
+    status: 'completed' | 'failed' | 'running',
+    results?: {
+      nodesFound: number
+      nodesValidated: number
+      executionTime: number
+      errorMessage?: string
+    },
+  ): void {
+    this.safeExecute('updateDiscoverySession', (db) => {
+      const stmt = db.prepare(`
+        UPDATE discovery_sessions 
+        SET status = ?, 
+            completed_at = datetime('now'),
+            nodes_discovered = ?,
+            tools_generated = ?,
+            execution_time = ?,
+            discovery_log = ?
+        WHERE id = ?
+      `)
+      stmt.run(
+        status,
+        results?.nodesFound || null,
+        results?.nodesValidated || null,
+        results?.executionTime || null,
+        results?.errorMessage ? JSON.stringify({ error: results.errorMessage }) : null,
+        sessionId,
+      )
+    })
+  }
+
+  /**
+   * Record discovered node with discovery metadata
+   */
+  recordDiscoveredNode(
+    nodeType: string,
+    instanceId: string,
+    discoveryMethod: string,
+    sessionId: string,
+    metadata?: {
+      source?: string
+      confidence?: number
+      validated?: boolean
+    },
+  ): void {
+    this.safeExecute('recordDiscoveredNode', (db) => {
+      // First add/update the node
+      const nodeExists = db.prepare('SELECT name FROM nodes WHERE name = ?').get(nodeType)
+
+      if (!nodeExists) {
+        // Create basic node entry
+        const insertNode = db.prepare(`
+          INSERT INTO nodes (
+            name, display_name, description, version, category,
+            instance_id, node_type, discovered_at, is_active
+          ) VALUES (?, ?, ?, 1, 'discovered', ?, 'discovered', datetime('now'), 1)
+        `)
+        insertNode.run(
+          nodeType,
+          nodeType.split('.').pop() || nodeType,
+          `Discovered via ${discoveryMethod}`,
+          instanceId,
+        )
+      }
+
+      // Record discovery metadata
+      const recordDiscovery = db.prepare(`
+        INSERT OR REPLACE INTO shared_discoveries (
+          discovery_type, discovery_key, discoverer, discovered_at,
+          metadata, confidence_score, validation_status, session_id,
+          title, description, content, created_by
+        ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+
+      recordDiscovery.run(
+        'node_pattern',
+        nodeType,
+        discoveryMethod,
+        JSON.stringify({
+          source: metadata?.source || 'unknown',
+          instanceId,
+          method: discoveryMethod,
+        }),
+        metadata?.confidence || 0.8,
+        metadata?.validated ? 'validated' : 'pending',
+        sessionId,
+        nodeType, // title
+        `Discovered via ${discoveryMethod}`, // description
+        `Node pattern: ${nodeType}`, // content
+        discoveryMethod, // created_by
+      )
+    })
+  }
+
+  /**
+   * Get discovery session history
+   */
+  getDiscoveryHistory(limit: number = 50): Array<{
+    sessionId: string
+    instanceId: string
+    method: string
+    status: string
+    startedAt: string
+    completedAt?: string
+    nodesFound?: number
+    nodesValidated?: number
+    executionTime?: number
+    errorMessage?: string
+  }> {
+    return this.safeExecute('getDiscoveryHistory', (db) => {
+      const stmt = db.prepare(`
+        SELECT 
+          id as sessionId,
+          instance_id as instanceId,
+          discovery_type as method,
+          status,
+          started_at as startedAt,
+          completed_at as completedAt,
+          nodes_discovered as nodesFound,
+          tools_generated as nodesValidated,
+          execution_time as executionTime,
+          discovery_log as errorMessage
+        FROM discovery_sessions 
+        ORDER BY started_at DESC 
+        LIMIT ?
+      `)
+      return stmt.all(limit) as Array<{
+        sessionId: string
+        instanceId: string
+        method: string
+        status: string
+        startedAt: string
+        completedAt?: string
+        nodesFound?: number
+        nodesValidated?: number
+        executionTime?: number
+        errorMessage?: string
+      }>
+    }) || []
+  }
+
+  /**
+   * Get discovery statistics
+   */
+  getDiscoveryStats(): {
+    totalSessions: number
+    successfulSessions: number
+    totalNodesDiscovered: number
+    totalNodesValidated: number
+    averageExecutionTime: number
+    topDiscoveryMethods: Array<{ method: string, count: number }>
+    recentActivity: Array<{ date: string, sessions: number, nodesFound: number }>
+  } {
+    return this.safeExecute('getDiscoveryStats', (db) => {
+      // Basic stats
+      const totalSessions = db.prepare('SELECT COUNT(*) as count FROM discovery_sessions').get() as { count: number }
+      const successfulSessions = db.prepare('SELECT COUNT(*) as count FROM discovery_sessions WHERE status = \'completed\'').get() as { count: number }
+
+      // Node discovery stats
+      const nodeStats = db.prepare(`
+        SELECT 
+          COALESCE(SUM(nodes_discovered), 0) as totalFound,
+          COALESCE(SUM(tools_generated), 0) as totalValidated,
+          COALESCE(AVG(execution_time), 0) as avgTime
+        FROM discovery_sessions 
+        WHERE status = 'completed'
+      `).get() as { totalFound: number, totalValidated: number, avgTime: number }
+
+      // Top methods
+      const topMethods = db.prepare(`
+        SELECT discovery_type as method, COUNT(*) as count 
+        FROM discovery_sessions 
+        GROUP BY discovery_type 
+        ORDER BY count DESC 
+        LIMIT 5
+      `).all() as Array<{ method: string, count: number }>
+
+      // Recent activity (last 7 days)
+      const recentActivity = db.prepare(`
+        SELECT 
+          DATE(started_at) as date,
+          COUNT(*) as sessions,
+          COALESCE(SUM(nodes_discovered), 0) as nodesFound
+        FROM discovery_sessions 
+        WHERE started_at >= date('now', '-7 days')
+        GROUP BY DATE(started_at)
+        ORDER BY date DESC
+      `).all() as Array<{ date: string, sessions: number, nodesFound: number }>
+
+      return {
+        totalSessions: totalSessions.count,
+        successfulSessions: successfulSessions.count,
+        totalNodesDiscovered: nodeStats.totalFound,
+        totalNodesValidated: nodeStats.totalValidated,
+        averageExecutionTime: Math.round(nodeStats.avgTime),
+        topDiscoveryMethods: topMethods,
+        recentActivity,
+      }
+    }) || {
+      totalSessions: 0,
+      successfulSessions: 0,
+      totalNodesDiscovered: 0,
+      totalNodesValidated: 0,
+      averageExecutionTime: 0,
+      topDiscoveryMethods: [],
+      recentActivity: [],
+    }
+  }
+
+  /**
+   * Get discovered nodes with discovery metadata
+   */
+  getDiscoveredNodes(instanceId?: string): Array<{
+    nodeType: string
+    displayName: string
+    discoveryMethod: string
+    discoveredAt: string
+    confidence: number
+    validated: boolean
+    source?: string
+  }> {
+    return this.safeExecute('getDiscoveredNodes', (db) => {
+      const whereClause = instanceId ? 'WHERE n.instance_id = ?' : ''
+      const stmt = db.prepare(`
+        SELECT 
+          n.name as nodeType,
+          n.display_name as displayName,
+          sd.discoverer as discoveryMethod,
+          sd.discovered_at as discoveredAt,
+          sd.confidence_score as confidence,
+          CASE WHEN sd.validation_status = 'validated' THEN 1 ELSE 0 END as validated,
+          sd.metadata
+        FROM nodes n
+        LEFT JOIN shared_discoveries sd ON sd.discovery_key = n.name
+        ${whereClause}
+        ORDER BY sd.discovered_at DESC
+      `)
+
+      const params = instanceId ? [instanceId] : []
+      const results = stmt.all(...params) as Array<{
+        nodeType: string
+        displayName: string
+        discoveryMethod: string
+        discoveredAt: string
+        confidence: number
+        validated: boolean
+        metadata: string
+      }>
+
+      return results.map(row => ({
+        ...row,
+        validated: Boolean(row.validated),
+        source: row.metadata ? JSON.parse(row.metadata).source : undefined,
+      }))
+    }) || []
+  }
+
+  /**
+   * Mark discovered nodes as validated
+   */
+  markNodesValidated(nodeTypes: string[], sessionId: string): void {
+    this.safeExecute('markNodesValidated', (db) => {
+      const stmt = db.prepare(`
+        UPDATE shared_discoveries 
+        SET validation_status = 'validated',
+            validated_at = datetime('now'),
+            session_id = ?
+        WHERE discovery_key IN (${nodeTypes.map(() => '?').join(',')})
+      `)
+      stmt.run(sessionId, ...nodeTypes)
+    })
+  }
 }
 
 // Export singleton instance

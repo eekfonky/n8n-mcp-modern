@@ -3,60 +3,60 @@
  * Modular architecture with focused, high-performance modules
  */
 
-// Re-export all types from centralized type definitions
-export type {
-  ClaudeModel,
-  AgentModelConfig,
-  AgentSpecialization,
-  AgentRoutingRule,
-  CollaborationPattern,
-  TaskComplexity,
-  AgentLoadInfo,
-  AgentSystemSummary
-} from './types.js'
-
-export {
-  CLAUDE_MODEL_TIERS
-} from './types.js'
-
 // Re-export agent definitions
 export {
-  AGENT_DEFINITIONS as OPTIMIZED_AGENT_HIERARCHY
+  AGENT_DEFINITIONS as OPTIMIZED_AGENT_HIERARCHY,
 } from './agent-definitions.js'
 
 // Re-export routing functionality
 export {
   AGENT_ROUTING_RULES,
-  getOptimalAgent,
-  updateAgentLoad,
-  getAgentLoadInfo,
   clearRoutingCache,
-  getRoutingStats
+  getAgentLoadInfo,
+  getOptimalAgent,
+  getRoutingStats,
+  updateAgentLoad,
 } from './agent-routing.js'
-
-// Re-export collaboration patterns
-export {
-  getCollaborationSuggestions,
-  getCollaborationPattern,
-  createValidationChain,
-  createMultiSpecialistPattern,
-  createHighThroughputPattern,
-  createErrorRecoveryPattern,
-  clearCollaborationCache,
-  getCollaborationStats
-} from './collaboration-patterns.js'
 
 // Re-export utility functions
 export {
-  getAgentByName,
-  getAgentsByTier,
-  getAgentsByDomain,
-  getAgentModel,
-  getAgentSummary,
+  calculateLoadDistribution,
+  clearUtilsCaches,
   findAgentsByCapability,
   findCollaborators,
-  calculateLoadDistribution,
-  validateAgentSystem,
+  getAgentByName,
+  getAgentModel,
+  getAgentsByDomain,
+  getAgentsByTier,
+  getAgentSummary,
   getRegistryStats,
-  clearUtilsCaches
+  validateAgentSystem,
 } from './agent-utils.js'
+
+// Re-export collaboration patterns
+export {
+  clearCollaborationCache,
+  createErrorRecoveryPattern,
+  createHighThroughputPattern,
+  createMultiSpecialistPattern,
+  createValidationChain,
+  getCollaborationPattern,
+  getCollaborationStats,
+  getCollaborationSuggestions,
+} from './collaboration-patterns.js'
+
+// Re-export all types from centralized type definitions
+export type {
+  AgentLoadInfo,
+  AgentModelConfig,
+  AgentRoutingRule,
+  AgentSpecialization,
+  AgentSystemSummary,
+  ClaudeModel,
+  CollaborationPattern,
+  TaskComplexity,
+} from './types.js'
+
+export {
+  CLAUDE_MODEL_TIERS,
+} from './types.js'

@@ -1,6 +1,89 @@
 import { SimpleHttpClient, httpClient } from '../utils/simple-http-client.js'
 import { logger } from '../server/logger.js'
 import { N8NMcpError } from '../server/errors.js'
+import { z } from 'zod'
+
+// Zod schemas for API response validation
+const WorkflowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  active: z.boolean().optional(),
+  nodes: z.array(z.any()).optional(),
+  connections: z.any().optional(),
+  settings: z.any().optional(),
+  staticData: z.any().optional(),
+  tags: z.array(z.any()).optional(),
+})
+
+const WorkflowListResponseSchema = z.object({
+  data: z.array(WorkflowSchema)
+})
+
+const CredentialSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  data: z.any().optional(),
+  nodesAccess: z.array(z.any()).optional(),
+})
+
+const CredentialListResponseSchema = z.object({
+  data: z.array(CredentialSchema)
+})
+
+const ExecutionSchema = z.object({
+  id: z.string(),
+  finished: z.boolean(),
+  mode: z.string(),
+  startedAt: z.string(),
+  stoppedAt: z.string().optional(),
+  workflowId: z.string(),
+  workflowData: WorkflowSchema.optional(),
+  data: z.any().optional(),
+  status: z.string().optional(),
+  error: z.any().optional(),
+})
+
+const ExecutionListResponseSchema = z.object({
+  data: z.array(ExecutionSchema)
+})
+
+// Type guards for API responses
+function isWorkflowListResponse(data: unknown): data is { data: WorkflowData[] } {
+  try {
+    WorkflowListResponseSchema.parse(data)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function isWorkflowResponse(data: unknown): data is WorkflowData {
+  try {
+    WorkflowSchema.parse(data)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function isCredentialListResponse(data: unknown): data is { data: CredentialData[] } {
+  try {
+    CredentialListResponseSchema.parse(data)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function isExecutionListResponse(data: unknown): data is { data: ExecutionData[] } {
+  try {
+    ExecutionListResponseSchema.parse(data)
+    return true
+  } catch {
+    return false
+  }
+}
 
 export interface N8NApiConfig {
   apiUrl: string
@@ -76,7 +159,12 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || []
+      if (isWorkflowListResponse(response.data)) {
+        return response.data.data
+      }
+      
+      logger.warn('Invalid workflow list response format:', response.data)
+      return []
     } catch (error) {
       logger.error('Failed to fetch workflows:', error)
       throw error
@@ -97,7 +185,17 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || response.data
+      // Try data.data first (list endpoint format), then data (single item format)
+      const workflowData = (response.data as any)?.data || response.data
+      if (isWorkflowResponse(workflowData)) {
+        return workflowData
+      }
+      
+      throw new N8NMcpError(
+        `Invalid workflow response format for ${id}`,
+        'N8N_API_ERROR',
+        400
+      )
     } catch (error) {
       logger.error(`Failed to fetch workflow ${id}:`, error)
       throw error
@@ -118,7 +216,14 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || response.data
+      // Handle both list and single item response formats
+      const responseData = (response.data as any)?.data || response.data
+      if (responseData && typeof responseData === 'object') {
+        return responseData as any
+      }
+      
+      logger.warn('Invalid response format:', response.data)
+      throw new N8NMcpError('Invalid response format', 'N8N_API_ERROR', 400)
     } catch (error) {
       logger.error('Failed to create workflow:', error)
       throw error
@@ -139,7 +244,14 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || response.data
+      // Handle both list and single item response formats
+      const responseData = (response.data as any)?.data || response.data
+      if (responseData && typeof responseData === 'object') {
+        return responseData as any
+      }
+      
+      logger.warn('Invalid response format:', response.data)
+      throw new N8NMcpError('Invalid response format', 'N8N_API_ERROR', 400)
     } catch (error) {
       logger.error(`Failed to update workflow ${id}:`, error)
       throw error
@@ -192,7 +304,14 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || []
+      // Handle list response format
+      const responseData = (response.data as any)?.data
+      if (Array.isArray(responseData)) {
+        return responseData
+      }
+      
+      logger.warn('Invalid list response format:', response.data)
+      return []
     } catch (error) {
       logger.error('Failed to fetch executions:', error)
       throw error
@@ -213,7 +332,14 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || response.data
+      // Handle both list and single item response formats
+      const responseData = (response.data as any)?.data || response.data
+      if (responseData && typeof responseData === 'object') {
+        return responseData as any
+      }
+      
+      logger.warn('Invalid response format:', response.data)
+      throw new N8NMcpError('Invalid response format', 'N8N_API_ERROR', 400)
     } catch (error) {
       logger.error(`Failed to fetch execution ${id}:`, error)
       throw error
@@ -254,7 +380,14 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || []
+      // Handle list response format
+      const responseData = (response.data as any)?.data
+      if (Array.isArray(responseData)) {
+        return responseData
+      }
+      
+      logger.warn('Invalid list response format:', response.data)
+      return []
     } catch (error) {
       logger.error('Failed to fetch credentials:', error)
       throw error
@@ -275,7 +408,14 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || response.data
+      // Handle both list and single item response formats
+      const responseData = (response.data as any)?.data || response.data
+      if (responseData && typeof responseData === 'object') {
+        return responseData as any
+      }
+      
+      logger.warn('Invalid response format:', response.data)
+      throw new N8NMcpError('Invalid response format', 'N8N_API_ERROR', 400)
     } catch (error) {
       logger.error(`Failed to fetch credential ${id}:`, error)
       throw error
@@ -296,7 +436,14 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || response.data
+      // Handle both list and single item response formats
+      const responseData = (response.data as any)?.data || response.data
+      if (responseData && typeof responseData === 'object') {
+        return responseData as any
+      }
+      
+      logger.warn('Invalid response format:', response.data)
+      throw new N8NMcpError('Invalid response format', 'N8N_API_ERROR', 400)
     } catch (error) {
       logger.error('Failed to create credential:', error)
       throw error
@@ -317,7 +464,14 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || response.data
+      // Handle both list and single item response formats
+      const responseData = (response.data as any)?.data || response.data
+      if (responseData && typeof responseData === 'object') {
+        return responseData as any
+      }
+      
+      logger.warn('Invalid response format:', response.data)
+      throw new N8NMcpError('Invalid response format', 'N8N_API_ERROR', 400)
     } catch (error) {
       logger.error(`Failed to update credential ${id}:`, error)
       throw error
@@ -415,7 +569,14 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || []
+      // Handle list response format
+      const responseData = (response.data as any)?.data
+      if (Array.isArray(responseData)) {
+        return responseData
+      }
+      
+      logger.warn('Invalid list response format:', response.data)
+      return []
     } catch (error) {
       logger.error('Failed to fetch node types:', error)
       throw error
@@ -436,7 +597,14 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || []
+      // Handle list response format
+      const responseData = (response.data as any)?.data
+      if (Array.isArray(responseData)) {
+        return responseData
+      }
+      
+      logger.warn('Invalid list response format:', response.data)
+      return []
     } catch (error) {
       logger.error('Failed to fetch variables:', error)
       throw error
@@ -457,7 +625,14 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || []
+      // Handle list response format
+      const responseData = (response.data as any)?.data
+      if (Array.isArray(responseData)) {
+        return responseData
+      }
+      
+      logger.warn('Invalid list response format:', response.data)
+      return []
     } catch (error) {
       logger.error('Failed to fetch tags:', error)
       throw error
@@ -531,7 +706,14 @@ export class N8NApi {
         )
       }
       
-      return response.data?.data || response.data
+      // Handle both list and single item response formats
+      const responseData = (response.data as any)?.data || response.data
+      if (responseData && typeof responseData === 'object') {
+        return responseData as any
+      }
+      
+      logger.warn('Invalid response format:', response.data)
+      throw new N8NMcpError('Invalid response format', 'N8N_API_ERROR', 400)
     } catch (error) {
       logger.error(`Failed to execute workflow ${workflowId}:`, error)
       throw error

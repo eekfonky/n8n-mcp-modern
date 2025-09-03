@@ -464,7 +464,7 @@ export class SchemaManager {
       name: 'add_agent_routing',
       description: 'Add dynamic agent routing capabilities',
       dependencies: [1],
-      checksum: this.calculateChecksum('add_agent_routing_v2'),
+      checksum: this.calculateChecksum('add_agent_routing_v2_with_discoveries'),
       up: async (db) => {
         await db.exec(`
           CREATE TABLE IF NOT EXISTS agent_routes (
@@ -485,9 +485,50 @@ export class SchemaManager {
         await db.exec(`
           CREATE INDEX IF NOT EXISTS idx_agent_routes_agent ON agent_routes(agent_name)
         `)
+
+        // Add shared_discoveries table for discovery tracking
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS shared_discoveries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            discovery_type TEXT NOT NULL CHECK (discovery_type IN (
+                'workflow_pattern',
+                'node_pattern', 
+                'community_package',
+                'api_endpoint',
+                'credential_type',
+                'tool_mapping',
+                'agent_capability'
+            )),
+            discovery_key TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            content TEXT NOT NULL,
+            confidence_score REAL DEFAULT 0.8 CHECK (confidence_score >= 0.0 AND confidence_score <= 1.0),
+            success_rate REAL DEFAULT 0.0 CHECK (success_rate >= 0.0 AND success_rate <= 1.0),
+            usage_count INTEGER DEFAULT 0,
+            last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_by TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            discoverer TEXT NOT NULL,
+            discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            metadata TEXT, -- JSON: additional discovery metadata
+            validation_status TEXT DEFAULT 'pending' CHECK (validation_status IN ('pending', 'validated', 'failed')),
+            validated_at TIMESTAMP,
+            session_id TEXT,
+            UNIQUE(discovery_type, discovery_key)
+          )
+        `)
+
+        await db.exec(`CREATE INDEX IF NOT EXISTS idx_discoveries_type ON shared_discoveries(discovery_type)`)
+        await db.exec(`CREATE INDEX IF NOT EXISTS idx_discoveries_key ON shared_discoveries(discovery_key)`)
+        await db.exec(`CREATE INDEX IF NOT EXISTS idx_discoveries_confidence ON shared_discoveries(confidence_score)`)
+        await db.exec(`CREATE INDEX IF NOT EXISTS idx_discoveries_usage ON shared_discoveries(usage_count)`)
+        await db.exec(`CREATE INDEX IF NOT EXISTS idx_discoveries_validation ON shared_discoveries(validation_status)`)
       },
       down: async (db) => {
         await db.exec('DROP TABLE IF EXISTS agent_routes')
+        await db.exec('DROP TABLE IF EXISTS shared_discoveries')
       },
     })
 

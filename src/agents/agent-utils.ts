@@ -3,7 +3,7 @@
  * High-performance utilities with caching and optimization
  */
 
-import type { ClaudeModel, AgentSystemSummary, AgentSpecialization } from './types.js'
+import type { AgentSpecialization, AgentSystemSummary, ClaudeModel } from './types.js'
 import { AGENT_DEFINITIONS } from './agent-definitions.js'
 import { CLAUDE_MODEL_TIERS } from './types.js'
 
@@ -15,19 +15,20 @@ class AgentRegistry {
   private readonly tierMap = new Map<number, AgentSpecialization[]>()
   private readonly domainMap = new Map<string, AgentSpecialization[]>()
   private initialized = false
-  
+
   private initialize(): void {
-    if (this.initialized) return
-    
+    if (this.initialized)
+      return
+
     // Build optimized lookup maps
     for (const agent of AGENT_DEFINITIONS) {
       this.agentMap.set(agent.name, agent)
-      
+
       // Group by tier
       const tierAgents = this.tierMap.get(agent.tier) || []
       tierAgents.push(agent)
       this.tierMap.set(agent.tier, tierAgents)
-      
+
       // Group by domains
       for (const domain of agent.domains) {
         const domainAgents = this.domainMap.get(domain) || []
@@ -35,29 +36,29 @@ class AgentRegistry {
         this.domainMap.set(domain, domainAgents)
       }
     }
-    
+
     this.initialized = true
   }
-  
+
   getAgent(name: string): AgentSpecialization | undefined {
     this.initialize()
     return this.agentMap.get(name)
   }
-  
+
   getAgentsByTier(tier: number): readonly AgentSpecialization[] {
     this.initialize()
     return this.tierMap.get(tier) || []
   }
-  
+
   getAgentsByDomain(domain: string): readonly AgentSpecialization[] {
     this.initialize()
     return this.domainMap.get(domain) || []
   }
-  
+
   getAllAgents(): readonly AgentSpecialization[] {
     return AGENT_DEFINITIONS
   }
-  
+
   getStats(): {
     totalAgents: number
     tiersCount: number
@@ -66,12 +67,12 @@ class AgentRegistry {
   } {
     this.initialize()
     const totalCapacity = AGENT_DEFINITIONS.reduce((sum, agent) => sum + agent.maxConcurrentTasks, 0)
-    
+
     return {
       totalAgents: this.agentMap.size,
       tiersCount: this.tierMap.size,
       domainsCount: this.domainMap.size,
-      averageCapacity: Math.round(totalCapacity / this.agentMap.size)
+      averageCapacity: Math.round(totalCapacity / this.agentMap.size),
     }
   }
 }
@@ -105,8 +106,9 @@ export function getAgentsByDomain(domain: string): readonly AgentSpecialization[
  */
 export function getAgentModel(agentName: string, fallback: boolean = false): ClaudeModel {
   const agent = getAgentByName(agentName)
-  if (!agent) return CLAUDE_MODEL_TIERS.SONNET
-  
+  if (!agent)
+    return CLAUDE_MODEL_TIERS.SONNET
+
   return fallback && agent.modelConfig.fallbackModel
     ? agent.modelConfig.fallbackModel
     : agent.modelConfig.primaryModel
@@ -121,40 +123,41 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 export function getAgentSummary(forceRefresh: boolean = false): AgentSystemSummary {
   const now = Date.now()
-  
+
   if (!forceRefresh && cachedSummary && (now - cacheTimestamp) < CACHE_TTL) {
     return cachedSummary
   }
-  
+
   const totalCapacity = AGENT_DEFINITIONS.reduce(
-    (sum, agent) => sum + agent.maxConcurrentTasks, 0
+    (sum, agent) => sum + agent.maxConcurrentTasks,
+    0,
   )
-  
+
   const modelDistribution = AGENT_DEFINITIONS.reduce(
     (acc, agent) => {
       const model = agent.modelConfig.primaryModel
       acc[model] = (acc[model] || 0) + 1
       return acc
     },
-    {} as Record<ClaudeModel, number>
+    {} as Record<ClaudeModel, number>,
   )
-  
+
   const tierDistribution = AGENT_DEFINITIONS.reduce(
     (acc, agent) => {
       acc[`tier${agent.tier}`] = (acc[`tier${agent.tier}`] || 0) + 1
       return acc
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   )
-  
+
   cachedSummary = {
     totalAgents: AGENT_DEFINITIONS.length,
     totalCapacity,
     averageCapacity: Math.round(totalCapacity / AGENT_DEFINITIONS.length),
     modelDistribution,
-    tierDistribution
+    tierDistribution,
   }
-  
+
   cacheTimestamp = now
   return cachedSummary
 }
@@ -164,8 +167,8 @@ export function getAgentSummary(forceRefresh: boolean = false): AgentSystemSumma
  */
 export function findAgentsByCapability(capability: string): readonly AgentSpecialization[] {
   return AGENT_DEFINITIONS.filter(agent =>
-    agent.expertise.some(exp => exp.toLowerCase().includes(capability.toLowerCase())) ||
-    agent.specializedKnowledge.some(knowledge => knowledge.toLowerCase().includes(capability.toLowerCase()))
+    agent.expertise.some(exp => exp.toLowerCase().includes(capability.toLowerCase()))
+    || agent.specializedKnowledge.some(knowledge => knowledge.toLowerCase().includes(capability.toLowerCase())),
   )
 }
 
@@ -174,11 +177,12 @@ export function findAgentsByCapability(capability: string): readonly AgentSpecia
  */
 export function findCollaborators(agentName: string): readonly AgentSpecialization[] {
   const agent = getAgentByName(agentName)
-  if (!agent) return []
-  
-  return AGENT_DEFINITIONS.filter(a => 
-    agent.collaboratesWith.includes(a.name) ||
-    a.collaboratesWith.includes(agentName)
+  if (!agent)
+    return []
+
+  return AGENT_DEFINITIONS.filter(a =>
+    agent.collaboratesWith.includes(a.name)
+    || a.collaboratesWith.includes(agentName),
   )
 }
 
@@ -196,31 +200,34 @@ export function calculateLoadDistribution(): {
     acc[tier] = (acc[tier] || 0) + agent.maxConcurrentTasks
     return acc
   }, {} as Record<string, number>)
-  
+
   const capacityByModel = AGENT_DEFINITIONS.reduce((acc, agent) => {
     const model = agent.modelConfig.primaryModel
     acc[model] = (acc[model] || 0) + agent.maxConcurrentTasks
     return acc
   }, {} as Record<ClaudeModel, number>)
-  
+
   const totalCapacity = Object.values(capacityByTier).reduce((sum, cap) => sum + cap, 0)
-  
+
   // Calculate load balance based on variance in tier capacities
   const avgTierCapacity = totalCapacity / Object.keys(capacityByTier).length
   const variance = Object.values(capacityByTier).reduce(
-    (sum, cap) => sum + Math.pow(cap - avgTierCapacity, 2), 0
+    (sum, cap) => sum + (cap - avgTierCapacity) ** 2,
+    0,
   ) / Object.keys(capacityByTier).length
-  
+
   let loadBalance: 'excellent' | 'good' | 'unbalanced'
-  if (variance < avgTierCapacity * 0.1) loadBalance = 'excellent'
-  else if (variance < avgTierCapacity * 0.3) loadBalance = 'good'
+  if (variance < avgTierCapacity * 0.1)
+    loadBalance = 'excellent'
+  else if (variance < avgTierCapacity * 0.3)
+    loadBalance = 'good'
   else loadBalance = 'unbalanced'
-  
+
   return {
     totalCapacity,
     capacityByTier,
     capacityByModel,
-    loadBalance
+    loadBalance,
   }
 }
 
@@ -234,7 +241,7 @@ export function validateAgentSystem(): {
 } {
   const errors: string[] = []
   const warnings: string[] = []
-  
+
   // Check for duplicate agent names
   const names = new Set<string>()
   for (const agent of AGENT_DEFINITIONS) {
@@ -243,7 +250,7 @@ export function validateAgentSystem(): {
     }
     names.add(agent.name)
   }
-  
+
   // Validate collaborations (all collaborators should exist)
   for (const agent of AGENT_DEFINITIONS) {
     for (const collaborator of agent.collaboratesWith) {
@@ -252,33 +259,33 @@ export function validateAgentSystem(): {
       }
     }
   }
-  
+
   // Check for orphaned agents (agents with no collaborators and no one collaborates with them)
   for (const agent of AGENT_DEFINITIONS) {
     const hasCollaborators = agent.collaboratesWith.length > 0
-    const isCollaborator = AGENT_DEFINITIONS.some(a => 
-      a.collaboratesWith.includes(agent.name)
+    const isCollaborator = AGENT_DEFINITIONS.some(a =>
+      a.collaboratesWith.includes(agent.name),
     )
-    
+
     if (!hasCollaborators && !isCollaborator && agent.name !== 'n8n-orchestrator') {
       warnings.push(`Potentially orphaned agent: ${agent.name}`)
     }
   }
-  
+
   // Validate tier distribution
   const tierCounts = AGENT_DEFINITIONS.reduce((acc, agent) => {
     acc[agent.tier] = (acc[agent.tier] || 0) + 1
     return acc
   }, {} as Record<number, number>)
-  
+
   if (!tierCounts[1] || tierCounts[1] !== 1) {
     errors.push('Should have exactly 1 Tier 1 (strategic) agent')
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   }
 }
 
@@ -293,7 +300,7 @@ export function getRegistryStats(): {
   return {
     registryStats: agentRegistry.getStats(),
     cacheHits: 0, // Would track in real implementation
-    totalLookups: 0 // Would track in real implementation
+    totalLookups: 0, // Would track in real implementation
   }
 }
 
