@@ -670,8 +670,21 @@ export class ComprehensiveNodeDiscovery {
 
       // Process workflows in batches to avoid overwhelming the API
       const batchSize = 10
+      const batches: Array<{ id: string }[]> = []
+
+      // Create all batches first
       for (let i = 0; i < workflows.length; i += batchSize) {
-        const batch = workflows.slice(i, i + batchSize)
+        batches.push(workflows.slice(i, i + batchSize))
+      }
+
+      // Process batches with controlled concurrency and rate limiting
+      const processBatchWithDelay = async (batch: { id: string }[], batchIndex: number): Promise<string[]> => {
+        // Add delay before each batch (except the first one) for rate limiting
+        if (batchIndex > 0) {
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, 100)
+          })
+        }
 
         const batchPromises = batch.map(async (workflow) => {
           try {
@@ -693,16 +706,16 @@ export class ComprehensiveNodeDiscovery {
         })
 
         const batchResults = await Promise.all(batchPromises)
-        const batchNodes = batchResults.flat()
-        discoveredNodes.push(...batchNodes)
-
-        // Small delay between batches
-        if (i + batchSize < workflows.length) {
-          await new Promise<void>((resolve) => {
-            setTimeout(resolve, 100)
-          })
-        }
+        return batchResults.flat()
       }
+
+      // Process all batches with their delays
+      const batchPromises = batches.map((batch, index) => processBatchWithDelay(batch, index))
+      const allBatchResults = await Promise.all(batchPromises)
+
+      // Flatten all results
+      const allNodes = allBatchResults.flat()
+      discoveredNodes.push(...allNodes)
 
       // Remove duplicates and return unique node types
       const uniqueNodes = [...new Set(discoveredNodes)]
@@ -816,10 +829,21 @@ export class ComprehensiveNodeDiscovery {
 
     // Test in batches with rate limiting for better performance
     const batchSize = 10
-    let testedCount = 0
+    const batches: string[][] = []
 
+    // Create all batches first
     for (let i = 0; i < nodeTypesToTest.length; i += batchSize) {
-      const batch = nodeTypesToTest.slice(i, i + batchSize)
+      batches.push(nodeTypesToTest.slice(i, i + batchSize))
+    }
+
+    // Process batches with controlled rate limiting
+    const processBatchWithRateLimit = async (batch: string[], batchIndex: number): Promise<string[]> => {
+      // Add delay before each batch (except the first one) for rate limiting
+      if (batchIndex > 0) {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 50)
+        })
+      }
 
       // Process batch in parallel
       const batchPromises = batch.map(async (nodeType) => {
@@ -836,18 +860,18 @@ export class ComprehensiveNodeDiscovery {
       })
 
       const batchResults = await Promise.all(batchPromises)
-      const foundNodes = batchResults.filter((node): node is string => node !== null)
-      discoveredNodes.push(...foundNodes)
-
-      testedCount += batch.length
-
-      // Rate limiting: delay between batches
-      if (i + batchSize < nodeTypesToTest.length) {
-        await new Promise<void>((resolve) => {
-          setTimeout(resolve, 50)
-        })
-      }
+      return batchResults.filter((node): node is string => node !== null)
     }
+
+    // Process all batches with their delays
+    const batchPromises = batches.map((batch, index) => processBatchWithRateLimit(batch, index))
+    const allBatchResults = await Promise.all(batchPromises)
+
+    // Flatten all results
+    const allFoundNodes = allBatchResults.flat()
+    discoveredNodes.push(...allFoundNodes)
+
+    const testedCount = nodeTypesToTest.length
 
     logger.info(`Pattern scanning tested ${testedCount} combinations, found ${discoveredNodes.length} nodes`)
     return discoveredNodes
@@ -884,10 +908,15 @@ export class ComprehensiveNodeDiscovery {
       // Test packages in batches for better performance
       const packagesToTest = communityPackages.slice(0, 50) // Limit to prevent overwhelming
       const batchSize = 5
+      const batches: string[][] = []
 
+      // Create all batches first
       for (let i = 0; i < packagesToTest.length; i += batchSize) {
-        const batch = packagesToTest.slice(i, i + batchSize)
+        batches.push(packagesToTest.slice(i, i + batchSize))
+      }
 
+      // Process all batches with controlled concurrency
+      const batchPromises = batches.map(async (batch) => {
         const batchPromises = batch.map(async (packageName) => {
           try {
             return await this.testCommunityPackage(packageName)
@@ -899,9 +928,12 @@ export class ComprehensiveNodeDiscovery {
         })
 
         const batchResults = await Promise.all(batchPromises)
-        const batchNodes = batchResults.flat()
-        discoveredNodes.push(...batchNodes)
-      }
+        return batchResults.flat()
+      })
+
+      const allBatchResults = await Promise.all(batchPromises)
+      const allNodes = allBatchResults.flat()
+      discoveredNodes.push(...allNodes)
     }
     catch (error) {
       logger.error('Failed to scan community packages:', error)
