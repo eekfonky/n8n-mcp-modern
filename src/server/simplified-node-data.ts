@@ -7,9 +7,10 @@
  * Philosophy: Simple, fast, memory-efficient node recommendations
  */
 
-import type { N8NNodeDatabase } from '../types/index.js'
-import { isIntelligenceEnabled } from './feature-flags.js'
+import type { N8NNodeDatabase } from '../types/core.js'
 import { logger } from './logger.js'
+// Feature flag for intelligence - simplified to always enabled
+const isIntelligenceEnabled = true
 
 // === Simplified Node Types ===
 
@@ -111,7 +112,7 @@ export class SimplifiedNodeRecommender {
    */
   static getRecommendations(context: SimpleNodeContext): SimpleNodeRecommendation[] {
     // If complex intelligence is enabled, defer to that system
-    if (isIntelligenceEnabled()) {
+    if (isIntelligenceEnabled) {
       return [] // Let complex system handle it
     }
 

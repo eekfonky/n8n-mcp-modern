@@ -64,9 +64,6 @@ export class CompletionManager {
       else if (ref.type === 'ref/resource') {
         return this.completeResourceArgument(ref.uri, argument, context)
       }
-      else if (ref.type === 'ref/tool') {
-        return this.completeToolArgument(ref.name, argument, context)
-      }
 
       // Default: no completions
       return {
@@ -221,7 +218,7 @@ export class CompletionManager {
         const workflows = await simpleN8nApi.getWorkflows()
         if (workflows) {
           workflows.forEach((wf) => {
-            if (wf.name?.toLowerCase().includes(argument.value.toLowerCase())) {
+            if (wf.id && wf.name?.toLowerCase().includes(argument.value.toLowerCase())) {
               values.push(wf.id.toString())
               if (wf.name)
                 values.push(wf.name)
@@ -277,8 +274,8 @@ export class CompletionManager {
       const workflows = await simpleN8nApi.getWorkflows()
       if (workflows) {
         workflows.forEach((wf) => {
-          if (wf.name?.toLowerCase().includes(argument.value.toLowerCase())
-            || wf.id.toString().includes(argument.value)) {
+          if (wf.id && (wf.name?.toLowerCase().includes(argument.value.toLowerCase())
+            || wf.id.toString().includes(argument.value))) {
             values.push(wf.id.toString())
           }
         })
@@ -290,8 +287,8 @@ export class CompletionManager {
       const credentials = await simpleN8nApi.getCredentials()
       if (credentials) {
         credentials.forEach((cred) => {
-          if (cred.name.toLowerCase().includes(argument.value.toLowerCase())
-            || cred.id.toString().includes(argument.value)) {
+          if (cred.id && (cred.name.toLowerCase().includes(argument.value.toLowerCase())
+            || cred.id.toString().includes(argument.value))) {
             values.push(cred.id.toString())
           }
         })

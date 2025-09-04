@@ -5,7 +5,7 @@
 
 import type {
   Resource,
-  ResourceContent,
+  ResourceContents,
 } from '@modelcontextprotocol/sdk/types.js'
 import { EventEmitter } from 'node:events'
 import process from 'node:process'
@@ -85,7 +85,7 @@ export class ResourceManager extends EventEmitter {
         }
 
         // Execution resources
-        const executions = await simpleN8nApi.getExecutions(10)
+        const executions = await simpleN8nApi.getExecutions()
         if (executions) {
           executions.forEach((exec) => {
             resources.push({
@@ -124,7 +124,7 @@ export class ResourceManager extends EventEmitter {
   /**
    * Read a specific resource
    */
-  async readResource(uri: string): Promise<ResourceContent[]> {
+  async readResource(uri: string): Promise<ResourceContents[]> {
     const parts = uri.replace('n8n://', '').split('/')
     const resourceType = parts[0]
     const resourceId = parts[1]
@@ -157,7 +157,7 @@ export class ResourceManager extends EventEmitter {
           if (resourceId === 'registry') {
             if (hasN8nApi) {
               const nodes = await simpleN8nApi.getNodeTypes()
-              content = nodes
+              content = { nodes }
             }
             else {
               content = { error: 'n8n connection not configured' }
@@ -166,44 +166,43 @@ export class ResourceManager extends EventEmitter {
           break
 
         case 'workflow':
-          if (hasN8nApi) {
+          if (hasN8nApi && resourceId) {
             const workflow = await simpleN8nApi.getWorkflow(resourceId)
-            content = workflow
+            content = workflow as unknown as Record<string, unknown>
           }
           break
 
         case 'credential':
-          if (hasN8nApi) {
+          if (hasN8nApi && resourceId) {
             const credential = await simpleN8nApi.getCredential(resourceId)
             // Only return metadata, not actual credential values
             content = {
               id: credential?.id,
               name: credential?.name,
               type: credential?.type,
-              createdAt: credential?.createdAt,
-              updatedAt: credential?.updatedAt,
+              // Note: createdAt/updatedAt not available in CredentialData
             }
           }
           break
 
         case 'execution':
-          if (hasN8nApi) {
+          if (hasN8nApi && resourceId) {
             const execution = await simpleN8nApi.getExecution(resourceId)
-            content = execution
+            content = execution as unknown as Record<string, unknown>
           }
           break
 
         case 'variables':
           if (hasN8nApi) {
             const variables = await simpleN8nApi.getVariables()
-            content = variables
+            content = { variables }
           }
           break
 
         case 'tags':
           if (hasN8nApi) {
             const tags = await simpleN8nApi.getTags()
-            content = tags
+            content = { tags }
           }
           break
 
@@ -279,11 +278,19 @@ export class ResourceManager extends EventEmitter {
 
         // Update cache
         for (const workflow of workflows || []) {
-          const key = `workflow/${workflow.id}`
-          const cached = this.resourceCache.get(key)
-          if (JSON.stringify(cached) !== JSON.stringify(workflow)) {
-            this.resourceCache.set(key, workflow)
-            this.notifySubscribers(`n8n://workflow/${workflow.id}`, workflow)
+          if (workflow.id) {
+            const key = `workflow/${workflow.id}`
+            const cached = this.resourceCache.get(key)
+            const cacheData: CachedResourceData = {
+              id: workflow.id,
+              name: workflow.name,
+              type: 'workflow',
+              data: workflow as unknown as Record<string, unknown>,
+            }
+            if (JSON.stringify(cached) !== JSON.stringify(cacheData)) {
+              this.resourceCache.set(key, cacheData)
+              this.notifySubscribers(`n8n://workflow/${workflow.id}`, workflow as unknown as Record<string, unknown>)
+            }
           }
         }
       }

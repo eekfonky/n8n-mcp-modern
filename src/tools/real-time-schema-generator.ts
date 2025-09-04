@@ -24,6 +24,17 @@ export interface NodeProperty {
   required?: boolean
   default?: unknown
   options?: Array<{ name: string, value: unknown }>
+  description?: string
+  displayName?: string
+  displayOptions?: Record<string, unknown>
+  typeOptions?: {
+    minValue?: number
+    maxValue?: number
+    multipleValues?: boolean
+    pattern?: string
+    [key: string]: unknown
+  }
+  noDataExpression?: boolean
 }
 
 export interface NodeCredential {
@@ -39,6 +50,8 @@ export interface NodeInput {
 export interface NodeOutput {
   type: string
   displayName?: string
+  name?: string
+  description?: string
 }
 
 // Schema Generation Context
@@ -295,7 +308,7 @@ export class RealTimeSchemaGenerator {
           properties[prop.name] = fieldSchema.jsonSchema
           zodSchema[prop.name] = fieldSchema.zodType
 
-          if (prop.required !== false && !prop.optional) {
+          if (prop.required === true) {
             required.push(prop.name)
           }
 
@@ -400,14 +413,20 @@ export class RealTimeSchemaGenerator {
         break
 
       case 'options':
-        if (prop.options && Array.isArray(prop.options)) {
-          const enumValues = prop.options.map(opt => (opt as Record<string, unknown>).value || (opt as Record<string, unknown>).name || opt)
-          jsonSchema = {
-            type: 'string',
-            enum: enumValues,
-            description: prop.description || prop.displayName || `${prop.name} parameter`,
+        if (prop.options && Array.isArray(prop.options) && prop.options.length > 0) {
+          const enumValues = prop.options.map(opt => (opt as Record<string, unknown>).value || (opt as Record<string, unknown>).name || opt).filter(Boolean) as string[]
+          if (enumValues.length > 0) {
+            jsonSchema = {
+              type: 'string',
+              enum: enumValues,
+              description: prop.description || prop.displayName || `${prop.name} parameter`,
+            }
+            zodType = z.enum(enumValues as [string, ...string[]])
           }
-          zodType = z.enum(enumValues)
+          else {
+            jsonSchema = { type: 'string', description: prop.description || prop.displayName || `${prop.name} parameter` }
+            zodType = z.string()
+          }
         }
         else {
           jsonSchema = { type: 'string', description: prop.description || `${prop.name} parameter` }
@@ -416,14 +435,24 @@ export class RealTimeSchemaGenerator {
         break
 
       case 'multiOptions':
-        if (prop.options && Array.isArray(prop.options)) {
-          const enumValues = prop.options.map(opt => (opt as Record<string, unknown>).value || (opt as Record<string, unknown>).name || opt)
-          jsonSchema = {
-            type: 'array',
-            items: { type: 'string', enum: enumValues },
-            description: prop.description || prop.displayName || `${prop.name} parameter`,
+        if (prop.options && Array.isArray(prop.options) && prop.options.length > 0) {
+          const enumValues = prop.options.map(opt => (opt as Record<string, unknown>).value || (opt as Record<string, unknown>).name || opt).filter(Boolean) as string[]
+          if (enumValues.length > 0) {
+            jsonSchema = {
+              type: 'array',
+              items: { type: 'string', enum: enumValues },
+              description: prop.description || prop.displayName || `${prop.name} parameter`,
+            }
+            zodType = z.array(z.enum(enumValues as [string, ...string[]]))
           }
-          zodType = z.array(z.enum(enumValues))
+          else {
+            jsonSchema = {
+              type: 'array',
+              items: { type: 'string' },
+              description: prop.description || prop.displayName || `${prop.name} parameter`,
+            }
+            zodType = z.array(z.string())
+          }
         }
         else {
           jsonSchema = { type: 'array', items: { type: 'string' } }
@@ -478,7 +507,7 @@ export class RealTimeSchemaGenerator {
     }
 
     // Handle optional fields
-    if (prop.required === false || prop.optional === true) {
+    if (prop.required === false || prop.required !== true) {
       zodType = zodType.optional()
     }
 
@@ -489,7 +518,7 @@ export class RealTimeSchemaGenerator {
     const rules: ValidationRule[] = []
 
     // Required field rule
-    if (prop.required !== false && !prop.optional) {
+    if (prop.required === true) {
       rules.push({
         field: prop.name,
         type: 'required',
@@ -535,7 +564,7 @@ export class RealTimeSchemaGenerator {
     }
 
     // Format validation
-    if (prop.type === 'string' && prop.typeOptions?.pattern) {
+    if (prop.type === 'string' && prop.typeOptions?.pattern && typeof prop.typeOptions.pattern === 'string') {
       rules.push({
         field: prop.name,
         type: 'format',

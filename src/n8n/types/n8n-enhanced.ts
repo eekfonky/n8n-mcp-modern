@@ -3,12 +3,12 @@
  * Additional types for comprehensive API coverage
  */
 
-import type { N8NCredential, N8NExecution, N8NWorkflow } from '../api.js'
+import type { CredentialData, ExecutionData, WorkflowData } from '../simple-api.js'
 
 /**
  * Enhanced workflow with additional metadata
  */
-export interface EnhancedWorkflow extends N8NWorkflow {
+export interface EnhancedWorkflow extends WorkflowData {
   stats?: WorkflowStats
   permissions?: WorkflowPermissions
   sharing?: WorkflowSharing
@@ -49,7 +49,7 @@ export interface WorkflowSharing {
 /**
  * Enhanced execution with additional context
  */
-export interface EnhancedExecution extends N8NExecution {
+export interface EnhancedExecution extends ExecutionData {
   workflow?: {
     id: string
     name: string
@@ -171,7 +171,7 @@ export interface SystemHealthDetails {
 /**
  * Enhanced credential with security info
  */
-export interface EnhancedCredential extends N8NCredential {
+export interface EnhancedCredential extends CredentialData {
   isValid?: boolean
   lastTested?: Date
   usedByWorkflows?: string[]

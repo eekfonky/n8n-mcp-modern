@@ -47,12 +47,10 @@ export default antfu({
     '**/coverage',
     '**/*.d.ts',
     '**/data/nodes.db*',
-    'CLAUDE.md/**/*',
     '**/*.log',
     '.vscode/**/*',
     '**/*.md',
     '**/agents/**/*.md',
-    '**/.claude/**/*.md',
   ],
 },
 // Additional configuration for specific needs

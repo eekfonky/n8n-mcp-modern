@@ -131,7 +131,7 @@ Please provide:
       let context = ''
       if (args.workflowId && hasN8nApi) {
         try {
-          const workflow = await simpleN8nApi.getWorkflow(args.workflowId)
+          const workflow = await simpleN8nApi.getWorkflow(args.workflowId as string)
           if (workflow) {
             context = `\n\nWorkflow context:\n${JSON.stringify(workflow, null, 2)}`
           }
@@ -416,7 +416,7 @@ Please help with:
 
     const messages = await promptData.handler(args)
     return {
-      description: promptData.prompt.description,
+      description: promptData.prompt.description || '',
       messages,
     }
   }
