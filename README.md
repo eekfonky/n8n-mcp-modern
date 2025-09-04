@@ -22,11 +22,11 @@
 
 1. **Install via Claude Code CLI (recommended):**
    ```bash
-   # Project scope (for current project only)
-   claude mcp add n8n-mcp-modern --scope project --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern
+   # Local scope (current project only)
+   claude mcp add n8n-mcp-modern --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern
    
-   # Global scope (for all projects)
-   claude mcp add n8n-mcp-modern --scope global --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern
+   # User scope (all projects)
+   claude mcp add n8n-mcp-modern --scope user --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern
    ```
 
 2. **Or configure manually in Claude Code settings:**
