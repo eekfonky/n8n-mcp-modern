@@ -26,7 +26,7 @@
    claude mcp add n8n-mcp-modern --scope project --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern
    
    # Global scope (for all projects)
-   claude mcp add n8n-mcp-modern --scope local --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern
+   claude mcp add n8n-mcp-modern --scope global --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern
    ```
 
 2. **Or configure manually in Claude Code settings:**

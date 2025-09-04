@@ -34,7 +34,7 @@
     "mcp:restore": "node scripts/upgrade-rollback.cjs restore",
     "mcp:rollback": "node scripts/upgrade-rollback.cjs rollback",
     "mcp:install-project": "echo 'Run: claude mcp add n8n-mcp-modern --scope project --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern'",
-    "mcp:install-global": "echo 'Run: claude mcp add n8n-mcp-modern --scope local --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern'",
+    "mcp:install-global": "echo 'Run: claude mcp add n8n-mcp-modern --scope global --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern'",
     "sync-release": "./scripts/sync-release.sh",
     "ci": "npm audit --audit-level high && npm run lint && npm run typecheck && npm run test",
     "precommit": "npm run lint && npm run typecheck && npm run test && npm run validate-readme",
