@@ -33,24 +33,34 @@ const startTime = performance.now()
  * Main MCP server implementation
  */
 async function main(): Promise<void> {
-  startupAnalyzer.startPhase('startup-initialization')
-
-  // Handle help flag
+  // Handle help flag immediately - no initialization needed
   if (process.argv.includes('--help') || process.argv.includes('-h')) {
-    logger.info('n8n-MCP Modern - Dynamic n8n MCP Server')
-    logger.info('')
-    logger.info('Usage: n8n-mcp [options]')
-    logger.info('')
-    logger.info('Options:')
-    logger.info('  -h, --help             Show this help message')
-    logger.info('')
-    logger.info('Environment Variables:')
-    logger.info('  N8N_API_URL            Your n8n instance URL (e.g., https://n8n.example.com)')
-    logger.info('  N8N_API_KEY            Your n8n API key')
-    logger.info('  LOG_LEVEL              Log level (debug, info, warn, error)')
-    logger.info('')
+    console.log('n8n-MCP Modern - Dynamic n8n MCP Server')
+    console.log('')
+    console.log('Usage: n8n-mcp [options]')
+    console.log('')
+    console.log('Options:')
+    console.log('  -h, --help             Show this help message')
+    console.log('  --version              Show version information')
+    console.log('')
+    console.log('Environment Variables:')
+    console.log('  N8N_API_URL            Your n8n instance URL (e.g., https://n8n.example.com)')
+    console.log('  N8N_API_KEY            Your n8n API key')
+    console.log('  LOG_LEVEL              Log level (debug, info, warn, error)')
+    console.log('')
     process.exit(0)
   }
+
+  // Handle version flag immediately
+  if (process.argv.includes('--version')) {
+    console.log(VERSION)
+    process.exit(0)
+  }
+
+  // Quick mode for testing - minimal initialization
+  const quickMode = process.argv.includes('--quick') || process.env.MCP_QUICK_MODE === 'true'
+
+  startupAnalyzer.startPhase('startup-initialization')
 
   // Fail fast if n8n is not configured - no fallback modes
   if (!hasN8nApi) {

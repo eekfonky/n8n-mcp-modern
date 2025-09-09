@@ -38,7 +38,10 @@
     "sync-release": "./scripts/sync-release.sh",
     "ci": "npm audit --audit-level high && npm run lint && npm run typecheck && npm run test",
     "precommit": "npm run lint && npm run typecheck && npm run test && npm run validate-readme",
-    "release": "npm run ci && npm run build && npm publish && git push --tags",
+    "release": "npm run ci && npm run build && npm run publish:dual && git push --tags",
+    "publish:dual": "npm publish --registry https://registry.npmjs.org --access public && npm publish --registry https://npm.pkg.github.com --access public",
+    "publish:npm": "npm publish --registry https://registry.npmjs.org --access public",
+    "publish:github": "npm publish --registry https://npm.pkg.github.com --access public",
     "version-check": "node -p \"'📦 Version: ' + require('./package.json').version\"",
     "prepare": "simple-git-hooks"
   },
@@ -78,9 +81,7 @@
   },
   "homepage": "https://github.com/eekfonky/n8n-mcp-modern#readme",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "engines": {
     "node": ">=22.0.0"

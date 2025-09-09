@@ -11,15 +11,15 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write # For npm provenance
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Node.js
+      - name: Setup Node.js for npm registry
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@eekfonky'
+          registry-url: 'https://registry.npmjs.org'
           
       - name: Install dependencies
         run: npm ci
@@ -29,6 +29,18 @@ jobs:
         
       - name: Verify build output
         run: ls -la dist/
+        
+      - name: Publish to npm registry
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          
+      - name: Setup Node.js for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@eekfonky'
         
       - name: Publish to GitHub Packages
         run: npm publish --access public

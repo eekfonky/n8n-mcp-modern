@@ -117,7 +117,8 @@ export class SchemaManager {
 
       // Validate current schema
       const validation = await this.validateSchema()
-      if (!validation.isValid) {
+      if (!validation.isValid && this.currentVersion > 0) {
+        // Only warn if we have an existing database with issues
         logger.warn('Schema validation issues detected:', validation)
       }
 
