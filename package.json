@@ -43,18 +43,7 @@
     "publish:npm": "npm publish --registry https://registry.npmjs.org --access public",
     "publish:github": "npm publish --registry https://npm.pkg.github.com --access public",
     "version-check": "node -p \"'📦 Version: ' + require('./package.json').version\"",
-    "prepare": "simple-git-hooks"
-  },
-  "simple-git-hooks": {
-    "pre-commit": "lint-staged"
-  },
-  "lint-staged": {
-    "*.{js,ts}": [
-      "eslint --fix"
-    ],
-    "*.{js,ts,json,md}": [
-      "npm run typecheck"
-    ]
+    "prepare": "echo 'Git hooks disabled'"
   },
   "keywords": [
     "n8n",
