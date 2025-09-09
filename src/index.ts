@@ -135,7 +135,7 @@ async function main(): Promise<void> {
   startupAnalyzer.startPhase('dynamic-tool-discovery')
 
   try {
-    await initializeDynamicTools()
+    await initializeDynamicTools(quickMode)
     const initTime = performance.now() - startTime
     logger.info(`✅ Dynamic discovery complete in ${Math.round(initTime)}ms`)
   }

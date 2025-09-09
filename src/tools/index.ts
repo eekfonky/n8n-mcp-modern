@@ -1121,7 +1121,7 @@ async function handleServerUpdate(args: Record<string, unknown>): Promise<Record
 /**
  * Initialize the pure dynamic tool system
  */
-export async function initializeDynamicTools(): Promise<void> {
+export async function initializeDynamicTools(quickMode = false): Promise<void> {
   logger.info('Initializing pure dynamic tool discovery...')
 
   try {
@@ -1764,17 +1764,21 @@ export async function initializeDynamicTools(): Promise<void> {
       throw new Error('n8n API connection test failed - check server status and credentials')
     }
 
-    logger.info('Running Phase 2: Comprehensive node discovery...')
-    const discoveryStats = await comprehensiveDiscovery.discover()
-    logger.info(`Phase 2 complete: ${discoveryStats.nodesDiscovered} nodes discovered (${discoveryStats.standardNodes} standard, ${discoveryStats.communityNodes} community)`)
+    if (quickMode) {
+      logger.info('Quick mode enabled - skipping comprehensive discovery and tool generation')
+    } else {
+      logger.info('Running Phase 2: Comprehensive node discovery...')
+      const discoveryStats = await comprehensiveDiscovery.discover()
+      logger.info(`Phase 2 complete: ${discoveryStats.nodesDiscovered} nodes discovered (${discoveryStats.standardNodes} standard, ${discoveryStats.communityNodes} community)`)
 
-    // Run Phase 3: Generate MCP tools from discovered nodes
-    logger.info('Running Phase 3: MCP tool generation with lazy loading...')
-    const generationStats = await toolGenerator.generateAllTools()
-    logger.info(`Phase 3 complete: ${generationStats.totalGenerated} tools generated (${generationStats.toolsWithOperations} with operations)`)
+      // Run Phase 3: Generate MCP tools from discovered nodes
+      logger.info('Running Phase 3: MCP tool generation with lazy loading...')
+      const generationStats = await toolGenerator.generateAllTools()
+      logger.info(`Phase 3 complete: ${generationStats.totalGenerated} tools generated (${generationStats.toolsWithOperations} with operations)`)
 
-    // Load the generated tools into the MCP system
-    await loadGeneratedTools(generationStats.totalGenerated)
+      // Load the generated tools into the MCP system
+      await loadGeneratedTools(generationStats.totalGenerated)
+    }
 
     // Initialize Phase 4: Discovery Scheduler
     logger.info('Initializing Phase 4: Discovery automation scheduler...')
