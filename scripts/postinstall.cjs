@@ -131,3 +131,20 @@ catch {
 
 // Then check and build
 checkAndBuild()
+
+// Auto-update check with cache clearing (silent, non-blocking)
+try {
+  const AutoUpdater = require('./auto-update.cjs')
+  const updater = new AutoUpdater({
+    silent: true,
+    clearCache: true, // Always clear cache during postinstall
+    forceUpdate: false
+  })
+
+  // Run async but don't block installation
+  updater.run().catch(() => {
+    // Ignore auto-update errors - don't fail installation
+  })
+} catch {
+  // Ignore if auto-updater is not available
+}
