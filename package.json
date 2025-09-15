@@ -1,7 +1,7 @@
 {
   "name": "@eekfonky/n8n-mcp-modern",
-  "version": "8.2.1",
-  "description": "Modern n8n MCP server with agent handovers - intelligent complexity assessment, collaborative multi-agent workflows, and context preservation for complex n8n integrations",
+  "version": "4.0.0",
+  "description": "Ultra-lean, dynamic MCP server for conversation-driven n8n workflow automation with 2 dependencies",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -9,11 +9,9 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "dev:enhanced": "tsx watch src/mcp/enhanced-server.ts",
-    "build": "tsc && chmod +x dist/index.js && (chmod +x dist/mcp/enhanced-server.js 2>/dev/null || true)",
+    "build": "tsc && node -e \"if(process.platform!=='win32'){require('child_process').execSync('chmod +x dist/index.js')}\"",
     "start": "node dist/index.js",
-    "start:enhanced": "node dist/mcp/enhanced-server.js",
-    "postinstall": "node scripts/postinstall.cjs",
+    "postinstall": "node scripts/simple-postinstall.cjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -21,34 +19,14 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "validate-readme": "node scripts/validate-readme.cjs",
-    "sync-version": "node scripts/sync-version.cjs",
-    "install-agents": "node scripts/install-claude-mcp.js",
-    "mcp:install": "node scripts/install-mcp.js",
-    "mcp:setup": "node scripts/interactive-setup.cjs",
-    "setup-github-packages": "node scripts/install-github-packages.cjs",
-    "mcp:health": "node scripts/health-check.cjs",
-    "mcp:backup": "node scripts/upgrade-rollback.cjs backup",
-    "update-node-counts": "tsx src/scripts/update-node-count-references.ts",
-    "update-node-counts:dry": "tsx src/scripts/update-node-count-references.ts --dry-run",
-    "run-discovery": "node scripts/run-discovery.js",
-    "auto-update": "node scripts/auto-update.cjs",
-    "auto-update:dry": "node scripts/auto-update.cjs --dry-run",
-    "auto-update:force": "node scripts/auto-update.cjs --force",
-    "auto-update:no-cache": "node scripts/auto-update.cjs --no-cache",
-    "clear-cache": "node scripts/auto-update.cjs --silent --force --dry-run=false",
-    "mcp:restore": "node scripts/upgrade-rollback.cjs restore",
-    "mcp:rollback": "node scripts/upgrade-rollback.cjs rollback",
-    "mcp:install-local": "echo 'Run: claude mcp add n8n-mcp-modern --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern'",
-    "mcp:install-user": "echo 'Run: claude mcp add n8n-mcp-modern --scope user --env N8N_API_URL=your-url --env N8N_API_KEY=your-key -- npx -y @eekfonky/n8n-mcp-modern'",
-    "sync-release": "./scripts/sync-release.sh",
+    "install": "node scripts/unified-installer.cjs",
+    "config": "node scripts/config-manager.cjs",
+    "health": "node scripts/health-checker.cjs",
+    "update": "node scripts/smart-updater.cjs",
     "ci": "npm audit --audit-level high && npm run lint && npm run typecheck && npm run test",
     "precommit": "npm run lint && npm run typecheck && npm run test && npm run validate-readme",
-    "release": "npm run ci && npm run build && npm run publish:dual && git push --tags",
-    "publish:dual": "npm publish --registry https://registry.npmjs.org --access public && npm publish --registry https://npm.pkg.github.com --access public",
-    "publish:npm": "npm publish --registry https://registry.npmjs.org --access public",
-    "publish:github": "npm publish --registry https://npm.pkg.github.com --access public",
-    "version-check": "node -p \"'📦 Version: ' + require('./package.json').version\"",
-    "prepare": "echo 'Git hooks disabled'"
+    "release": "npm run ci && npm run build && npm publish",
+    "publish": "npm publish --registry https://registry.npmjs.org --access public"
   },
   "keywords": [
     "n8n",
@@ -61,7 +39,8 @@
     "modern",
     "claude-code",
     "github-packages",
-    "126-tools",
+    "dynamic-tools",
+    "conversation-driven",
     "zero-debt"
   ],
   "author": "Enhanced by eekfonky - Modern TypeScript rebuild",
@@ -75,18 +54,15 @@
   },
   "homepage": "https://github.com/eekfonky/n8n-mcp-modern#readme",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
-    "dotenv": "^17.2.1",
     "zod": "^3.25.76"
-  },
-  "optionalDependencies": {
-    "better-sqlite3": "^12.2.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.2.1",
@@ -105,29 +81,17 @@
   },
   "files": [
     "dist/",
-    "src/",
     "data/nodes.db",
     "agents/",
     "!agents/README.md",
     "config-templates/",
-    "scripts/postinstall.cjs",
-    "scripts/auto-update.cjs",
-    "scripts/upgrade-cleanup.cjs",
-    "scripts/install-claude-mcp.js",
-    "scripts/install-mcp.js",
-    "scripts/interactive-setup.cjs",
-    "scripts/install-github-packages.cjs",
+    "scripts/simple-postinstall.cjs",
+    "scripts/unified-installer.cjs",
+    "scripts/health-checker.cjs",
+    "scripts/config-manager.cjs",
+    "scripts/smart-updater.cjs",
     "scripts/validate-github-auth.cjs",
-    "scripts/health-check.cjs",
-    "scripts/upgrade-rollback.cjs",
-    "scripts/sync-release.sh",
-    "scripts/test-runner.ts",
     "scripts/validate-readme.cjs",
-    "scripts/logger.js",
-    "scripts/process-manager.js",
-    "scripts/test-upgrade-cleanup.cjs",
-    "tsconfig.json",
-    ".npmrc.template",
     "README.md",
     "LICENSE"
   ]

@@ -22,20 +22,15 @@ const warnings = []
 
 // 1. Check version badge
 const versionBadgePattern
-  = /\[!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-([^-]+)-blue\.svg\)\]/
+  = /\[!\[npm version\]\(https:\/\/img\.shields\.io\/npm\/v\/@eekfonky\/n8n-mcp-modern\.svg\)\]/
 const versionMatch = readmeContent.match(versionBadgePattern)
 
 if (!versionMatch) {
-  errors.push('❌ Version badge not found in README.md')
-}
-else if (versionMatch[1] !== currentVersion) {
-  errors.push(
-    `❌ Version badge shows ${versionMatch[1]} but package.json has ${currentVersion}`,
-  )
+  warnings.push('⚠️ NPM version badge not found in README.md (this is automatically updated by npmjs.org)')
 }
 
-// 2. Check installation commands have current version references
-const npmCommands = readmeContent.match(/npx -y @eekfonky\/n8n-mcp-modern/g)
+// 2. Check installation commands have current package references
+const npmCommands = readmeContent.match(/(@eekfonky\/n8n-mcp-modern|npx.*@eekfonky)/g)
 if (!npmCommands || npmCommands.length === 0) {
   warnings.push('⚠️ No npm installation commands found')
 }
@@ -51,9 +46,9 @@ if (oldVersionRefs) {
 // 4. Check for essential sections
 const requiredSections = [
   'Installation',
-  'What\'s New',
   'Architecture',
-  'Environment Variables',
+  'Configuration',
+  'Testing',
 ]
 
 requiredSections.forEach((section) => {
@@ -62,13 +57,35 @@ requiredSections.forEach((section) => {
   }
 })
 
-// 5. Check installation commands are properly formatted
-const claudeMcpCommands = readmeContent.match(/claude mcp add n8n-mcp-modern/g)
-if (!claudeMcpCommands || claudeMcpCommands.length < 2) {
-  warnings.push('⚠️ Missing or incomplete Claude MCP installation commands')
-}
+// 5. Check for new unified script references
+const newScriptCommands = [
+  'npm run install',
+  'npm run config',
+  'npm run health',
+  'npm run update'
+]
 
-// 6. Check environment variable examples
+newScriptCommands.forEach((command) => {
+  if (!readmeContent.includes(command)) {
+    warnings.push(`⚠️ Missing new script command: ${command}`)
+  }
+})
+
+// 6. Check for removal of old commands
+const deprecatedCommands = [
+  'mcp:install',
+  'mcp:setup',
+  'auto-update',
+  'setup-github-packages'
+]
+
+deprecatedCommands.forEach((command) => {
+  if (readmeContent.includes(command)) {
+    errors.push(`❌ Found deprecated command that should be removed: ${command}`)
+  }
+})
+
+// 7. Check environment variable examples
 if (
   !readmeContent.includes('N8N_API_URL')
   || !readmeContent.includes('N8N_API_KEY')
@@ -76,6 +93,16 @@ if (
   errors.push(
     '❌ Missing environment variable examples (N8N_API_URL, N8N_API_KEY)',
   )
+}
+
+// 8. Check for unified config template references (relaxed check)
+if (!readmeContent.includes('unified') && !readmeContent.includes('config-templates')) {
+  warnings.push('⚠️ Missing reference to unified configuration template')
+}
+
+// 9. Validate test structure references
+if (!readmeContent.includes('tests/unit') || !readmeContent.includes('tests/integration') || !readmeContent.includes('tests/behavioral')) {
+  warnings.push('⚠️ Missing references to new test structure (tests/unit, tests/integration, tests/behavioral)')
 }
 
 // Report results
@@ -97,12 +124,11 @@ if (warnings.length > 0) {
 }
 
 console.log('\n💡 Tips:')
-console.log('  • Auto-sync version badge: npm run sync-version')
-console.log(
-  '  • Manual update: search for "version-X.X.X-blue" and replace with current version',
-)
-console.log('  • Check "What\'s New" section reflects latest changes')
-console.log('  • Ensure installation commands are current')
+console.log('  • Update script references to new unified commands')
+console.log('  • Remove deprecated script names from examples')
+console.log('  • Reference unified-mcp-config.json template')
+console.log('  • Update test structure documentation')
+console.log('  • Ensure simplified installation instructions are current')
 console.log('  • Run: npm run validate-readme to check again')
 
 if (errors.length > 0) {

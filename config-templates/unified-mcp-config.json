@@ -1,0 +1,174 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcp/main/schema/mcp_config_schema.json",
+  "mcpServers": {
+    "n8n-mcp-modern": {
+      "command": "npx",
+      "args": ["-y", "@eekfonky/n8n-mcp-modern"],
+      "env": {
+        "N8N_API_URL": "${N8N_API_URL}",
+        "N8N_API_KEY": "${N8N_API_KEY}",
+        "LOG_LEVEL": "info",
+        "ENABLE_CACHE": "true",
+        "CACHE_TTL": "3600",
+        "MAX_CONCURRENT_REQUESTS": "10"
+      }
+    }
+  },
+  "global": {
+    "logLevel": "info",
+    "timeout": 30000
+  },
+  "documentation": {
+    "description": "Unified MCP configuration template for n8n-mcp-modern",
+    "version": "4.0.0",
+    "supportedClients": [
+      "claude-desktop",
+      "vscode-mcp",
+      "custom-mcp-client"
+    ],
+    "installation": {
+      "claude-desktop": {
+        "configPath": "~/.config/claude-desktop/claude_desktop_config.json",
+        "instructions": [
+          "1. Copy this configuration to your Claude Desktop config file",
+          "2. Replace ${N8N_API_URL} with your n8n instance URL (e.g., http://localhost:5678)",
+          "3. Replace ${N8N_API_KEY} with your n8n API key",
+          "4. Restart Claude Desktop",
+          "5. Start a conversation and use MCP tools for n8n automation"
+        ]
+      },
+      "vscode": {
+        "configPath": "~/.vscode/settings.json",
+        "instructions": [
+          "1. Add this configuration under 'mcp.servers' in your VS Code settings",
+          "2. Replace environment variable placeholders with actual values",
+          "3. Restart VS Code",
+          "4. Use MCP commands in VS Code for n8n workflow automation"
+        ]
+      },
+      "custom": {
+        "instructions": [
+          "1. Adapt this configuration for your MCP client",
+          "2. Ensure the command and args are accessible in your environment",
+          "3. Set the required environment variables",
+          "4. Test the connection with your MCP client"
+        ]
+      }
+    },
+    "environment": {
+      "required": {
+        "N8N_API_URL": {
+          "description": "The base URL of your n8n instance",
+          "example": "http://localhost:5678",
+          "notes": "Should include protocol and port if not standard"
+        },
+        "N8N_API_KEY": {
+          "description": "Your n8n API key for authentication",
+          "example": "n8n_api_...",
+          "notes": "Generate this in your n8n settings under API Keys"
+        }
+      },
+      "optional": {
+        "LOG_LEVEL": {
+          "description": "Logging level for the MCP server",
+          "default": "info",
+          "options": ["debug", "info", "warn", "error"]
+        },
+        "ENABLE_CACHE": {
+          "description": "Enable caching for better performance",
+          "default": "true",
+          "type": "boolean"
+        },
+        "CACHE_TTL": {
+          "description": "Cache time-to-live in seconds",
+          "default": "3600",
+          "type": "number"
+        },
+        "MAX_CONCURRENT_REQUESTS": {
+          "description": "Maximum concurrent requests to n8n API",
+          "default": "10",
+          "type": "number"
+        }
+      }
+    }
+  },
+  "examples": {
+    "local-development": {
+      "mcpServers": {
+        "n8n-mcp-modern": {
+          "command": "npx",
+          "args": ["-y", "@eekfonky/n8n-mcp-modern"],
+          "env": {
+            "N8N_API_URL": "http://localhost:5678",
+            "N8N_API_KEY": "your-api-key-here",
+            "LOG_LEVEL": "debug"
+          }
+        }
+      }
+    },
+    "production": {
+      "mcpServers": {
+        "n8n-mcp-modern": {
+          "command": "npx",
+          "args": ["-y", "@eekfonky/n8n-mcp-modern"],
+          "env": {
+            "N8N_API_URL": "https://your-n8n-domain.com",
+            "N8N_API_KEY": "${N8N_API_KEY}",
+            "LOG_LEVEL": "info",
+            "ENABLE_CACHE": "true"
+          }
+        }
+      }
+    },
+    "docker": {
+      "mcpServers": {
+        "n8n-mcp-modern": {
+          "command": "npx",
+          "args": ["-y", "@eekfonky/n8n-mcp-modern"],
+          "env": {
+            "N8N_API_URL": "http://n8n:5678",
+            "N8N_API_KEY": "${N8N_API_KEY}",
+            "LOG_LEVEL": "info"
+          }
+        }
+      }
+    }
+  },
+  "troubleshooting": {
+    "common-issues": [
+      {
+        "issue": "Connection refused or timeout errors",
+        "solutions": [
+          "Verify N8N_API_URL is correct and n8n is running",
+          "Check network connectivity and firewall settings",
+          "Ensure n8n API is enabled in n8n settings"
+        ]
+      },
+      {
+        "issue": "Authentication errors",
+        "solutions": [
+          "Verify N8N_API_KEY is correct",
+          "Check that API key has necessary permissions",
+          "Regenerate API key if necessary"
+        ]
+      },
+      {
+        "issue": "MCP server not starting",
+        "solutions": [
+          "Ensure @eekfonky/n8n-mcp-modern is installed",
+          "Check that npx is available in your PATH",
+          "Try running: npx -y @eekfonky/n8n-mcp-modern --version"
+        ]
+      }
+    ],
+    "health-check": {
+      "command": "npm run health",
+      "description": "Run comprehensive health check to diagnose issues"
+    },
+    "support": {
+      "documentation": "https://github.com/eekfonky/n8n-mcp-modern#readme",
+      "issues": "https://github.com/eekfonky/n8n-mcp-modern/issues",
+      "discussions": "https://github.com/eekfonky/n8n-mcp-modern/discussions"
+    }
+  }
+}

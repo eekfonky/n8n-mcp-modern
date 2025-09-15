@@ -1,138 +1,145 @@
 # n8n Claude Code Agents
 
-This directory contains 15 specialized Claude Code agents for comprehensive n8n workflow automation. These agents form a sophisticated hierarchical system that works with the n8n-mcp-modern MCP server to provide expert guidance across 675+ n8n nodes and all automation domains.
+This directory contains specialized Claude Code agents for conversation-driven n8n workflow automation. These agents form a dynamic, adaptive system that scales with your n8n ecosystem and provides expert guidance based on your actual n8n instance capabilities.
 
-## 🏗️ Agent Hierarchy
+## 🏗️ Dynamic Agent Architecture
+
+### Adaptive 4-Tier System
 
 ```
-TIER 1: MASTER ORCHESTRATOR
-├─ n8n-orchestrator - Strategic planning & multi-agent coordination
+TIER 1: CONVERSATION ORCHESTRATOR
+├─ n8n-orchestrator - Natural language understanding & routing
 
-TIER 2: CORE ARCHITECTURE SPECIALISTS  
-├─ n8n-builder - Code generation & DevOps workflows
-├─ n8n-connector - Authentication & connectivity
-├─ n8n-scriptguard - JavaScript validation & security
-└─ n8n-architect - Workflow architecture & design patterns
+TIER 2: CORE SPECIALISTS
+├─ n8n-architect - Workflow architecture & design patterns
+├─ n8n-builder - Code generation & workflow creation
+├─ n8n-connector - Authentication & API connectivity
+└─ n8n-scriptguard - Security validation & best practices
 
-TIER 3: DOMAIN SPECIALISTS
-├─ n8n-data - Data processing & pipeline optimization
-├─ n8n-cloud - Cloud platforms & infrastructure
-├─ n8n-ecommerce - E-commerce & retail automation
-├─ n8n-finance - Financial systems & compliance
-├─ n8n-communication - Messaging & social platforms
-├─ n8n-ai - AI/ML workflows & LLM integration
-└─ n8n-automation - IoT & smart device automation
+TIER 3: DOMAIN SPECIALISTS (Scale with your n8n ecosystem)
+├─ n8n-data - Databases, ETL, analytics (if you have data nodes)
+├─ n8n-cloud - Cloud services (if you have AWS/GCP/Azure nodes)
+├─ n8n-ecommerce - E-commerce platforms (if you have Shopify/WooCommerce nodes)
+├─ n8n-finance - Payments & accounting (if you have Stripe/QuickBooks nodes)
+├─ n8n-communication - Messaging platforms (if you have Slack/Discord nodes)
+├─ n8n-ai - AI/ML workflows (if you have OpenAI/LangChain nodes)
+└─ n8n-automation - IoT & devices (if you have Home Assistant/MQTT nodes)
 
-TIER 4: SPECIALIZED SUPPORT
+TIER 4: SUPPORT SPECIALISTS
 ├─ n8n-guide - Documentation & tutorials
-├─ n8n-workflow - Templates & reusable patterns
-└─ n8n-performance - Optimization & scalability
+├─ n8n-workflow - Templates & patterns
+└─ n8n-performance - Optimization & scaling
 ```
+
+### Key Features
+- **Context-Aware Activation:** Agents only activate when relevant to your request
+- **Ecosystem Adaptation:** Domain specialists automatically adapt to your n8n node types
+- **Real-Time Discovery:** Agents learn your n8n capabilities in real-time
 
 ## 📥 Installation
 
-### Step 1: Install the MCP Server
+### One-Command Setup
 
 ```bash
+# Basic installation (discovers n8n capabilities automatically)
+claude mcp add n8n-mcp-modern -- npx -y @eekfonky/n8n-mcp-modern
+
+# With n8n API integration (recommended)
 claude mcp add n8n-mcp-modern \
   --env N8N_API_URL="https://your-n8n-instance.com" \
   --env N8N_API_KEY="your-api-key" \
   -- npx -y @eekfonky/n8n-mcp-modern
 ```
 
-### Step 2: Agents Auto-Install ✨
+### Agents Auto-Install ✨
 
-**All 15 agents are automatically installed to `~/.claude/agents/` during MCP installation!**
+**All specialist agents are automatically available through the MCP server!**
 
-The postinstall script will:
-
-- ✅ Create `~/.claude/agents/` directory if needed
-- ✅ Copy all 15 specialist agents automatically
-- ✅ Backup existing agents before updating
-- ✅ Skip agents that are already up-to-date
+The system will:
+- ✅ Discover your n8n instance capabilities
+- ✅ Activate relevant domain specialists automatically
+- ✅ Adapt agent behavior based on your available nodes
+- ✅ Scale with your n8n ecosystem growth
 
 ```bash
-# Verify agents were installed
-claude agents list
+# Verify MCP server is running
+claude mcp status
 
-# Manual installation (if needed)
-cp agents/*.md ~/.claude/agents/
+# Test with a simple request
+# "What n8n nodes do I have available?"
 ```
 
-## 🚀 Usage
+## 🚀 Conversation-Driven Usage
 
-Once installed, use Claude Code's Task tool to delegate across the hierarchy:
+Simply describe what you want to build - the system automatically routes to appropriate agents:
 
+### Natural Language Examples
+
+```text
+# Workflow Creation
+"Create a workflow that sends Slack notifications for new GitHub issues"
+→ System discovers GitHub & Slack nodes → Builds complete workflow
+
+# Data Processing
+"I need to process CSV files and update my database"
+→ Detects CSV & database nodes → Creates ETL pipeline
+
+# API Integration
+"Connect my CRM to our email marketing platform"
+→ Identifies available CRM & email nodes → Builds sync workflow
+
+# Complex Automation
+"Set up a customer onboarding process with multiple touchpoints"
+→ Orchestrator coordinates multiple specialists → Multi-workflow system
+
+# Performance Optimization
+"My workflow is running slow with large datasets"
+→ Performance specialist analyzes → Provides optimization recommendations
 ```
-# TIER 1: Strategic Coordination
-"Task: Plan a complete business automation transformation with 50+ workflows"
-→ Uses n8n-orchestrator
 
-# TIER 2: Core Architecture
-"Task: Set up OAuth2 authentication with Microsoft Graph API"
-→ Uses n8n-connector
+### Agent Activation Examples
 
-"Task: Optimize Code node performance for 10K+ records processing"
-→ Uses n8n-scriptguard
+**What triggers different specialists:**
 
-"Task: Find the best nodes for real-time payment processing"
-→ Uses n8n-scriptguard (525+ nodes)
+- **n8n-data**: Mentions of databases, CSV, JSON, ETL, analytics
+- **n8n-communication**: Slack, Discord, email, SMS, social media
+- **n8n-cloud**: AWS, GCP, Azure, serverless, cloud storage
+- **n8n-ecommerce**: Shopify, WooCommerce, payments, inventory
+- **n8n-ai**: OpenAI, machine learning, data analysis, LLMs
+- **n8n-finance**: Stripe, PayPal, accounting, invoicing
 
-"Task: Build CI/CD pipeline for workflow deployment"
-→ Uses n8n-builder
+**Example Flow:**
+```text
+User: "Build an e-commerce analytics dashboard"
 
-# TIER 3: Domain Expertise
-"Task: Design microservices architecture for workflow scaling"
-→ Uses n8n-architect
-
-"Task: Create ML pipeline for customer churn prediction"
-→ Uses n8n-ai
-
-"Task: Set up AWS Lambda integration with S3 event triggers"
-→ Uses n8n-cloud
-
-"Task: Build Shopify to NetSuite inventory sync"
-→ Uses n8n-ecommerce
-
-"Task: Implement GDPR-compliant financial reporting automation"
-→ Uses n8n-finance
-
-"Task: Create omnichannel customer communication system"
-→ Uses n8n-communication
-
-"Task: Automate smart home with 100+ IoT devices"
-→ Uses n8n-automation
-
-"Task: Process 1M+ records with ETL optimization"
-→ Uses n8n-data
-
-# TIER 4: Specialized Support
-"Task: Create reusable template library for HR workflows"
-→ Uses n8n-workflow
-
-"Task: Optimize workflows handling 50K+ executions/day"
-→ Uses n8n-performance
-
-"Task: Write comprehensive API integration guide"
-→ Uses n8n-guide
+System:
+1. Detects e-commerce + analytics context
+2. Activates n8n-ecommerce + n8n-data specialists
+3. Discovers your Shopify & database nodes
+4. Creates integrated workflow automatically
 ```
 
 ## 🔧 How It Works
 
-1. **You ask Claude Code** for n8n help using the Task tool
-2. **Claude Code selects** the appropriate specialist agent
-3. **The agent uses** n8n-mcp-modern MCP tools for n8n operations
-4. **You get expert guidance** tailored to your specific needs
+1. **You describe your need** in natural language
+2. **Orchestrator analyzes** your request and n8n context
+3. **Appropriate specialists activate** based on discovered capabilities
+4. **MCP tools execute** real n8n API operations
+5. **You get working workflows** with minimal back-and-forth
 
-## 🤝 Agent Coordination
+## 🤝 Intelligent Agent Coordination
 
-Agents automatically coordinate through sophisticated hierarchy:
+### Dynamic Routing
+- **Context Analysis**: System understands your request intent
+- **Capability Matching**: Checks your n8n instance for relevant nodes
+- **Specialist Selection**: Activates appropriate domain experts
+- **Cross-Agent Collaboration**: Multiple agents work together when needed
 
-- **TIER 1**: Master orchestrator coordinates strategic multi-agent initiatives
-- **TIER 2**: Core architecture specialists handle foundational capabilities
-- **TIER 3**: Domain specialists provide deep expertise in specific areas
-- **TIER 4**: Specialized support agents provide templates, optimization, and guidance
-- **Cross-tier collaboration**: Agents intelligently delegate and collaborate based on task complexity
+### Real-Time Adaptation
+- **Node Discovery**: Agents learn your n8n capabilities on first use
+- **Smart Activation**: Only relevant specialists participate
+- **Ecosystem Growth**: New community nodes automatically expand agent capabilities
+- **Continuous Learning**: System improves recommendations based on your workflows
 
 ## 🛠️ Customization
 
@@ -143,17 +150,28 @@ These agent files are customizable! Edit them to:
 - Customize communication styles
 - Add domain-specific knowledge
 
-## 📚 MCP Tools Available
+## 📚 Dynamic MCP Tools
 
-All 15 agents have access to 92+ n8n MCP tools including:
+Agents access **tools generated from your n8n instance:**
 
-- `search_nodes` - Find nodes across 675+ available nodes
-- `create_workflow` - Build new workflows with validation
-- `validate_workflow` - Security and structure checking
-- `get_node_info` - Detailed node specifications
-- `discover_capabilities` - Dynamic capability assessment
-- `analyze_performance` - Workflow optimization insights
-- And many more advanced automation tools...
+### Core Tools (Always Available)
+- `n8n_list_workflows` - List your workflows
+- `n8n_create_workflow` - Build new workflows
+- `n8n_discover_nodes` - Scan available node types
+- `n8n_execute_workflow` - Run workflows with data
+
+### Generated Node Tools (Based on Your n8n)
+- `n8n_slack` - If you have Slack node installed
+- `n8n_github` - If you have GitHub node installed
+- `n8n_mysql` - If you have MySQL node installed
+- `n8n_openai` - If you have OpenAI node installed
+- ...and every other node type in your n8n instance
+
+### Smart Tool Selection
+Agents automatically use the right tools based on:
+- Your available node types
+- Request context and intent
+- Workflow complexity requirements
 
 ## 🔄 Updates
 

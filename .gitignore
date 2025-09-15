@@ -45,6 +45,7 @@ auth-tokens.json
 
 # GitHub tokens and credentials
 .github-auth
+.npmrc
 .npmrc.backup
 credentials.json
 

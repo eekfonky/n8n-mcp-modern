@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/tests/**/*.test.ts'],
+    include: ['tests/**/*.test.ts'],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
@@ -18,10 +18,25 @@ export default defineConfig({
         '**/dist/**',
         '**/node_modules/**',
         '**/*.d.ts',
-        'src/tests/**',
+        'tests/**',
+        'scripts/**',
       ],
     },
     timeout: 30000, // Longer timeout for database tests
     testTimeout: 30000,
+    // Test categorization and filtering
+    reporters: ['verbose', 'json'],
+    outputFile: {
+      json: './test-results.json',
+    },
+    // Separate environments for different test types
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        singleThread: false,
+        minThreads: 1,
+        maxThreads: 4,
+      },
+    },
   },
 })

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * GitHub Packages Authentication Validator
- * Validates GitHub token and package access for seamless installations
+ * GitHub Connectivity Validator
+ * Simplified validator for essential GitHub operations only.
+ * GitHub Packages authentication no longer needed for primary distribution.
  */
 
 const { spawn } = require('node:child_process')
@@ -56,212 +57,94 @@ function execCommand(command, args = [], options = {}) {
 }
 
 /**
- * Check if .npmrc exists and is configured for GitHub Packages
+ * Check basic GitHub connectivity
  */
-function checkNpmrcConfiguration() {
-  const npmrcPath = path.join(os.homedir(), '.npmrc')
-
-  if (!fs.existsSync(npmrcPath)) {
-    return {
-      exists: false,
-      configured: false,
-      path: npmrcPath,
-      message: '.npmrc file not found in home directory',
-    }
-  }
-
-  try {
-    const content = fs.readFileSync(npmrcPath, 'utf8')
-    const hasRegistry = content.includes('@eekfonky:registry=https://npm.pkg.github.com')
-    const hasAuthToken = content.includes('//npm.pkg.github.com/:_authToken=')
-    const hasPlaceholder = content.includes('YOUR_GITHUB_TOKEN')
-
-    return {
-      exists: true,
-      configured: hasRegistry && hasAuthToken,
-      hasPlaceholder,
-      path: npmrcPath,
-      content,
-      message: hasRegistry && hasAuthToken
-        ? (hasPlaceholder ? 'Configuration present but token is placeholder' : 'Properly configured')
-        : 'Missing GitHub Packages configuration',
-    }
-  }
-  catch (error) {
-    return {
-      exists: true,
-      configured: false,
-      path: npmrcPath,
-      message: `Error reading .npmrc: ${error.message}`,
-    }
-  }
-}
-
-/**
- * Extract GitHub token from .npmrc
- */
-function extractGitHubToken() {
-  const npmrcCheck = checkNpmrcConfiguration()
-
-  if (!npmrcCheck.configured || !npmrcCheck.content) {
-    return null
-  }
-
-  const tokenMatch = npmrcCheck.content.match(/\/\/npm\.pkg\.github\.com\/:_authToken=(\S+)/)
-  if (!tokenMatch) {
-    return null
-  }
-
-  const token = tokenMatch[1]
-  if (token === 'YOUR_GITHUB_TOKEN' || token === '$' + '{GITHUB_TOKEN}') {
-    return null
-  }
-
-  return token
-}
-
-/**
- * Validate GitHub token with GitHub API
- */
-async function validateGitHubToken(token) {
-  if (!token) {
-    return {
-      valid: false,
-      message: 'No token provided',
-    }
-  }
-
+async function checkGitHubConnectivity() {
   try {
     const result = await execCommand('curl', [
       '-s',
-      '-H',
-      `Authorization: token ${token}`,
-      '-H',
-      'Accept: application/vnd.github.v3+json',
-      'https://api.github.com/user',
+      '--connect-timeout', '10',
+      '-H', 'Accept: application/vnd.github.v3+json',
+      'https://api.github.com/repos/eekfonky/n8n-mcp-modern'
     ])
 
     const response = JSON.parse(result.stdout)
 
-    if (response.message === 'Bad credentials') {
+    if (response.name === 'n8n-mcp-modern') {
       return {
-        valid: false,
-        message: 'Invalid GitHub token',
-      }
-    }
-
-    if (response.login) {
-      return {
-        valid: true,
-        message: `Valid token for user: ${response.login}`,
-        user: response.login,
+        connected: true,
+        message: 'GitHub API accessible',
+        repository: response.full_name
       }
     }
 
     return {
-      valid: false,
-      message: 'Unexpected API response',
+      connected: false,
+      message: 'Unexpected API response'
     }
-  }
-  catch (error) {
+  } catch (error) {
     return {
-      valid: false,
-      message: `Token validation failed: ${error.message}`,
+      connected: false,
+      message: `GitHub connectivity failed: ${error.message}`
     }
   }
 }
 
 /**
- * Test package access by attempting to fetch package metadata
+ * Test basic npm connectivity to npmjs.org
  */
-async function testPackageAccess(token) {
-  if (!token) {
-    return {
-      accessible: false,
-      message: 'No token to test with',
-    }
-  }
-
+async function testNpmConnectivity() {
   try {
     const result = await execCommand('npm', [
       'view',
       '@eekfonky/n8n-mcp-modern',
       'version',
-      '--registry=https://npm.pkg.github.com',
-    ], {
-      env: {
-        ...process.env,
-        NPM_TOKEN: token,
-      },
-    })
+      '--registry=https://registry.npmjs.org'
+    ])
 
     if (result.stdout.trim()) {
       return {
         accessible: true,
-        message: `Package accessible, latest version: ${result.stdout.trim()}`,
-        version: result.stdout.trim(),
+        message: `Package available on npmjs.org, version: ${result.stdout.trim()}`,
+        version: result.stdout.trim()
       }
     }
 
     return {
       accessible: false,
-      message: 'Package not accessible or version not found',
+      message: 'Package not found on npmjs.org'
     }
-  }
-  catch (error) {
-    // Check if it's an authentication error
-    if (error.stderr.includes('401') || error.stderr.includes('Unauthorized')) {
-      return {
-        accessible: false,
-        message: 'Authentication failed - token may not have read:packages permission',
-      }
-    }
-
+  } catch (error) {
     return {
       accessible: false,
-      message: `Package access test failed: ${error.message}`,
+      message: `npmjs.org connectivity failed: ${error.message}`
     }
   }
 }
 
 /**
- * Test actual npm install capability
+ * Check git installation and basic functionality
  */
-async function testNpmInstall() {
+async function checkGitInstallation() {
   try {
-    // Test in a temporary directory to avoid affecting current project
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'npm-test-'))
+    const result = await execCommand('git', ['--version'])
 
-    await execCommand('npm', [
-      'install',
-      '@eekfonky/n8n-mcp-modern',
-      '--dry-run',
-      '--no-audit',
-      '--no-fund',
-      '--silent',
-    ], {
-      cwd: tmpDir,
-    })
-
-    // Cleanup
-    fs.rmSync(tmpDir, { recursive: true, force: true })
-
-    return {
-      installable: true,
-      message: 'Package can be installed successfully',
-    }
-  }
-  catch (error) {
-    if (error.stderr.includes('401') || error.stderr.includes('Unauthorized')) {
+    if (result.stdout.includes('git version')) {
       return {
-        installable: false,
-        message: 'Installation failed - authentication required',
+        installed: true,
+        message: `Git available: ${result.stdout.trim()}`,
+        version: result.stdout.trim()
       }
     }
 
     return {
-      installable: false,
-      message: `Installation test failed: ${error.message.split('\n')[0]}`,
+      installed: false,
+      message: 'Git not properly installed'
+    }
+  } catch (error) {
+    return {
+      installed: false,
+      message: 'Git not found in PATH'
     }
   }
 }
@@ -270,136 +153,95 @@ async function testNpmInstall() {
  * Provide actionable guidance based on validation results
  */
 function provideGuidance(results) {
-  console.log('\n🔧 ACTIONABLE GUIDANCE:\n')
+  console.log('\n🔧 SYSTEM STATUS & GUIDANCE:\n')
 
-  if (!results.npmrc.exists) {
-    console.log('1. Create ~/.npmrc configuration:')
-    console.log('   Run: node scripts/install-github-packages.cjs')
-    console.log('   Or manually create ~/.npmrc with GitHub Packages configuration')
-    return
+  if (!results.github.connected) {
+    console.log('⚠️  GitHub connectivity issues:')
+    console.log(`   Problem: ${results.github.message}`)
+    console.log('   Impact: Source installation may fail')
+    console.log('   Solution: Check network connectivity')
+    console.log('')
   }
 
-  if (!results.npmrc.configured) {
-    console.log('1. Configure ~/.npmrc for GitHub Packages:')
-    console.log('   Add: @eekfonky:registry=https://npm.pkg.github.com')
-    console.log('   Add: //npm.pkg.github.com/:_authToken=YOUR_TOKEN')
-    return
+  if (!results.npm.accessible) {
+    console.log('⚠️  npmjs.org connectivity issues:')
+    console.log(`   Problem: ${results.npm.message}`)
+    console.log('   Impact: Primary installation may fail')
+    console.log('   Solution: Check network connectivity and npm configuration')
+    console.log('')
   }
 
-  if (results.npmrc.hasPlaceholder) {
-    console.log('1. Replace token placeholder in ~/.npmrc:')
-    console.log('   Generate token: https://github.com/settings/tokens')
-    console.log('   Required scopes: read:packages')
-    console.log('   Replace YOUR_GITHUB_TOKEN with your actual token')
-    return
+  if (!results.git.installed) {
+    console.log('⚠️  Git not available:')
+    console.log(`   Problem: ${results.git.message}`)
+    console.log('   Impact: Source installation not possible')
+    console.log('   Solution: Install git from https://git-scm.com/')
+    console.log('')
   }
 
-  if (!results.token.valid) {
-    console.log('1. Fix GitHub token issue:')
-    console.log(`   Problem: ${results.token.message}`)
-    console.log('   Generate new token: https://github.com/settings/tokens')
-    console.log('   Required scopes: read:packages')
-    console.log('   Update token in ~/.npmrc')
-    return
+  if (results.overall) {
+    console.log('✅ All essential systems are operational!')
+    console.log('Your system is ready for n8n-mcp-modern installation.')
+    console.log('\n📦 Recommended installation:')
+    console.log('   npm install -g @eekfonky/n8n-mcp-modern')
+    console.log('\n🔧 Alternative methods:')
+    console.log('   npm run install  (unified installer with fallbacks)')
+    console.log('   npx @eekfonky/n8n-mcp-modern  (temporary usage)')
+  } else {
+    console.log('⚠️  Some systems have issues but installation may still work')
+    console.log('\n🔧 Try installation methods in order:')
+    console.log('   1. npm install -g @eekfonky/n8n-mcp-modern  (primary)')
+    console.log('   2. npm run install  (unified installer with fallbacks)')
+    console.log('   3. Contact support if issues persist')
   }
-
-  if (!results.packageAccess.accessible) {
-    console.log('1. Fix package access issue:')
-    console.log(`   Problem: ${results.packageAccess.message}`)
-    console.log('   Ensure token has read:packages scope')
-    console.log('   Verify package exists: https://github.com/eekfonky/n8n-mcp-modern/packages')
-    return
-  }
-
-  if (!results.npmInstall.installable) {
-    console.log('1. Fix npm installation issue:')
-    console.log(`   Problem: ${results.npmInstall.message}`)
-    console.log('   Try: npm cache clean --force')
-    console.log('   Try: rm -rf ~/.npm && npm install')
-    return
-  }
-
-  console.log('✅ All validation checks passed!')
-  console.log('Your system is ready for seamless n8n-mcp-modern installation.')
-  console.log('\nYou can now run:')
-  console.log('   npm install -g @eekfonky/n8n-mcp-modern')
-  console.log('   npx @eekfonky/n8n-mcp-modern')
 }
 
 /**
  * Main validation function
  */
-async function validateGitHubAuthentication(verbose = false) {
-  console.log('🔍 n8n-MCP Modern - GitHub Authentication Validator')
+async function validateSystemConnectivity(verbose = false) {
+  console.log('🔍 n8n-MCP Modern - System Connectivity Validator')
   console.log('='.repeat(55))
 
   const results = {
-    npmrc: null,
-    token: null,
-    packageAccess: null,
-    npmInstall: null,
+    github: null,
+    npm: null,
+    git: null,
     overall: false,
   }
 
-  // Check .npmrc configuration
-  console.log('\n📋 Checking .npmrc configuration...')
-  results.npmrc = checkNpmrcConfiguration()
-  console.log(`   ${results.npmrc.configured ? '✅' : '❌'} ${results.npmrc.message}`)
+  // Check GitHub connectivity
+  console.log('\n🐙 Checking GitHub connectivity...')
+  results.github = await checkGitHubConnectivity()
+  console.log(`   ${results.github.connected ? '✅' : '⚠️'} ${results.github.message}`)
 
-  if (verbose && results.npmrc.exists) {
-    console.log(`   Path: ${results.npmrc.path}`)
+  if (verbose && results.github.repository) {
+    console.log(`   Repository: ${results.github.repository}`)
   }
 
-  if (!results.npmrc.configured) {
-    results.overall = false
-    provideGuidance(results)
-    return results
+  // Check npmjs.org connectivity
+  console.log('\n📦 Checking npmjs.org package availability...')
+  results.npm = await testNpmConnectivity()
+  console.log(`   ${results.npm.accessible ? '✅' : '⚠️'} ${results.npm.message}`)
+
+  if (verbose && results.npm.version) {
+    console.log(`   Latest version: ${results.npm.version}`)
   }
 
-  // Extract and validate GitHub token
-  console.log('\n🔑 Validating GitHub token...')
-  const token = extractGitHubToken()
+  // Check git installation
+  console.log('\n🔧 Checking git installation...')
+  results.git = await checkGitInstallation()
+  console.log(`   ${results.git.installed ? '✅' : '⚠️'} ${results.git.message}`)
 
-  if (!token) {
-    results.token = { valid: false, message: 'No valid token found in .npmrc' }
-    console.log('   ❌ No valid token found in .npmrc')
-    results.overall = false
-    provideGuidance(results)
-    return results
+  if (verbose && results.git.version) {
+    console.log(`   Version: ${results.git.version}`)
   }
 
-  results.token = await validateGitHubToken(token)
-  console.log(`   ${results.token.valid ? '✅' : '❌'} ${results.token.message}`)
+  // Determine overall status
+  // Primary installation requires npm connectivity
+  // Git and GitHub are nice-to-have for fallback scenarios
+  results.overall = results.npm.accessible
 
-  if (!results.token.valid) {
-    results.overall = false
-    provideGuidance(results)
-    return results
-  }
-
-  // Test package access
-  console.log('\n📦 Testing package access...')
-  results.packageAccess = await testPackageAccess(token)
-  console.log(`   ${results.packageAccess.accessible ? '✅' : '❌'} ${results.packageAccess.message}`)
-
-  if (!results.packageAccess.accessible) {
-    results.overall = false
-    provideGuidance(results)
-    return results
-  }
-
-  // Test npm install capability
-  console.log('\n🧪 Testing npm install capability...')
-  results.npmInstall = await testNpmInstall()
-  console.log(`   ${results.npmInstall.installable ? '✅' : '❌'} ${results.npmInstall.message}`)
-
-  if (!results.npmInstall.installable) {
-    results.overall = false
-    provideGuidance(results)
-    return results
-  }
-
-  results.overall = true
   provideGuidance(results)
   return results
 }
@@ -409,7 +251,7 @@ async function main() {
   const verbose = process.argv.includes('--verbose') || process.argv.includes('-v')
 
   try {
-    const results = await validateGitHubAuthentication(verbose)
+    const results = await validateSystemConnectivity(verbose)
     process.exit(results.overall ? 0 : 1)
   }
   catch (error) {
@@ -421,12 +263,10 @@ async function main() {
 
 // Export for use by other scripts
 module.exports = {
-  validateGitHubAuthentication,
-  checkNpmrcConfiguration,
-  extractGitHubToken,
-  validateGitHubToken,
-  testPackageAccess,
-  testNpmInstall,
+  validateSystemConnectivity,
+  checkGitHubConnectivity,
+  testNpmConnectivity,
+  checkGitInstallation,
 }
 
 // Run if called directly
