@@ -1,6 +1,6 @@
 {
   "name": "@eekfonky/n8n-mcp-modern",
-  "version": "4.0.0",
+  "version": "8.0.0",
   "description": "Ultra-lean, dynamic MCP server for conversation-driven n8n workflow automation with 2 dependencies",
   "type": "module",
   "main": "dist/index.js",
