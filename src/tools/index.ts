@@ -1766,7 +1766,8 @@ export async function initializeDynamicTools(quickMode = false): Promise<void> {
 
     if (quickMode) {
       logger.info('Quick mode enabled - skipping comprehensive discovery and tool generation')
-    } else {
+    }
+    else {
       logger.info('Running Phase 2: Comprehensive node discovery...')
       const discoveryStats = await comprehensiveDiscovery.discover()
       logger.info(`Phase 2 complete: ${discoveryStats.nodesDiscovered} nodes discovered (${discoveryStats.standardNodes} standard, ${discoveryStats.communityNodes} community)`)

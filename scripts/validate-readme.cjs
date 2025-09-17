@@ -62,7 +62,7 @@ const newScriptCommands = [
   'npm run install',
   'npm run config',
   'npm run health',
-  'npm run update'
+  'npm run update',
 ]
 
 newScriptCommands.forEach((command) => {
@@ -76,7 +76,7 @@ const deprecatedCommands = [
   'mcp:install',
   'mcp:setup',
   'auto-update',
-  'setup-github-packages'
+  'setup-github-packages',
 ]
 
 deprecatedCommands.forEach((command) => {

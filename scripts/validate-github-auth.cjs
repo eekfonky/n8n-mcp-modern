@@ -63,9 +63,11 @@ async function checkGitHubConnectivity() {
   try {
     const result = await execCommand('curl', [
       '-s',
-      '--connect-timeout', '10',
-      '-H', 'Accept: application/vnd.github.v3+json',
-      'https://api.github.com/repos/eekfonky/n8n-mcp-modern'
+      '--connect-timeout',
+      '10',
+      '-H',
+      'Accept: application/vnd.github.v3+json',
+      'https://api.github.com/repos/eekfonky/n8n-mcp-modern',
     ])
 
     const response = JSON.parse(result.stdout)
@@ -74,18 +76,19 @@ async function checkGitHubConnectivity() {
       return {
         connected: true,
         message: 'GitHub API accessible',
-        repository: response.full_name
+        repository: response.full_name,
       }
     }
 
     return {
       connected: false,
-      message: 'Unexpected API response'
+      message: 'Unexpected API response',
     }
-  } catch (error) {
+  }
+  catch (error) {
     return {
       connected: false,
-      message: `GitHub connectivity failed: ${error.message}`
+      message: `GitHub connectivity failed: ${error.message}`,
     }
   }
 }
@@ -99,25 +102,26 @@ async function testNpmConnectivity() {
       'view',
       '@eekfonky/n8n-mcp-modern',
       'version',
-      '--registry=https://registry.npmjs.org'
+      '--registry=https://registry.npmjs.org',
     ])
 
     if (result.stdout.trim()) {
       return {
         accessible: true,
         message: `Package available on npmjs.org, version: ${result.stdout.trim()}`,
-        version: result.stdout.trim()
+        version: result.stdout.trim(),
       }
     }
 
     return {
       accessible: false,
-      message: 'Package not found on npmjs.org'
+      message: 'Package not found on npmjs.org',
     }
-  } catch (error) {
+  }
+  catch (error) {
     return {
       accessible: false,
-      message: `npmjs.org connectivity failed: ${error.message}`
+      message: `npmjs.org connectivity failed: ${error.message}`,
     }
   }
 }
@@ -133,18 +137,19 @@ async function checkGitInstallation() {
       return {
         installed: true,
         message: `Git available: ${result.stdout.trim()}`,
-        version: result.stdout.trim()
+        version: result.stdout.trim(),
       }
     }
 
     return {
       installed: false,
-      message: 'Git not properly installed'
+      message: 'Git not properly installed',
     }
-  } catch (error) {
+  }
+  catch (error) {
     return {
       installed: false,
-      message: 'Git not found in PATH'
+      message: 'Git not found in PATH',
     }
   }
 }
@@ -187,7 +192,8 @@ function provideGuidance(results) {
     console.log('\n🔧 Alternative methods:')
     console.log('   npm run install  (unified installer with fallbacks)')
     console.log('   npx @eekfonky/n8n-mcp-modern  (temporary usage)')
-  } else {
+  }
+  else {
     console.log('⚠️  Some systems have issues but installation may still work')
     console.log('\n🔧 Try installation methods in order:')
     console.log('   1. npm install -g @eekfonky/n8n-mcp-modern  (primary)')

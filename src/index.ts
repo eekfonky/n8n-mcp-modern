@@ -35,25 +35,25 @@ const startTime = performance.now()
 async function main(): Promise<void> {
   // Handle help flag immediately - no initialization needed
   if (process.argv.includes('--help') || process.argv.includes('-h')) {
-    console.log('n8n-MCP Modern - Dynamic n8n MCP Server')
-    console.log('')
-    console.log('Usage: n8n-mcp [options]')
-    console.log('')
-    console.log('Options:')
-    console.log('  -h, --help             Show this help message')
-    console.log('  --version              Show version information')
-    console.log('')
-    console.log('Environment Variables:')
-    console.log('  N8N_API_URL            Your n8n instance URL (e.g., https://n8n.example.com)')
-    console.log('  N8N_API_KEY            Your n8n API key')
-    console.log('  LOG_LEVEL              Log level (debug, info, warn, error)')
-    console.log('')
+    logger.info('n8n-MCP Modern - Dynamic n8n MCP Server')
+    logger.info('')
+    logger.info('Usage: n8n-mcp [options]')
+    logger.info('')
+    logger.info('Options:')
+    logger.info('  -h, --help             Show this help message')
+    logger.info('  --version              Show version information')
+    logger.info('')
+    logger.info('Environment Variables:')
+    logger.info('  N8N_API_URL            Your n8n instance URL (e.g., https://n8n.example.com)')
+    logger.info('  N8N_API_KEY            Your n8n API key')
+    logger.info('  LOG_LEVEL              Log level (debug, info, warn, error)')
+    logger.info('')
     process.exit(0)
   }
 
   // Handle version flag immediately
   if (process.argv.includes('--version')) {
-    console.log(VERSION)
+    logger.info(VERSION)
     process.exit(0)
   }
 

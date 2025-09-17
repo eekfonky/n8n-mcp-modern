@@ -28,15 +28,36 @@ npm install -g @eekfonky/n8n-mcp-modern
 n8n-mcp
 ```
 
-### Claude Desktop Integration
+### Claude Code Integration
 
+**One-Command Setup:**
 ```bash
-# Run setup utility
-npm run config
+# Install globally with auto-setup
+npm install -g @eekfonky/n8n-mcp-modern
 
-# Or add to ~/.config/claude-desktop/claude_desktop_config.json:
+# Or via Claude Code (recommended)
+claude mcp add @eekfonky/n8n-mcp-modern
 ```
 
+This automatically installs:
+- ✅ n8n-MCP Modern server
+- ✅ 6 specialized Claude Code agents
+- ✅ Required MCP dependencies (sequential-thinking, memory, filesystem, context7)
+- ✅ Dynamic node discovery system
+- ✅ Enhanced database schema
+
+**Manual Setup (if needed):**
+```bash
+# Clone and setup
+git clone https://github.com/eekfonky/n8n-mcp-modern.git
+cd n8n-mcp-modern
+npm install
+npm run build
+node scripts/setup-agents.js
+```
+
+**Configuration:**
+Update your `.mcp.json` with your n8n instance:
 ```json
 {
   "mcpServers": {
@@ -44,7 +65,7 @@ npm run config
       "command": "npx",
       "args": ["-y", "@eekfonky/n8n-mcp-modern"],
       "env": {
-        "N8N_API_URL": "http://localhost:5678",
+        "N8N_API_URL": "https://your-n8n-instance.com",
         "N8N_API_KEY": "your-api-key"
       }
     }
@@ -52,7 +73,7 @@ npm run config
 }
 ```
 
-**That's it!** Restart Claude Desktop and start building workflows:
+**That's it!** Start building workflows with AI agents:
 > "Create a workflow that sends a Slack message when a new GitHub issue is opened"
 
 ## 📦 Advanced Installation
@@ -108,38 +129,63 @@ npm run config --non-interactive
 ```
 
 The config manager handles:
-- Claude Desktop integration
+- Claude Code integration
 - VS Code MCP settings
 - Environment variable setup
 - API key configuration
 
-## 🏗️ Architecture
+## 🏗️ Hybrid Architecture
 
-### Dynamic Agent System
+### Claude Code Sub-Agents (6 Specialists)
 
-**Adaptive 4-Tier Architecture:**
-- **Tier 1**: Conversation orchestrator for natural language understanding
-- **Tier 2**: Core specialists (architecture, security, code generation)
-- **Tier 3**: Domain specialists that scale based on your n8n ecosystem
-- **Tier 4**: Support agents for optimization and guidance
+**Master Orchestrator:**
+- **n8n-control** (Opus) - Strategic planning & agent coordination
 
-**Key Principles:**
-- Agents activate based on conversation context
-- Domain specialists auto-discover from your n8n node types
-- System grows with your n8n instance capabilities
+**Core Specialists:**
+- **n8n-architect** (Opus) - Workflow architecture & design patterns
+- **n8n-node** (Sonnet) - Node selection & configuration expert
+- **n8n-connector** (Sonnet) - Authentication & API connectivity
+- **n8n-scriptguard** (Sonnet) - JavaScript validation & security
+- **n8n-guide** (Haiku) - Documentation & user guidance
 
-### Real-Time n8n Integration
+### Dynamic Node Discovery
 
-**Direct API Integration:**
+**Real-Time Intelligence:**
 - Connects to your n8n instance via REST API
-- Discovers available nodes and their schemas in real-time
-- Validates workflows using n8n's built-in validation
-- Executes workflows directly through n8n API
+- Discovers 675+ nodes (built-in + community) automatically
+- Stores schemas and capabilities in SQLite database
+- Updates when you install new community nodes
+
+**Agent Delegation Examples:**
+```bash
+# Complex workflows
+"n8n-control, create a data processing pipeline with error handling"
+
+# Node expertise
+"n8n-node, find the best way to connect to PostgreSQL"
+
+# Authentication help
+"n8n-connector, set up OAuth for Google Sheets integration"
+
+# Code validation
+"n8n-scriptguard, review this JavaScript for security issues"
+
+# Documentation
+"n8n-guide, explain how webhook triggers work"
+```
+
+### Intelligent Learning System
+
+**Pattern Recognition:**
+- Learns from successful workflow patterns
+- Stores node configurations that work well together
+- Suggests optimizations based on usage history
+- Builds knowledge graph of effective connections
 
 **Zero Static Dependencies:**
 - No hardcoded node lists or schemas
-- Everything discovered dynamically from your n8n instance
-- Adapts automatically when you add new community nodes
+- Everything discovered dynamically from your instance
+- Adapts automatically to your specific n8n setup
 
 ## 🔄 Maintenance & Updates
 
@@ -218,62 +264,91 @@ Test organization:
 - **Rate limiting** protects against API abuse
 - **Input sanitization** for all user data
 
-## 📚 Usage Examples
+## 📚 Agent Orchestration Examples
 
-### Natural Language Workflow Creation
+### Multi-Agent Workflow Creation
 ```text
-User: "Create a workflow that monitors GitHub issues and sends Slack notifications"
+User: "Create a complete data processing pipeline with monitoring"
 
-n8n-MCP Modern:
-✅ Discovered GitHub and Slack nodes from your n8n instance
-✅ Generated workflow with proper authentication
-✅ Added error handling and retry logic
-✅ Workflow ready for deployment
+n8n-control: 🎯 Analyzing requirements and delegating to specialists...
+├── n8n-architect: 🏗️ Designing pipeline architecture with error handling
+├── n8n-node: 🔧 Selecting optimal nodes (CSV, PostgreSQL, Slack)
+├── n8n-connector: 🔐 Configuring database and API authentication
+└── n8n-scriptguard: 🛡️ Validating data transformation scripts
+
+Result: ✅ Production-ready workflow with monitoring and alerts
 ```
 
-### Conversation-Driven Development
+### Intelligent Node Discovery
 ```text
-User: "I need to process CSV files and update a database"
+User: "Find nodes for processing payments"
 
-n8n-MCP Modern:
-📋 Analyzing your request...
-🔍 Found: CSV node, database connectors (MySQL, PostgreSQL)
-🏗️ Building data processing pipeline...
-✅ Workflow created with validation and error handling
+n8n-node: 🔍 Discovering payment nodes from your instance...
+🆔 Found: Stripe (v2.1), PayPal (v1.8), Square (community v1.2)
+📊 Usage patterns: Stripe most reliable for subscriptions
+🔧 Configuration: OAuth required for all payment nodes
+💡 Recommendation: Use Stripe for recurring, PayPal for one-time
 ```
 
-### Dynamic Ecosystem Adaptation
+### Dynamic Learning & Optimization
 ```text
-User: "Use the new Notion API node I just installed"
+User: "Optimize my email marketing workflow"
 
-n8n-MCP Modern:
-🔄 Scanning your n8n instance...
-🆕 Discovered Notion node with latest capabilities
-📚 Updated available tools automatically
-✅ Ready to use Notion integration
+n8n-architect: 📈 Analyzing current workflow performance...
+🧠 Memory: Similar workflows show 40% better rates with personalization
+🔄 Pattern: Successful configs use conditional branching + A/B testing
+⚡ Optimization: Batch processing reduces API calls by 60%
+✅ Updated workflow with performance improvements
 ```
 
-## 📝 API Reference
+### Security & Validation
+```text
+User: "Review this workflow for security issues"
 
-### MCP Tools Generated from Your n8n Instance
+n8n-scriptguard: 🛡️ Scanning workflow for security vulnerabilities...
+⚠️  Found: Unsanitized user input in Code node (line 23)
+⚠️  Found: API key in plain text (should use credentials)
+✅ No infinite loops detected
+💡 Recommendations: Input validation + credential management
+```
 
-n8n-MCP Modern automatically generates MCP tools based on your n8n instance:
+## 📝 Dynamic MCP Tools
 
-- **Dynamic Node Tools**: One tool per discovered node type
-- **Workflow Management**: Create, execute, monitor workflows
-- **Credential Management**: Secure authentication handling
-- **Real-time Validation**: Using n8n's built-in validation
+### Auto-Generated from Your n8n Instance
 
-### Example Generated Tools
+n8n-MCP Modern creates tools dynamically based on your discovered nodes:
+
+**Core Workflow Tools:**
+- `discover_nodes` - Scan and cache all available nodes
+- `search_nodes` - Find nodes by capability or category
+- `create_workflow` - Build new workflows
+- `validate_workflow` - Check for errors and best practices
+- `suggest_node_config` - Get configuration recommendations
+
+**Node-Specific Tools (Auto-Generated):**
 ```typescript
-// If your n8n has Slack node installed:
-n8n_slack_send_message(channel, text, ...)
-
-// If your n8n has GitHub node installed:
-n8n_github_get_issues(owner, repo, ...)
+// Examples based on your n8n instance:
+n8n_slack_send_message()     // If Slack node available
+n8n_postgres_query()         // If PostgreSQL node available
+n8n_http_request()          // HTTP Request node
+n8n_webhook_trigger()       // Webhook trigger node
 ```
 
-See [API Documentation](docs/API.md) for details on available tools.
+**Learning & Analytics:**
+- `save_workflow_pattern` - Store successful patterns
+- `suggest_workflow_patterns` - Get pattern recommendations
+- `get_node_stats` - View usage and performance data
+
+### Agent-Specific Capabilities
+
+Each Claude Code agent has specialized tool access:
+
+- **n8n-control**: All tools + orchestration capabilities
+- **n8n-architect**: Pattern analysis + performance tools
+- **n8n-node**: Node discovery + configuration tools
+- **n8n-connector**: Authentication + API tools
+- **n8n-scriptguard**: Code validation + security tools
+- **n8n-guide**: Documentation + help tools
 
 ## 🤝 Contributing
 
@@ -307,7 +382,7 @@ npm run build
 - **Node.js**: 22+ (for modern `fetch()` API and ES2024 features)
 - **npm**: 8+
 - **n8n instance**: Optional (enhanced features with API access)
-- **MCP-compatible AI**: Claude Code, or any MCP client
+- **MCP-compatible AI**: Claude Code, Claude Desktop, or any MCP client
 
 ## 🐛 Troubleshooting
 
@@ -352,6 +427,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Built with ❤️ for the n8n and Claude Code communities**
+**Built with ❤️ for the n8n and Claude communities**
 
 *Need help? Open an issue or check our [documentation](docs/).*
