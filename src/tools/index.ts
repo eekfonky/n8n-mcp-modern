@@ -7,7 +7,6 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import type { CredentialData, ExecutionData, WorkflowData } from '../n8n/simple-api.js'
 import type { NodeTemplate } from './comprehensive-node-registry.js'
 import type { DynamicAgentTools } from './dynamic-agent-tools.js'
-import { spawn } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -19,6 +18,7 @@ import { simpleN8nApi } from '../n8n/simple-api.js'
 import { features } from '../server/config.js'
 import { logger } from '../server/logger.js'
 import { getDynamicNodeCountString, getFormattedNodeCount, nodeCountManager } from '../utils/dynamic-node-count.js'
+import { execCommand } from '../utils/process-manager.js'
 import { coldStartOptimizationTools } from './cold-start-optimization-tool.js'
 import { getAllNodeTemplates } from './comprehensive-node-registry.js'
 import { createDynamicAgentTools } from './dynamic-agent-tools.js'
@@ -51,42 +51,7 @@ let comprehensiveDiscovery: ComprehensiveNodeDiscovery | null = null
 let discoveryScheduler: DiscoveryScheduler | null = null
 let dynamicAgentTools: DynamicAgentTools | null = null
 
-/**
- * Execute command safely with proper error handling
- */
-function execCommand(command: string, args: string[] = [], options: Record<string, unknown> = {}): Promise<{ stdout: string, stderr: string, code: number }> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(command, args, {
-      stdio: (options.stdio as 'pipe' | 'inherit' | 'ignore') || 'pipe',
-      cwd: (options.cwd as string) || process.cwd(),
-      env: { ...process.env, ...(options.env as Record<string, string>) },
-      ...options,
-    })
-
-    let stdout = ''
-    let stderr = ''
-
-    if (proc.stdout) {
-      proc.stdout.on('data', (data) => {
-        stdout += data.toString()
-      })
-    }
-
-    if (proc.stderr) {
-      proc.stderr.on('data', (data) => {
-        stderr += data.toString()
-      })
-    }
-
-    proc.on('close', (code) => {
-      resolve({ stdout, stderr, code: code || 0 })
-    })
-
-    proc.on('error', (error) => {
-      reject(error)
-    })
-  })
-}
+// execCommand is now imported from process-manager.js
 
 /**
  * Get current package version
@@ -1781,9 +1746,9 @@ export async function initializeDynamicTools(quickMode = false): Promise<void> {
       await loadGeneratedTools(generationStats.totalGenerated)
     }
 
-    // Initialize Phase 4: Discovery Scheduler
+    // Initialize Phase 4: Discovery Scheduler with Singleton Pattern
     logger.info('Initializing Phase 4: Discovery automation scheduler...')
-    discoveryScheduler = new DiscoveryScheduler()
+    discoveryScheduler = await DiscoveryScheduler.getInstance()
     await discoveryScheduler.start()
     logger.info('Phase 4 complete: Discovery scheduler initialized')
 

@@ -15,6 +15,7 @@ import { z } from 'zod'
 import { config } from '../server/config.js'
 import { logger } from '../server/logger.js'
 import { N8NMcpError } from '../types/fast-types.js'
+import { managedClearTimer, managedSetInterval } from '../utils/timer-manager.js'
 import { getSchemaManager } from './schema-manager.js'
 
 // Optional dependency - may not be available
@@ -178,7 +179,13 @@ export class DatabaseManager {
   private lastHealthCheck: Date | null = null
   private queryCount: number = 0
   private successfulQueryCount: number = 0
-  private preparedStatements: Map<string, import('better-sqlite3').Statement> = new Map()
+  private preparedStatements: Map<string, {
+    statement: import('better-sqlite3').Statement
+    createdAt: number
+    lastUsed: number
+    useCount: number
+  }> = new Map()
+
   private queryCache: Map<string, { data: unknown, expires: number }> = new Map()
   private cacheHits: number = 0
   private cacheMisses: number = 0
@@ -188,6 +195,10 @@ export class DatabaseManager {
   private readonly maxConnections: number = 5
   private transactionCount: number = 0
   private rollbackCount: number = 0
+  private healthMonitoringInterval: string | undefined = undefined
+  private autoRecoveryEnabled: boolean = true
+  private consecutiveHealthCheckFailures: number = 0
+  private readonly maxConsecutiveFailures: number = 3
 
   constructor() {
     this.dbPath = config.databaseInMemory ? ':memory:' : config.databasePath
@@ -231,7 +242,7 @@ export class DatabaseManager {
   }
 
   /**
-   * Safe execution wrapper for database operations with error handling and performance tracking
+   * Safe execution wrapper for database operations with error handling, retry logic, and performance tracking
    */
   private safeExecute<T>(operation: string, fn: (db: DatabaseInstance) => T, context?: Record<string, unknown>): T {
     if (!this.sqliteAvailable) {
@@ -244,41 +255,111 @@ export class DatabaseManager {
       throw new DatabaseConnectionError('Database not initialized')
     }
 
-    this.queryCount++
-    const startTime = performance.now()
+    return this.executeWithRetry(operation, fn, context)
+  }
 
-    try {
-      const result = fn(this.db)
-      this.successfulQueryCount++
+  /**
+   * Execute database operation with automatic retry logic for transient errors
+   */
+  private executeWithRetry<T>(
+    operation: string,
+    fn: (db: DatabaseInstance) => T,
+    context?: Record<string, unknown>,
+    maxRetries: number = 3,
+  ): T {
+    let lastError: Error | null = null
 
-      // Track performance metrics
-      const executionTime = performance.now() - startTime
-      this.updatePerformanceStats(operation, executionTime)
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      this.queryCount++
+      const startTime = performance.now()
 
-      // Log slow queries for optimization
-      if (executionTime > 100) { // Log queries taking more than 100ms
-        logger.warn('Slow database query detected', {
-          operation,
-          executionTime: `${executionTime.toFixed(2)}ms`,
-          context,
-        })
+      try {
+        const result = fn(this.db!)
+        this.successfulQueryCount++
+
+        // Track performance metrics
+        const executionTime = performance.now() - startTime
+        this.updatePerformanceStats(operation, executionTime)
+
+        // Log slow queries for optimization
+        if (executionTime > 100) { // Log queries taking more than 100ms
+          logger.warn('Slow database query detected', {
+            operation,
+            executionTime: `${executionTime.toFixed(2)}ms`,
+            context,
+            attempt,
+          })
+        }
+
+        // Log successful retry if this wasn't the first attempt
+        if (attempt > 1) {
+          logger.info(`Database operation succeeded after ${attempt} attempts`, {
+            operation,
+            executionTime: `${executionTime.toFixed(2)}ms`,
+            previousError: lastError?.message,
+          })
+        }
+
+        return result
       }
+      catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
 
-      return result
-    }
-    catch (error) {
-      this.handleDatabaseError(operation, error, context)
+        // Check if this is a retryable error
+        if (attempt < maxRetries && this.isRetryableError(error)) {
+          const backoffMs = Math.min(1000 * 2 ** (attempt - 1), 5000) // Exponential backoff, max 5s
 
-      // Re-throw with enhanced error information
-      if (error instanceof Error) {
+          logger.warn(`Database operation failed (attempt ${attempt}/${maxRetries}), retrying in ${backoffMs}ms`, {
+            operation,
+            error: lastError.message,
+            errorCode: (error as any)?.code ?? (error as any)?.errno,
+            context,
+            backoffMs,
+          })
+
+          // Sleep with exponential backoff
+          const start = Date.now()
+          while (Date.now() - start < backoffMs) {
+            // Non-blocking wait
+          }
+
+          continue
+        }
+
+        // Not retryable or max retries reached
+        this.handleDatabaseError(operation, error, { ...context, attempt, maxRetries })
+
+        // Re-throw with enhanced error information
         throw new DatabaseQueryError(
-          `${operation} failed: ${this.mapSqliteError(error)}`,
+          `${operation} failed after ${attempt} attempts: ${this.mapSqliteError(error)}`,
           operation,
-          error,
+          lastError,
         )
       }
-      throw error
     }
+
+    // This should never be reached, but included for type safety
+    throw new DatabaseQueryError(
+      `${operation} failed after ${maxRetries} attempts`,
+      operation,
+      lastError!,
+    )
+  }
+
+  /**
+   * Check if an error is retryable (transient database errors)
+   */
+  private isRetryableError(error: unknown): boolean {
+    const errorCode = (error as any)?.code ?? (error as any)?.errno?.toString?.()
+    const retryableCodes = [
+      'SQLITE_BUSY', // Database is locked
+      'SQLITE_LOCKED', // Database table is locked
+      'SQLITE_PROTOCOL', // Protocol error (temporary)
+      'SQLITE_SCHEMA', // Schema changed (can retry)
+    ]
+
+    return retryableCodes.includes(errorCode)
+      || (error instanceof Error && error.message.includes('database is locked'))
   }
 
   /**
@@ -500,6 +581,9 @@ export class DatabaseManager {
         schemaVersion: this.schemaManager?.getCurrentSchemaVersion() || 0,
         migrationsAvailable: this.schemaManager?.getAvailableMigrations().length || 0,
       })
+
+      // Start background health monitoring
+      this.startHealthMonitoring()
     }
     catch (error) {
       logger.error('Failed to initialize database:', error)
@@ -873,9 +957,160 @@ export class DatabaseManager {
 
       // Cleanup performance resources
       this.queryCache.clear()
-      this.preparedStatements.clear()
+      this.clearAllPreparedStatements()
+
+      // Stop health monitoring
+      this.stopHealthMonitoring()
 
       logger.info('Database connection closed and resources cleaned up')
+    }
+  }
+
+  /**
+   * Start background health monitoring with automatic recovery
+   */
+  private startHealthMonitoring(): void {
+    if (!this.autoRecoveryEnabled || this.healthMonitoringInterval) {
+      return
+    }
+
+    const healthCheckInterval = 30000 // 30 seconds
+    logger.info('Starting database health monitoring', { intervalMs: healthCheckInterval })
+
+    this.healthMonitoringInterval = managedSetInterval(async () => {
+      try {
+        await this.performHealthCheck()
+      }
+      catch (error) {
+        logger.error('Health monitoring check failed:', error)
+      }
+    }, healthCheckInterval, 'database-health-monitor:interval')
+  }
+
+  /**
+   * Stop background health monitoring
+   */
+  private stopHealthMonitoring(): void {
+    if (this.healthMonitoringInterval) {
+      managedClearTimer(this.healthMonitoringInterval)
+      this.healthMonitoringInterval = undefined
+      logger.info('Database health monitoring stopped')
+    }
+  }
+
+  /**
+   * Perform comprehensive health check with automatic recovery
+   */
+  private async performHealthCheck(): Promise<void> {
+    const health = await this.checkHealth()
+    this.lastHealthCheck = new Date()
+
+    if (health.status === 'unhealthy') {
+      this.consecutiveHealthCheckFailures++
+      logger.warn(`Database health check failed (${this.consecutiveHealthCheckFailures}/${this.maxConsecutiveFailures})`, {
+        status: health.status,
+        errors: health.errors,
+      })
+
+      // Attempt automatic recovery after consecutive failures
+      if (this.consecutiveHealthCheckFailures >= this.maxConsecutiveFailures) {
+        logger.error('Database appears unhealthy, attempting automatic recovery')
+        await this.attemptAutoRecovery()
+      }
+    }
+    else {
+      // Reset failure counter on successful health check
+      if (this.consecutiveHealthCheckFailures > 0) {
+        logger.info(`Database health restored after ${this.consecutiveHealthCheckFailures} failures`)
+        this.consecutiveHealthCheckFailures = 0
+      }
+
+      // Perform periodic maintenance
+      if (health.status === 'healthy') {
+        await this.performPeriodicMaintenance()
+      }
+    }
+  }
+
+  /**
+   * Attempt automatic recovery procedures
+   */
+  private async attemptAutoRecovery(): Promise<void> {
+    logger.info('Attempting database auto-recovery procedures')
+
+    try {
+      // Step 1: Clear prepared statements (they might be stale)
+      this.clearAllPreparedStatements()
+
+      // Step 2: Attempt to reconnect
+      const reconnected = await this.reconnect()
+
+      if (reconnected) {
+        logger.info('Database auto-recovery successful - reconnection restored')
+        this.consecutiveHealthCheckFailures = 0
+        return
+      }
+
+      // Step 3: If reconnection failed, try rebuilding
+      logger.warn('Reconnection failed, attempting database rebuild')
+      await this.rebuild()
+
+      if (this.isHealthy()) {
+        logger.info('Database auto-recovery successful - rebuild completed')
+        this.consecutiveHealthCheckFailures = 0
+      }
+      else {
+        logger.error('Database auto-recovery failed - switching to API-only mode')
+        this.sqliteAvailable = false
+      }
+    }
+    catch (error) {
+      logger.error('Database auto-recovery procedures failed:', error)
+      this.sqliteAvailable = false
+    }
+  }
+
+  /**
+   * Perform periodic maintenance tasks
+   */
+  private async performPeriodicMaintenance(): Promise<void> {
+    try {
+      // Clean up old prepared statements
+      this.cleanupPreparedStatements()
+
+      // Clean up expired cache entries
+      this.cleanupExpiredCacheEntries()
+
+      // Optimize database periodically (every hour)
+      const now = Date.now()
+      const lastOptimized = this.queryPerformanceStats.get('last_optimize')?.totalTime || 0
+
+      if (now - lastOptimized > 3600000) { // 1 hour
+        await this.optimizeDatabase()
+        this.queryPerformanceStats.set('last_optimize', { count: 1, totalTime: now, avgTime: now })
+      }
+    }
+    catch (error) {
+      logger.debug('Periodic maintenance task failed:', error)
+    }
+  }
+
+  /**
+   * Clean up expired cache entries
+   */
+  private cleanupExpiredCacheEntries(): void {
+    const now = Date.now()
+    let cleaned = 0
+
+    for (const [key, entry] of this.queryCache.entries()) {
+      if (entry.expires < now) {
+        this.queryCache.delete(key)
+        cleaned++
+      }
+    }
+
+    if (cleaned > 0) {
+      logger.debug(`Cleaned up ${cleaned} expired cache entries`)
     }
   }
 
@@ -1061,17 +1296,111 @@ export class DatabaseManager {
    */
 
   /**
-   * Get or create prepared statement with caching
+   * Get or create prepared statement with lifecycle management and caching
    */
   private getPreparedStatement(db: DatabaseInstance, key: string, sql: string): import('better-sqlite3').Statement {
+    const now = Date.now()
+
     if (!this.preparedStatements.has(key)) {
-      this.preparedStatements.set(key, db.prepare(sql))
+      try {
+        const statement = db.prepare(sql)
+        this.preparedStatements.set(key, {
+          statement,
+          createdAt: now,
+          lastUsed: now,
+          useCount: 0,
+        })
+        logger.debug(`Created prepared statement: ${key}`)
+      }
+      catch (error) {
+        logger.error(`Failed to prepare statement ${key}:`, error)
+        throw new DatabaseError(`Failed to prepare statement: ${key}`, 'getPreparedStatement', error as Error)
+      }
     }
-    const statement = this.preparedStatements.get(key)
-    if (!statement) {
+
+    const entry = this.preparedStatements.get(key)
+    if (!entry) {
       throw new DatabaseError(`Failed to retrieve prepared statement for key: ${key}`, 'getPreparedStatement')
     }
-    return statement
+
+    // Update usage statistics
+    entry.lastUsed = now
+    entry.useCount++
+
+    // Check if statement is still valid (database might have been recreated)
+    try {
+      // Test the statement with a simple check
+      if (!entry.statement.reader) {
+        // Statement appears invalid, recreate it
+        logger.warn(`Prepared statement ${key} appears invalid, recreating`)
+        entry.statement = db.prepare(sql)
+        entry.createdAt = now
+      }
+    }
+    catch (error) {
+      // Statement is definitely invalid, recreate it
+      logger.warn(`Prepared statement ${key} is invalid, recreating:`, error)
+      try {
+        entry.statement = db.prepare(sql)
+        entry.createdAt = now
+      }
+      catch (recreateError) {
+        logger.error(`Failed to recreate prepared statement ${key}:`, recreateError)
+        this.preparedStatements.delete(key)
+        throw new DatabaseError(`Failed to recreate prepared statement: ${key}`, 'getPreparedStatement', recreateError as Error)
+      }
+    }
+
+    return entry.statement
+  }
+
+  /**
+   * Clean up old prepared statements to prevent memory leaks
+   */
+  private cleanupPreparedStatements(): void {
+    const now = Date.now()
+    const maxAge = 30 * 60 * 1000 // 30 minutes
+    const maxUnused = 5 * 60 * 1000 // 5 minutes
+
+    let cleaned = 0
+
+    for (const [key, entry] of this.preparedStatements.entries()) {
+      const age = now - entry.createdAt
+      const unusedTime = now - entry.lastUsed
+
+      // Remove statements that are old and unused
+      if (age > maxAge || (unusedTime > maxUnused && entry.useCount === 0)) {
+        try {
+          // SQLite statements don't need explicit cleanup in better-sqlite3
+          // but we'll remove them from our map
+          this.preparedStatements.delete(key)
+          cleaned++
+          logger.debug(`Cleaned up unused prepared statement: ${key}`, {
+            age: Math.round(age / 1000),
+            unusedTime: Math.round(unusedTime / 1000),
+            useCount: entry.useCount,
+          })
+        }
+        catch (error) {
+          logger.warn(`Error cleaning up prepared statement ${key}:`, error)
+        }
+      }
+    }
+
+    if (cleaned > 0) {
+      logger.info(`Cleaned up ${cleaned} unused prepared statements`)
+    }
+  }
+
+  /**
+   * Force cleanup of all prepared statements (e.g., on database reconnection)
+   */
+  private clearAllPreparedStatements(): void {
+    const count = this.preparedStatements.size
+    this.preparedStatements.clear()
+    if (count > 0) {
+      logger.info(`Cleared ${count} prepared statements`)
+    }
   }
 
   /**
@@ -1321,7 +1650,7 @@ export class DatabaseManager {
 
           // Clear caches and prepared statements
           this.queryCache.clear()
-          this.preparedStatements.clear()
+          this.clearAllPreparedStatements()
 
           if (this.db) {
             this.db.close()

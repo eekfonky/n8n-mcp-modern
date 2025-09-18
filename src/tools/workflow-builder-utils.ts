@@ -317,8 +317,7 @@ export class SecureSessionManager {
       return true
     }
     catch (error) {
-      logger.error(`Failed to create checkpoint: ${error}`)
-      console.error('Checkpoint creation error details:', error)
+      logger.error(`Failed to create checkpoint:`, error, 'workflow-builder:checkpoint')
       return false
     }
   }

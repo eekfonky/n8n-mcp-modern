@@ -5,6 +5,7 @@
 
 import { z } from 'zod'
 import { logger } from '../server/logger.js'
+import { managedSetTimeout } from '../utils/timer-manager.js'
 
 // ============================================================================
 // VALIDATION ERROR CLASSES
@@ -192,7 +193,7 @@ export async function validateApiResponse<T>(
     // Validate with timeout
     const validationPromise = schema.parseAsync(sanitizedResponse)
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Validation timeout')), config.timeout)
+      managedSetTimeout(() => reject(new Error('Validation timeout')), config.timeout, 'api-validation:timer')
     })
 
     const validatedData = await Promise.race([

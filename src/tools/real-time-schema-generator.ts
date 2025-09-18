@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { logger } from '../server/logger.js'
+import { managedSetTimeout } from '../utils/timer-manager.js'
 
 const __brand = Symbol('brand')
 
@@ -224,7 +225,7 @@ export class RealTimeSchemaGenerator {
       if (i + batchSize < contexts.length) {
         // eslint-disable-next-line no-await-in-loop
         await new Promise<void>((resolve) => {
-          setTimeout(resolve, 100)
+          managedSetTimeout(resolve, 100, 'real-time-schema-generator:timer')
         })
       }
     }

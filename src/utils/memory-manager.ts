@@ -5,6 +5,7 @@
 
 import process from 'node:process'
 import { logger } from '../server/logger.js'
+import { managedClearTimer, managedSetInterval, managedSetTimeout } from './timer-manager.js'
 
 export interface MemoryStats {
   heapUsed: number
@@ -15,7 +16,7 @@ export interface MemoryStats {
 
 export class MemoryManager {
   private cleanupCallbacks = new Set<() => void>()
-  private intervalId: NodeJS.Timeout | undefined
+  private intervalId: string | undefined
   private memoryBaseline?: MemoryStats
 
   constructor(private checkIntervalMs = 30000) { // 30 second check
@@ -99,9 +100,9 @@ export class MemoryManager {
    * Start automatic memory monitoring
    */
   private startMonitoring(): void {
-    this.intervalId = setInterval(async () => {
+    this.intervalId = managedSetInterval(async () => {
       if (this.isMemoryHigh()) {
-        logger.warn('High memory usage detected, running cleanup...')
+        logger.warn('High memory usage detected, running cleanup...', 'memory-manager:interval')
         await this.cleanup()
       }
     }, this.checkIntervalMs)
@@ -112,7 +113,7 @@ export class MemoryManager {
    */
   stop(): void {
     if (this.intervalId) {
-      clearInterval(this.intervalId)
+      managedClearTimer(this.intervalId)
     }
     this.intervalId = undefined
   }
@@ -123,9 +124,9 @@ export class MemoryManager {
   private establishBaseline(): void {
     // Force GC first to get clean baseline
     this.forceGC()
-    setTimeout(() => {
+    managedSetTimeout(() => {
       this.memoryBaseline = this.getMemoryStats()
-      logger.debug('Memory baseline established:', this.memoryBaseline)
+      logger.debug('Memory baseline established:', this.memoryBaseline, 'memory-manager:timer')
     }, 1000)
   }
 

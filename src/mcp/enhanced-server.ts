@@ -30,6 +30,7 @@ import { safeExecute } from '../server/enhanced-error-handler.js'
 import { logger } from '../server/logger.js'
 import { cleanup, executeToolHandler, getAllTools, initializeDynamicTools } from '../tools/index.js'
 import { memoryProfiler, setupMemoryMonitoring } from '../utils/memory-profiler.js'
+import { managedSetTimeout } from '../utils/timer-manager.js'
 import { VERSION } from '../version.js'
 import { completionManager } from './completions.js'
 import { promptManager } from './prompts.js'
@@ -346,7 +347,7 @@ if (!(globalThis as Record<symbol, boolean>)[enhancedServerShutdownRegistered]) 
     }
     finally {
       // Force exit after timeout to prevent hanging
-      setTimeout(() => process.exit(1), 5000).unref()
+      managedSetTimeout(() => process.exit(1), 5000, 'EnhancedServer:force-exit')
       process.exit(0)
     }
   }

@@ -289,7 +289,7 @@ export class DynamicToolsManager {
     )
   }
 
-  private async createWorkflow(config: any): Promise<any> {
+  private async createWorkflow(config: Record<string, unknown>): Promise<Record<string, unknown>> {
     if (!this.config.n8nApiUrl || !this.config.n8nApiKey) {
       throw new Error('n8n API not configured')
     }
@@ -307,10 +307,10 @@ export class DynamicToolsManager {
       throw new Error(`Failed to create workflow: ${response.status} ${response.statusText}`)
     }
 
-    return await response.json()
+    return (await response.json()) as Record<string, unknown>
   }
 
-  private async validateWorkflow(workflow: any): Promise<any> {
+  private async validateWorkflow(workflow: Record<string, unknown>): Promise<Record<string, unknown>> {
     const validation = {
       isValid: true,
       errors: [] as string[],
@@ -332,7 +332,8 @@ export class DynamicToolsManager {
     }
 
     // Check for trigger nodes
-    const triggerNodes = workflow.nodes.filter((node: any) =>
+    const nodes = Array.isArray(workflow.nodes) ? workflow.nodes : []
+    const triggerNodes = nodes.filter((node: any) =>
       node.type?.includes('trigger') || node.type?.includes('Trigger'),
     )
 
@@ -343,8 +344,9 @@ export class DynamicToolsManager {
     // Check for disconnected nodes
     if (workflow.connections) {
       const connectedNodes = new Set()
-      Object.values(workflow.connections).forEach((connections: any) => {
-        Object.values(connections).forEach((outputs: any) => {
+      const connections = workflow.connections || {}
+      Object.values(connections).forEach((connectionMap: any) => {
+        Object.values(connectionMap).forEach((outputs: any) => {
           outputs.forEach((output: any) => {
             output.forEach((connection: any) => {
               connectedNodes.add(connection.node)
@@ -353,7 +355,7 @@ export class DynamicToolsManager {
         })
       })
 
-      const disconnectedNodes = workflow.nodes.filter((node: any) =>
+      const disconnectedNodes = nodes.filter((node: any) =>
         !connectedNodes.has(node.name) && !triggerNodes.includes(node),
       )
 
@@ -370,7 +372,7 @@ export class DynamicToolsManager {
     return validation
   }
 
-  private async suggestNodeConfiguration(nodeId: string, useCase: string, _context: any): Promise<any> {
+  private async suggestNodeConfiguration(nodeId: string, useCase: string, _context: Record<string, unknown>): Promise<Record<string, unknown>> {
     const node = await this.nodeDiscovery.getNodeById(nodeId)
     if (!node) {
       throw new Error(`Node not found: ${nodeId}`)
@@ -413,7 +415,7 @@ export class DynamicToolsManager {
     return suggestions
   }
 
-  private async saveWorkflowPattern(name: string, description: string, workflow: any, tags: string[]): Promise<void> {
+  private async saveWorkflowPattern(name: string, description: string, workflow: Record<string, unknown>, tags: string[]): Promise<void> {
     const query = `
       INSERT INTO workflow_patterns (name, description, pattern_json, usage_count)
       VALUES (?, ?, ?, 1)
@@ -465,14 +467,17 @@ export class DynamicToolsManager {
 
           // Register the dynamic tool
           this.server.registerTool(
-            toolSchema.name,
+            String(toolSchema.name),
             {
-              title: toolSchema.description,
-              description: toolSchema.description,
-              inputSchema: toolSchema.inputSchema,
+              title: String(toolSchema.description),
+              description: String(toolSchema.description),
+              inputSchema: toolSchema.inputSchema as any,
             },
-            async (params: Record<string, unknown>) => {
-              return await this.executeNodeTool(node.id, params)
+            async (params: any) => {
+              const result = await this.executeNodeTool(String(node.id), params.arguments)
+              return {
+                content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+              }
             },
           )
         }
@@ -488,7 +493,7 @@ export class DynamicToolsManager {
     }
   }
 
-  private async executeNodeTool(nodeId: string, params: any): Promise<any> {
+  private async executeNodeTool(nodeId: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
     // This would integrate with n8n's API to execute a node or add it to a workflow
     // For now, return configuration guidance
     const node = await this.nodeDiscovery.getNodeById(nodeId)

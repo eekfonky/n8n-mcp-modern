@@ -22,7 +22,11 @@ import { setupErrorMonitoring } from './server/error-monitoring.js'
 import { logger } from './server/logger.js'
 import { cleanup, executeToolHandler, getAllTools, initializeDynamicTools } from './tools/index.js'
 import { initializePerformanceOptimizations } from './tools/performance-optimized.js'
+import { getHealthMonitor } from './utils/health-monitor.js'
 import { getQuickMemoryStats, memoryProfiler, setupMemoryMonitoring } from './utils/memory-profiler.js'
+import { getProcessManager } from './utils/process-manager.js'
+import { getResourceMonitor } from './utils/resource-monitor.js'
+import { getTimerManager } from './utils/timer-manager.js'
 import { VERSION } from './version.js'
 
 const { hasN8nApi } = features
@@ -76,6 +80,18 @@ async function main(): Promise<void> {
   }
 
   logger.info('🚀 Starting n8n-MCP Modern - Dynamic Discovery...')
+
+  // Initialize optimization systems
+  logger.info('🔧 Initializing optimization systems...')
+  const healthMonitor = getHealthMonitor()
+  const processManager = getProcessManager()
+  const resourceMonitor = getResourceMonitor()
+  const timerManager = getTimerManager()
+
+  // Start monitoring systems
+  await healthMonitor.startMonitoring()
+  await resourceMonitor.startMonitoring()
+  logger.info('✅ Optimization systems initialized')
 
   // Initialize N8N API
   if (config.n8nApiUrl && config.n8nApiKey) {
@@ -240,11 +256,19 @@ if (!(globalThis as Record<symbol, boolean>)[mainShutdownHandlerRegistered]) {
     logger.info(`Shutting down n8n-MCP Modern (${signal})...`)
 
     try {
+      // Stop all monitoring systems
+      const healthMonitor = getHealthMonitor()
+      const resourceMonitor = getResourceMonitor()
+      healthMonitor.stopMonitoring()
+      resourceMonitor.stopMonitoring()
+      logger.info('Monitoring systems stopped')
+
       // Stop memory profiler and get final stats
       memoryProfiler.stop()
       const finalMemory = getQuickMemoryStats()
       logger.info('Final memory stats', finalMemory)
 
+      // Cleanup resources
       await cleanup()
       logger.info('Cleanup completed successfully')
     }

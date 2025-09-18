@@ -14,6 +14,7 @@ import { database } from '../database/index.js'
 import { config } from '../server/config.js'
 import { logger } from '../server/logger.js'
 import { invalidateNodeCountCache } from '../utils/dynamic-node-count.js'
+import { managedSetTimeout } from '../utils/timer-manager.js'
 import { ALL_N8N_NODES } from './all-n8n-nodes.js'
 
 interface NodeTypeInfo {
@@ -156,7 +157,7 @@ export class ComprehensiveNodeDiscovery {
         // Small delay between batches in the same concurrent group
         if (batchIndex > 0) {
           await new Promise<void>((resolve) => {
-            setTimeout(resolve, 50)
+            managedSetTimeout(resolve, 50, 'comprehensive-discovery:timer')
           })
         }
         await this.processBatch(batch, 'n8n-nodes-base', stats, 'standardNodes')
@@ -175,7 +176,7 @@ export class ComprehensiveNodeDiscovery {
       // Delay between concurrent groups to respect rate limits
       if (startIndex + concurrentLimit < batches.length) {
         await new Promise<void>((resolve) => {
-          setTimeout(resolve, 100)
+          managedSetTimeout(resolve, 100, 'comprehensive-discovery:timer')
         })
       }
     }
@@ -386,7 +387,7 @@ export class ComprehensiveNodeDiscovery {
       // Small delay between concurrent groups (only if more nodes remain)
       if (startIndex + concurrentLimit < sampleNodes.length) {
         await new Promise<void>((resolve) => {
-          setTimeout(resolve, 100)
+          managedSetTimeout(resolve, 100, 'comprehensive-discovery:timer')
         })
       }
 
@@ -682,7 +683,7 @@ export class ComprehensiveNodeDiscovery {
         // Add delay before each batch (except the first one) for rate limiting
         if (batchIndex > 0) {
           await new Promise<void>((resolve) => {
-            setTimeout(resolve, 100)
+            managedSetTimeout(resolve, 100, 'comprehensive-discovery:timer')
           })
         }
 
@@ -841,7 +842,7 @@ export class ComprehensiveNodeDiscovery {
       // Add delay before each batch (except the first one) for rate limiting
       if (batchIndex > 0) {
         await new Promise<void>((resolve) => {
-          setTimeout(resolve, 50)
+          managedSetTimeout(resolve, 50, 'comprehensive-discovery:timer')
         })
       }
 

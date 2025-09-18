@@ -207,39 +207,28 @@ export class StaticNodeManager {
       other: [],
     }
 
+    // Define category patterns for better maintainability
+    const categoryPatterns: Array<{ category: keyof typeof categories, keywords: string[] }> = [
+      { category: 'ai', keywords: ['openai', 'anthropic', 'gemini', 'langchain', 'ai', 'llm'] },
+      { category: 'database', keywords: ['postgres', 'mysql', 'mongo', 'redis', 'elasticsearch'] },
+      { category: 'communication', keywords: ['slack', 'discord', 'telegram', 'email', 'sms'] },
+      { category: 'productivity', keywords: ['notion', 'airtable', 'jira', 'asana', 'trello'] },
+      { category: 'cloud', keywords: ['aws', 'gcp', 'azure', 'vercel', 'netlify'] },
+      { category: 'development', keywords: ['github', 'gitlab', 'docker', 'kubernetes', 'ci'] },
+      { category: 'trigger', keywords: ['trigger', 'webhook', 'poll'] },
+      { category: 'utility', keywords: ['http', 'json', 'xml', 'csv', 'pdf'] },
+    ]
+
     nodes.forEach((node) => {
       const baseName = node.replace(/^n8n-nodes-base\./, '').replace(/^@n8n\/n8n-nodes-langchain\./, '').toLowerCase()
 
-      if (baseName.includes('openai') || baseName.includes('anthropic') || baseName.includes('gemini')
-        || baseName.includes('langchain') || baseName.includes('ai') || baseName.includes('llm')) {
-        categories.ai?.push(node)
-      }
-      else if (baseName.includes('postgres') || baseName.includes('mysql') || baseName.includes('mongo')
-        || baseName.includes('redis') || baseName.includes('elasticsearch')) {
-        categories.database?.push(node)
-      }
-      else if (baseName.includes('slack') || baseName.includes('discord') || baseName.includes('telegram')
-        || baseName.includes('email') || baseName.includes('sms')) {
-        categories.communication?.push(node)
-      }
-      else if (baseName.includes('notion') || baseName.includes('airtable') || baseName.includes('jira')
-        || baseName.includes('asana') || baseName.includes('trello')) {
-        categories.productivity?.push(node)
-      }
-      else if (baseName.includes('aws') || baseName.includes('gcp') || baseName.includes('azure')
-        || baseName.includes('vercel') || baseName.includes('netlify')) {
-        categories.cloud?.push(node)
-      }
-      else if (baseName.includes('github') || baseName.includes('gitlab') || baseName.includes('docker')
-        || baseName.includes('kubernetes') || baseName.includes('ci')) {
-        categories.development?.push(node)
-      }
-      else if (baseName.includes('trigger') || baseName.includes('webhook') || baseName.includes('poll')) {
-        categories.trigger?.push(node)
-      }
-      else if (baseName.includes('http') || baseName.includes('json') || baseName.includes('xml')
-        || baseName.includes('csv') || baseName.includes('pdf')) {
-        categories.utility?.push(node)
+      // Find the first matching category
+      const matchedCategory = categoryPatterns.find(({ keywords }) =>
+        keywords.some(keyword => baseName.includes(keyword)),
+      )
+
+      if (matchedCategory) {
+        categories[matchedCategory.category]?.push(node)
       }
       else {
         categories.other?.push(node)

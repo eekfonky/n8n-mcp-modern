@@ -9,10 +9,12 @@
  * - Discovery triggers: startup, manual, version_change, scheduled
  * - Session management and cleanup
  * - Performance monitoring and adaptive scheduling
+ * - Singleton pattern to prevent multiple instances
  */
 
 import type { Buffer } from 'node:buffer'
 import { createHmac } from 'node:crypto'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -21,10 +23,15 @@ import { database, VersionManager } from '../database/index.js'
 import { config } from '../server/config.js'
 import { logger } from '../server/logger.js'
 import { MCPToolGenerator } from '../tools/mcp-tool-generator.js'
+import { managedClearTimer, managedSetTimeout } from '../utils/timer-manager.js'
 import { CredentialDiscovery } from './credential-discovery.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+
+// Singleton instance tracking
+let _schedulerInstance: DiscoveryScheduler | null = null
+const SCHEDULER_LOCK_FILE = '/tmp/n8n-mcp-scheduler.lock'
 
 // Discovery environment variables validation schema
 const DiscoveryEnvSchema = z.object({
@@ -108,20 +115,21 @@ export interface DiscoverySessionStatus {
 }
 
 /**
- * Discovery Automation Scheduler
+ * Discovery Automation Scheduler with Singleton Pattern
  */
 export class DiscoveryScheduler {
   private credentialDiscovery: CredentialDiscovery
   private toolGenerator: MCPToolGenerator
   private versionManager: VersionManager
   private activeSessions = new Map<string, DiscoverySessionStatus>()
-  private scheduledJobs = new Map<string, NodeJS.Timeout>()
+  private scheduledJobs = new Map<string, string>() // Store timer IDs instead of NodeJS.Timeout
   private isRunning = false
   private config: DiscoveryScheduleConfig
   private webhookServer?: import('node:http').Server | undefined // HTTP server instance for webhooks
   private isHighActivityMode = false // Track high activity mode for smart intervals
+  private startupTimerId: string | undefined = undefined // Managed timer ID for startup discovery
 
-  constructor() {
+  private constructor() {
     this.credentialDiscovery = new CredentialDiscovery()
     this.toolGenerator = new MCPToolGenerator()
     this.versionManager = new VersionManager(database)
@@ -149,6 +157,82 @@ export class DiscoveryScheduler {
   }
 
   /**
+   * Get singleton instance with collision detection
+   */
+  static async getInstance(): Promise<DiscoveryScheduler> {
+    if (_schedulerInstance) {
+      return _schedulerInstance
+    }
+
+    // Check for existing instance lock
+    try {
+      await fs.access(SCHEDULER_LOCK_FILE)
+      logger.warn('Discovery scheduler lock file exists - potential collision detected')
+
+      // Try to read lock file for process info
+      try {
+        const lockContent = await fs.readFile(SCHEDULER_LOCK_FILE, 'utf8')
+        const lockData = JSON.parse(lockContent)
+        logger.warn('Existing scheduler instance detected', { lockData })
+
+        // Check if the process is still running
+        try {
+          process.kill(lockData.pid, 0) // Signal 0 checks if process exists
+          throw new Error(`Another Discovery Scheduler is running (PID: ${lockData.pid})`)
+        }
+        catch {
+          // Process is dead, remove stale lock
+          logger.info('Removing stale scheduler lock file')
+          await fs.unlink(SCHEDULER_LOCK_FILE)
+        }
+      }
+      catch {
+        // Invalid lock file, remove it
+        await fs.unlink(SCHEDULER_LOCK_FILE)
+      }
+    }
+    catch {
+      // Lock file doesn't exist, proceed
+    }
+
+    // Create lock file
+    const lockData = {
+      pid: process.pid,
+      startTime: new Date().toISOString(),
+      instanceId: `scheduler-${Date.now()}-${process.pid}`,
+    }
+    await fs.writeFile(SCHEDULER_LOCK_FILE, JSON.stringify(lockData, null, 2))
+
+    // Create instance
+    _schedulerInstance = new DiscoveryScheduler()
+
+    // Setup cleanup on process exit
+    const cleanup = async () => {
+      if (_schedulerInstance) {
+        await _schedulerInstance.stop()
+        _schedulerInstance = null
+      }
+      try {
+        await fs.unlink(SCHEDULER_LOCK_FILE)
+      }
+      catch {
+        // Ignore cleanup errors
+      }
+    }
+
+    process.on('exit', cleanup)
+    process.on('SIGINT', cleanup)
+    process.on('SIGTERM', cleanup)
+    process.on('uncaughtException', async (error) => {
+      logger.error('Uncaught exception in scheduler:', error)
+      await cleanup()
+      process.exit(1)
+    })
+
+    return _schedulerInstance
+  }
+
+  /**
    * Start the discovery scheduler
    */
   async start(): Promise<void> {
@@ -165,9 +249,9 @@ export class DiscoveryScheduler {
 
     // Schedule startup discovery
     if (config.n8nApiUrl && config.n8nApiKey) {
-      setTimeout(() => {
+      this.startupTimerId = managedSetTimeout(() => {
         this.triggerDiscovery('startup', 'Startup discovery')
-      }, 5000) // 5 second delay to allow initialization
+      }, 5000, 'DiscoveryScheduler:startup') // 5 second delay to allow initialization
     }
 
     // Schedule periodic discovery if enabled
@@ -209,11 +293,17 @@ export class DiscoveryScheduler {
     logger.info('Stopping discovery scheduler...')
 
     // Cancel all scheduled jobs
-    for (const [jobId, timer] of this.scheduledJobs) {
-      clearTimeout(timer)
+    for (const [jobId, timerId] of this.scheduledJobs) {
+      managedClearTimer(timerId)
       logger.debug(`Cancelled scheduled job: ${jobId}`)
     }
     this.scheduledJobs.clear()
+
+    // Clean up startup timer if it exists
+    if (this.startupTimerId) {
+      managedClearTimer(this.startupTimerId)
+      this.startupTimerId = undefined
+    }
 
     // Cancel active sessions
     for (const [sessionId, session] of this.activeSessions) {
@@ -288,17 +378,17 @@ export class DiscoveryScheduler {
       this.executeDiscoverySession(sessionStatus)
         .then(() => {
           // Cleanup completed session after 5 minutes
-          setTimeout(() => {
+          managedSetTimeout(() => {
             this.activeSessions.delete(sessionId)
-          }, 5 * 60 * 1000)
+          }, 5 * 60 * 1000, `DiscoveryScheduler:cleanup-success-${sessionId}`)
         })
         .catch((error) => {
           logger.error(`Discovery session ${sessionId} failed:`, error)
           sessionStatus.status = 'failed'
           // Cleanup failed session after 1 minute
-          setTimeout(() => {
+          managedSetTimeout(() => {
             this.activeSessions.delete(sessionId)
-          }, 60 * 1000)
+          }, 60 * 1000, `DiscoveryScheduler:cleanup-failed-${sessionId}`)
         })
 
       return sessionId
@@ -333,8 +423,8 @@ export class DiscoveryScheduler {
     // Restart scheduling with new config
     if (this.isRunning) {
       // Clear existing jobs
-      for (const timer of this.scheduledJobs.values()) {
-        clearTimeout(timer)
+      for (const timerId of this.scheduledJobs.values()) {
+        managedClearTimer(timerId)
       }
       this.scheduledJobs.clear()
 
@@ -447,12 +537,12 @@ export class DiscoveryScheduler {
     const intervalMs = this.config.intervalMinutes * 60 * 1000
 
     const scheduleNext = (): void => {
-      const timer = setTimeout(() => {
+      const timer = managedSetTimeout(() => {
         if (this.isRunning && this.config.enabled) {
           this.triggerDiscovery('scheduled', `Periodic discovery (${this.config.intervalMinutes}m interval)`)
           scheduleNext() // Schedule the next one
         }
-      }, intervalMs)
+      }, intervalMs, 'DiscoveryScheduler:periodic-discovery')
 
       this.scheduledJobs.set('periodic-discovery', timer)
     }
@@ -468,12 +558,12 @@ export class DiscoveryScheduler {
     const intervalMs = this.config.versionCheckMinutes * 60 * 1000
 
     const scheduleNext = (): void => {
-      const timer = setTimeout(() => {
+      const timer = managedSetTimeout(() => {
         if (this.isRunning && this.config.versionDetection) {
           this.checkVersionChanges()
           scheduleNext() // Schedule the next check
         }
-      }, intervalMs)
+      }, intervalMs, 'DiscoveryScheduler:version-detection')
 
       this.scheduledJobs.set('version-detection', timer)
     }
@@ -605,17 +695,17 @@ export class DiscoveryScheduler {
       ? this.config.minIntervalMinutes
       : Math.min(this.config.maxIntervalMinutes, this.config.intervalMinutes * 2)
 
-    const timer = setTimeout(() => {
+    const timer = managedSetTimeout(() => {
       if (this.isRunning && this.config.enabled) {
         this.triggerDiscovery('scheduled', `Adaptive discovery (${adaptiveInterval}m interval)`)
       }
-    }, adaptiveInterval * 60 * 1000)
+    }, adaptiveInterval * 60 * 1000, 'DiscoveryScheduler:adaptive-discovery')
 
     // Replace existing adaptive timer
     if (this.scheduledJobs.has('adaptive-discovery')) {
-      const existingTimer = this.scheduledJobs.get('adaptive-discovery')
-      if (existingTimer) {
-        clearTimeout(existingTimer)
+      const existingTimerId = this.scheduledJobs.get('adaptive-discovery')
+      if (existingTimerId) {
+        managedClearTimer(existingTimerId)
       }
     }
     this.scheduledJobs.set('adaptive-discovery', timer)
@@ -714,17 +804,63 @@ export class DiscoveryScheduler {
   /**
    * Verify webhook signature for security
    */
+  /**
+   * Constant-time string comparison to prevent timing attacks
+   */
+  private constantTimeCompare(a: string, b: string): boolean {
+    if (a.length !== b.length) {
+      return false
+    }
+
+    let result = 0
+    for (let i = 0; i < a.length; i++) {
+      result |= a.charCodeAt(i) ^ b.charCodeAt(i)
+    }
+
+    return result === 0
+  }
+
+  /**
+   * Verify webhook signature with timing attack protection
+   */
   private verifyWebhookSignature(body: string, signature: string): boolean {
     if (!this.config.webhookSecret || !signature) {
+      logger.warn('Webhook signature verification failed: missing secret or signature')
+      return false
+    }
+
+    // Normalize and validate signature format
+    const normalizedSignature = signature.trim().toLowerCase()
+    if (!normalizedSignature.startsWith('sha256=')) {
+      logger.warn('Webhook signature verification failed: invalid signature format')
       return false
     }
 
     try {
-      const expectedSignature = `sha256=${createHmac('sha256', this.config.webhookSecret).update(body).digest('hex')}`
-      return signature === expectedSignature
+      const secret = this.config.webhookSecret
+      if (secret.length < 32) {
+        logger.error('Webhook secret too short (minimum 32 characters required)')
+        return false
+      }
+
+      const expectedSignature = `sha256=${createHmac('sha256', secret).update(body, 'utf8').digest('hex')}`
+      const providedSignature = normalizedSignature
+
+      // Use constant-time comparison to prevent timing attacks
+      const isValid = this.constantTimeCompare(expectedSignature, providedSignature)
+
+      if (!isValid) {
+        logger.warn('Webhook signature verification failed: signature mismatch', {
+          expectedLength: expectedSignature.length,
+          providedLength: providedSignature.length,
+          bodyLength: body.length,
+        })
+      }
+
+      return isValid
     }
     catch (error) {
-      logger.error('Webhook signature verification failed:', error)
+      logger.error('Webhook signature verification failed with error:', error)
       return false
     }
   }
@@ -762,11 +898,11 @@ export class DiscoveryScheduler {
       }
 
       // Schedule next activity check
-      setTimeout(checkActivity, activityCheckInterval)
+      managedSetTimeout(checkActivity, activityCheckInterval, 'DiscoveryScheduler:activity-check')
     }
 
     // Start activity monitoring
-    setTimeout(checkActivity, activityCheckInterval)
+    managedSetTimeout(checkActivity, activityCheckInterval, 'DiscoveryScheduler:activity-start')
   }
 
   /**
@@ -815,9 +951,9 @@ export class DiscoveryScheduler {
   private scheduleSmartDiscovery(): void {
     // Cancel existing smart discovery timer
     if (this.scheduledJobs.has('smart-discovery')) {
-      const existingTimer = this.scheduledJobs.get('smart-discovery')
-      if (existingTimer) {
-        clearTimeout(existingTimer)
+      const existingTimerId = this.scheduledJobs.get('smart-discovery')
+      if (existingTimerId) {
+        managedClearTimer(existingTimerId)
       }
       this.scheduledJobs.delete('smart-discovery')
     }
@@ -826,13 +962,13 @@ export class DiscoveryScheduler {
       ? this.config.highActivityIntervalMinutes
       : this.config.intervalMinutes
 
-    const timer = setTimeout(() => {
+    const timer = managedSetTimeout(() => {
       if (this.isRunning && this.config.smartIntervals) {
         const mode = this.isHighActivityMode ? 'high activity' : 'normal activity'
         this.triggerDiscovery('scheduled', `Smart discovery (${mode} mode)`)
         this.scheduleSmartDiscovery() // Schedule next
       }
-    }, intervalMinutes * 60 * 1000)
+    }, intervalMinutes * 60 * 1000, 'DiscoveryScheduler:smart-discovery')
 
     this.scheduledJobs.set('smart-discovery', timer)
 

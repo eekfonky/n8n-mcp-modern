@@ -8,6 +8,7 @@
 import { Buffer } from 'node:buffer'
 import { performance } from 'node:perf_hooks'
 import process from 'node:process'
+import { managedClearTimer, managedSetInterval, managedSetTimeout } from '../utils/timer-manager.js'
 import { createError } from './enhanced-error-handler.js'
 import { logger } from './logger.js'
 
@@ -481,7 +482,7 @@ export class ColdStartOptimizer {
    */
   private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
+      managedSetTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs, 'cold-start-optimizer:timer')
     })
 
     return Promise.race([promise, timeoutPromise])
@@ -491,17 +492,17 @@ export class ColdStartOptimizer {
    * Setup memory usage tracking during startup
    */
   private setupMemoryTracking(): void {
-    const trackingInterval = setInterval(() => {
+    const trackingInterval = managedSetInterval(() => {
       const current = process.memoryUsage().heapUsed
       if (this.metrics.memoryUsage && current > this.metrics.memoryUsage.peakDuringStartup) {
         this.metrics.memoryUsage.peakDuringStartup = current
       }
-    }, 100) // Check every 100ms
+    }, 100, 'cold-start-optimizer:interval') // Check every 100ms
 
     // Stop tracking after startup is complete
-    setTimeout(() => {
-      clearInterval(trackingInterval)
-    }, 30000) // Stop after 30 seconds max
+    managedSetTimeout(() => {
+      managedClearTimer(trackingInterval)
+    }, 30000, 'cold-start-optimizer:timer') // Stop after 30 seconds max
   }
 
   /**

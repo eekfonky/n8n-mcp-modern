@@ -9,6 +9,7 @@ import type { PerformanceObserver } from 'node:perf_hooks'
 import process from 'node:process'
 import { createError } from '../server/enhanced-error-handler.js'
 import { logger } from '../server/logger.js'
+import { managedClearTimer, managedSetInterval, managedSetTimeout } from './timer-manager.js'
 
 // ============================================================================
 // MEMORY PROFILING TYPES
@@ -87,7 +88,7 @@ export interface ProfilerConfig {
  */
 export class MemoryProfiler {
   private snapshots: MemorySnapshot[] = []
-  private profilerTimer: NodeJS.Timeout | undefined = undefined
+  private profilerTimer: string | undefined = undefined
   private gcObserver?: PerformanceObserver | null
   private startTime = Date.now()
   private config: ProfilerConfig
@@ -170,10 +171,10 @@ export class MemoryProfiler {
     }
 
     this.isRunning = true
-    this.profilerTimer = setInterval(() => {
+    this.profilerTimer = managedSetInterval(() => {
       this.takeSnapshot()
       this.analyzeMemory()
-    }, this.config.samplingInterval)
+    }, this.config.samplingInterval, 'memory-profiler:interval')
 
     logger.info('Memory profiler started', {
       samplingInterval: this.config.samplingInterval,
@@ -192,7 +193,7 @@ export class MemoryProfiler {
     this.isRunning = false
 
     if (this.profilerTimer) {
-      clearInterval(this.profilerTimer)
+      managedClearTimer(this.profilerTimer)
     }
     this.profilerTimer = undefined
 
@@ -453,7 +454,7 @@ export class MemoryProfiler {
       this.optimizeCaches()
 
       // Take snapshot after optimization (delay to allow GC to complete)
-      setTimeout(() => {
+      managedSetTimeout(() => {
         const after = this.takeSnapshot()
         logger.info('Memory optimization completed', {
           gcForced: gcResult,

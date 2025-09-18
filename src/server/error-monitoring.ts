@@ -7,6 +7,7 @@
 
 import type { ErrorCode } from './enhanced-error-handler.js'
 import process from 'node:process'
+import { managedClearTimer, managedSetInterval } from '../utils/timer-manager.js'
 import { EnhancedError, ErrorSeverity } from './enhanced-error-handler.js'
 import { logger } from './logger.js'
 
@@ -79,7 +80,7 @@ export class ErrorMonitoringService {
   private startTime = Date.now()
   private healthHistory: HealthStatus[] = []
   private config: MonitoringConfig
-  private healthCheckTimer: NodeJS.Timeout | undefined = undefined
+  private healthCheckTimer: string | undefined = undefined
   private lastHealthCheck?: HealthStatus
 
   constructor(config: Partial<MonitoringConfig> = {}) {
@@ -269,17 +270,17 @@ export class ErrorMonitoringService {
    */
   private startHealthChecks(): void {
     if (this.healthCheckTimer) {
-      clearInterval(this.healthCheckTimer)
+      managedClearTimer(this.healthCheckTimer)
     }
 
-    this.healthCheckTimer = setInterval(async () => {
+    this.healthCheckTimer = managedSetInterval(async () => {
       try {
         await this.getHealthStatus()
       }
       catch (error) {
         logger.error('Health check failed', error)
       }
-    }, this.config.healthCheckInterval)
+    }, this.config.healthCheckInterval, 'ErrorMonitor:health-check')
   }
 
   /**
@@ -287,7 +288,7 @@ export class ErrorMonitoringService {
    */
   stop(): void {
     if (this.healthCheckTimer) {
-      clearInterval(this.healthCheckTimer)
+      managedClearTimer(this.healthCheckTimer)
     }
     this.healthCheckTimer = undefined
   }

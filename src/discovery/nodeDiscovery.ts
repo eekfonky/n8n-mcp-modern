@@ -89,27 +89,28 @@ export class NodeDiscoveryService {
     return NodesResponseSchema.parse(data)
   }
 
-  private async processNodes(nodes: any[]): Promise<{ newNodes: number, updatedNodes: number }> {
+  private async processNodes(nodes: unknown[]): Promise<{ newNodes: number, updatedNodes: number }> {
     let newNodes = 0
     let updatedNodes = 0
 
     for (const node of nodes) {
-      const nodeId = node.name
+      const nodeRecord = node as Record<string, any>
+      const nodeId = String(nodeRecord.name)
       const existingNode = await this.getExistingNode(nodeId)
 
       const nodeData = {
         id: nodeId,
-        name: node.displayName || node.name,
-        type: node.name,
-        category: node.group?.[0] || 'unknown',
-        description: node.description || '',
+        name: String(nodeRecord.displayName || nodeRecord.name),
+        type: String(nodeRecord.name),
+        category: String(nodeRecord.group?.[0] || 'unknown'),
+        description: String(nodeRecord.description || ''),
         schema: JSON.stringify(node),
-        version: node.version?.toString() || '1',
-        is_community: !node.name.startsWith('n8n-nodes-base'),
+        version: String(nodeRecord.version || '1'),
+        is_community: !String(nodeRecord.name).startsWith('n8n-nodes-base'),
         capabilities: JSON.stringify({
-          properties: node.properties?.length || 0,
-          credentials: node.credentials?.length || 0,
-          group: node.group || [],
+          properties: nodeRecord.properties?.length || 0,
+          credentials: nodeRecord.credentials?.length || 0,
+          group: nodeRecord.group || [],
         }),
       }
 
@@ -205,7 +206,7 @@ export class NodeDiscoveryService {
     return (this.db.rawDatabase?.prepare(query).get(nodeId) as Record<string, unknown>) || null
   }
 
-  private async insertNode(nodeData: any): Promise<void> {
+  private async insertNode(nodeData: Record<string, unknown>): Promise<void> {
     const query = `
       INSERT INTO nodes (
         id, name, type, category, description, schema, version, is_community, capabilities
@@ -225,7 +226,7 @@ export class NodeDiscoveryService {
     )
   }
 
-  private async updateNode(nodeData: any): Promise<void> {
+  private async updateNode(nodeData: Record<string, unknown>): Promise<void> {
     const query = `
       UPDATE nodes SET
         name = ?, type = ?, category = ?, description = ?, schema = ?,

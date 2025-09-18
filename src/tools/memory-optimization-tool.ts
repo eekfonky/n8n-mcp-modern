@@ -7,6 +7,7 @@
 
 import { logger } from '../server/logger.js'
 import { getQuickMemoryStats, memoryProfiler } from '../utils/memory-profiler.js'
+import { managedSetTimeout } from '../utils/timer-manager.js'
 
 /**
  * Get current memory statistics
@@ -112,7 +113,7 @@ export async function forceMemoryOptimization(_args: Record<string, unknown>): P
 
     // Wait a moment for GC to complete
     await new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), 1000)
+      managedSetTimeout(() => resolve(), 1000, 'memory-optimization-tool:timer')
     })
 
     const afterStats = getQuickMemoryStats()

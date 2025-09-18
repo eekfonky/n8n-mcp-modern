@@ -8,8 +8,8 @@
 
 // Import shared types to avoid circular dependencies
 import type {
+  N8NNode,
   N8NWorkflow,
-  N8NWorkflowNode,
 } from './index.js'
 
 // Simple types for missing interfaces
@@ -117,7 +117,7 @@ export type SettingsUpdatePayload = Partial<N8NSettings>
 /**
  * Workflow Node Creation Payload - Nodes in workflow creation context
  */
-export type WorkflowNodePayload = N8NWorkflowNode
+export type WorkflowNodePayload = N8NNode
 
 // ============================================================================
 // BRANDED TYPES FOR ENHANCED TYPE SAFETY
@@ -145,7 +145,7 @@ export function createApiPayload<T>(payload: T): ApiPayload<T> {
  */
 export interface WorkflowCreationValidation {
   name: string // Required
-  nodes: N8NWorkflowNode[] // Required
+  nodes: N8NNode[] // Required
   connections: N8NWorkflow['connections'] // Required
   settings?: N8NWorkflow['settings'] // Optional but recommended
   staticData?: N8NWorkflow['staticData'] // Optional

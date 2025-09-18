@@ -12,6 +12,7 @@ import process from 'node:process'
 import { z } from 'zod'
 import { DynamicAgentDB } from '../database/dynamic-agent-db.js'
 import { logger } from '../server/logger.js'
+import { managedClearTimer, managedSetInterval } from '../utils/timer-manager.js'
 
 // Session configuration schema
 const SessionConfigSchema = z.object({
@@ -162,7 +163,7 @@ export class AgentSessionManager {
   private db: DynamicAgentDB
   private config: SessionConfig
   private encryptionKey: Buffer
-  private cleanupTimer?: NodeJS.Timeout | undefined
+  private cleanupTimer: string | undefined = undefined
   private activeSessions: Map<string, { lastAccess: Date, memoryUsage: number }> = new Map()
 
   constructor(db: DynamicAgentDB, config?: Partial<SessionConfig>) {
@@ -506,7 +507,7 @@ export class AgentSessionManager {
    */
   async shutdown(): Promise<void> {
     if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer)
+      managedClearTimer(this.cleanupTimer)
       this.cleanupTimer = undefined
     }
 
@@ -668,7 +669,7 @@ export class AgentSessionManager {
   private startCleanupTimer(): void {
     const intervalMs = this.config.cleanupIntervalMinutes * 60 * 1000
 
-    this.cleanupTimer = setInterval(async () => {
+    this.cleanupTimer = managedSetInterval(async () => {
       try {
         const cleaned = await this.cleanupExpiredSessions()
         if (cleaned > 0) {
@@ -676,14 +677,14 @@ export class AgentSessionManager {
         }
       }
       catch (error) {
-        logger.error('Session cleanup error:', error)
+        logger.error('Session cleanup error:', error, 'session-manager:interval')
         // Continue running - don't break the interval
       }
     }, intervalMs)
 
     // Allow process to exit gracefully without waiting for timer
     if (this.cleanupTimer) {
-      this.cleanupTimer.unref()
+      this.cleanupTimer
     }
   }
 }

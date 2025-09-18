@@ -5,8 +5,8 @@ export interface NodeParameter {
   type: string
   required: boolean
   description?: string
-  options?: any[]
-  default?: any
+  options?: Array<{ name: string, value: string | number | boolean }>
+  default?: string | number | boolean | object
 }
 
 export interface NodeSchema {
@@ -22,7 +22,7 @@ export interface NodeSchema {
 }
 
 export class SchemaParser {
-  static parseNodeSchema(nodeData: any): NodeSchema {
+  static parseNodeSchema(nodeData: Record<string, unknown>): NodeSchema {
     try {
       const schema = typeof nodeData.schema === 'string'
         ? JSON.parse(nodeData.schema)
@@ -32,9 +32,9 @@ export class SchemaParser {
       const credentials = this.extractCredentials(schema.credentials || [])
 
       return {
-        nodeId: nodeData.id,
-        displayName: nodeData.name,
-        description: nodeData.description || '',
+        nodeId: String((nodeData as any).id || 'unknown'),
+        displayName: String((nodeData as any).name || 'Unknown Node'),
+        description: (nodeData as any).description || '',
         parameters,
         inputPorts: this.getInputPorts(schema),
         outputPorts: this.getOutputPorts(schema),
@@ -44,11 +44,11 @@ export class SchemaParser {
       }
     }
     catch (error) {
-      logger.error(`Failed to parse schema for node ${nodeData.id}:`, error)
+      logger.error(`Failed to parse schema for node ${(nodeData as any).id}:`, error)
       return {
-        nodeId: nodeData.id,
-        displayName: nodeData.name,
-        description: nodeData.description || '',
+        nodeId: String((nodeData as any).id || 'unknown'),
+        displayName: String((nodeData as any).name || 'Unknown Node'),
+        description: (nodeData as any).description || '',
         parameters: [],
         inputPorts: 1,
         outputPorts: 1,
@@ -58,22 +58,22 @@ export class SchemaParser {
     }
   }
 
-  private static extractParameters(properties: any[]): NodeParameter[] {
+  private static extractParameters(properties: unknown): NodeParameter[] {
     if (!Array.isArray(properties)) {
       return []
     }
 
-    return properties.map(prop => ({
-      name: prop.name || prop.displayName || '',
-      type: prop.type || 'string',
+    return (properties as any[]).map((prop: any) => ({
+      name: String(prop.name || prop.displayName || ''),
+      type: String(prop.type || 'string'),
       required: prop.required === true,
-      description: prop.description || '',
+      description: String(prop.description || ''),
       options: prop.options || undefined,
       default: prop.default,
     }))
   }
 
-  private static extractCredentials(credentials: any[]): string[] {
+  private static extractCredentials(credentials: unknown): string[] {
     if (!Array.isArray(credentials)) {
       return []
     }
@@ -81,37 +81,41 @@ export class SchemaParser {
     return credentials.map(cred => cred.name || cred.displayName || '').filter(Boolean)
   }
 
-  private static getInputPorts(schema: any): number {
-    if (schema.inputs && Array.isArray(schema.inputs)) {
-      return schema.inputs.length
+  private static getInputPorts(schema: unknown): number {
+    const s = schema as any
+    if (s && s.inputs && Array.isArray(s.inputs)) {
+      return s.inputs.length
     }
-    return schema.maxNodes || 1
+    return s ? (s.maxNodes || 1) : 1
   }
 
-  private static getOutputPorts(schema: any): number {
-    if (schema.outputs && Array.isArray(schema.outputs)) {
-      return schema.outputs.length
+  private static getOutputPorts(schema: unknown): number {
+    const s = schema as any
+    if (s && s.outputs && Array.isArray(s.outputs)) {
+      return s.outputs.length
     }
-    return schema.outputs || 1
+    return s ? (s.outputs || 1) : 1
   }
 
-  private static hasWebhookSupport(schema: any): boolean {
-    return schema.webhooks && schema.webhooks.length > 0
+  private static hasWebhookSupport(schema: unknown): boolean {
+    const s = schema as any
+    return s.webhooks && s.webhooks.length > 0
   }
 
-  private static isTriggerNode(schema: any): boolean {
-    return schema.group?.includes('trigger')
-      || schema.name?.toLowerCase().includes('trigger')
-      || schema.displayName?.toLowerCase().includes('trigger')
+  private static isTriggerNode(schema: unknown): boolean {
+    const s = schema as any
+    return s.group?.includes('trigger')
+      || String(s.name || '').toLowerCase().includes('trigger')
+      || String(s.displayName || '').toLowerCase().includes('trigger')
   }
 
-  static generateMCPToolSchema(nodeSchema: NodeSchema): any {
+  static generateMCPToolSchema(nodeSchema: NodeSchema): Record<string, unknown> {
     const toolName = `n8n_${nodeSchema.nodeId.replace(/[^a-z0-9]/gi, '_').toLowerCase()}`
 
     const inputSchema: Record<string, any> = {}
 
     for (const param of nodeSchema.parameters) {
-      const paramSchema: any = {
+      const paramSchema: Record<string, unknown> = {
         type: this.mapParameterType(param.type),
         description: param.description || `${param.name} parameter`,
       }

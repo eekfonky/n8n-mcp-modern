@@ -45,32 +45,55 @@ export interface N8NContextValue {
   [key: string]: unknown
 }
 
+// N8N Node Types
+export interface N8NNode {
+  id: string
+  name: string
+  type: string
+  typeVersion: number
+  position: [number, number]
+  parameters: Record<string, unknown>
+  credentials?: Record<string, string>
+}
+
+// N8N Workflow Types
+export interface N8NWorkflowConfig {
+  name: string
+  nodes: N8NNode[]
+  connections?: N8NWorkflowConnections
+  settings?: N8NWorkflowSettings
+  staticData?: N8NWorkflowStaticData
+  tags?: string[]
+  active?: boolean
+  description?: string
+}
+
+export interface N8NWorkflow extends N8NWorkflowConfig {
+  id: string
+  active: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface N8NNodeValidation {
+  isValid: boolean
+  errors: string[]
+  warnings: string[]
+}
+
+export interface N8NNodeSuggestion {
+  nodeType: string
+  parameters: Record<string, unknown>
+  description: string
+  reasoning: string
+}
+
 // Core MCP Types
 export interface ToolDefinition {
   name: string
   description: string
   inputSchema: z.ZodSchema
   outputSchema?: z.ZodSchema
-}
-
-// N8N Workflow Types
-export interface N8NWorkflow {
-  id: string
-  name: string
-  active: boolean
-  nodes: N8NWorkflowNode[]
-  connections?: N8NWorkflowConnections
-  settings?: N8NWorkflowSettings
-  staticData?: N8NWorkflowStaticData
-  tags?: string[]
-}
-
-export interface N8NWorkflowNode {
-  id: string
-  name: string
-  type: string
-  position: [number, number]
-  parameters: Record<string, unknown>
 }
 
 // N8N Node Types
@@ -95,7 +118,7 @@ export interface N8NNodeProperty {
 // API Argument Types
 export interface CreateWorkflowArgs {
   name: string
-  nodes?: N8NWorkflowNode[]
+  nodes?: N8NNode[]
   active?: boolean
   settings?: N8NWorkflowSettings
 }

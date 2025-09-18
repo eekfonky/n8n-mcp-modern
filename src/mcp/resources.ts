@@ -12,6 +12,7 @@ import process from 'node:process'
 import { simpleN8nApi } from '../n8n/simple-api.js'
 import { features } from '../server/config.js'
 import { logger } from '../server/logger.js'
+import { managedClearTimer, managedSetInterval } from '../utils/timer-manager.js'
 import { VERSION } from '../version.js'
 
 const { hasN8nApi } = features
@@ -28,7 +29,7 @@ interface CachedResourceData {
 export class ResourceManager extends EventEmitter {
   private subscriptions = new Map<string, Set<string>>()
   private resourceCache = new Map<string, CachedResourceData>()
-  private updateInterval: NodeJS.Timeout | null = null
+  private updateInterval: string | undefined | null = null
 
   constructor() {
     super()
@@ -259,7 +260,7 @@ export class ResourceManager extends EventEmitter {
     if (!hasN8nApi)
       return
 
-    this.updateInterval = setInterval(async () => {
+    this.updateInterval = managedSetInterval(async () => {
       try {
         // Check for workflow changes
         const workflows = await simpleN8nApi.getWorkflows()
@@ -273,7 +274,7 @@ export class ResourceManager extends EventEmitter {
         const removed = cachedWorkflowIds.filter(id => !currentWorkflowIds.includes(id))
 
         if (added.length > 0 || removed.length > 0) {
-          this.emit('resources_changed', { added, removed })
+          this.emit('resources_changed', { added, removed }, 'resources:interval')
         }
 
         // Update cache
@@ -317,7 +318,7 @@ export class ResourceManager extends EventEmitter {
    */
   cleanup(): void {
     if (this.updateInterval) {
-      clearInterval(this.updateInterval)
+      managedClearTimer(this.updateInterval)
     }
     this.subscriptions.clear()
     this.resourceCache.clear()
